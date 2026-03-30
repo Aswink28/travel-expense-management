@@ -1,0 +1,7 @@
+Employee|arjun@company.in|true
+Employee|priya@company.in|true
+Tech Lead|deepa@company.in|true
+Manager|ravi@company.in|true
+Finance|anil@company.in|true
+Booking Admin|meena@company.in|true
+Super Admin|admin@company.in|true

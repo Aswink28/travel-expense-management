@@ -1,0 +1,19 @@
+✅  PostgreSQL connected — traveldesk_v3@localhost:5432
+
+🚀  TravelDesk API  →  http://localhost:5000
+🔓  CORS: any localhost port
+
+📋  Routes:
+    POST /api/auth/login            GET  /api/auth/me
+    GET  /api/requests              POST /api/requests
+    GET  /api/requests/queue        GET  /api/requests/distance-check
+    POST /api/requests/:id/action
+    GET  /api/wallet/balance        POST /api/wallet/debit
+    GET  /api/wallet/transactions
+    GET  /api/bookings/pending      POST /api/bookings/book
+    POST /api/bookings/:id/upload   POST /api/bookings/upload-to-request
+    GET  /api/documents/:id/download
+    GET  /api/dashboard             GET  /api/dashboard/tier
+
+GET /health — 200 — 4ms — guest
+POST /search — 401 — 1ms — guest
