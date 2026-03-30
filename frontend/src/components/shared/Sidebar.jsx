@@ -1,4 +1,5 @@
 import { useAuth } from '../../context/AuthContext'
+import moiterLogo from '../../assets/moiter_workz-logo.png'
 
 const NAV = {
   'Employee':      [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'my-requests', label:'My Requests', icon:'◈' },{ id:'new-request', label:'New Request', icon:'+' },{ id:'my-wallet', label:'My Wallet', icon:'◉' },{ id:'book', label:'Book Travel', icon:'🎫' },{ id:'my-tickets', label:'My Tickets', icon:'🎟' }],
@@ -19,9 +20,7 @@ export default function Sidebar({ active, setActive, pendingCount }) {
     <aside style={{ width:220, background:'#080810', borderRight:'1px solid #14141E', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, height:'100vh', zIndex:100 }}>
       {/* Logo */}
       <div style={{ padding:'26px 22px 20px' }}>
-        <div className="syne" style={{ fontSize:20, fontWeight:800, letterSpacing:'-.02em', color:'#F0F0F4' }}>
-          Travel<span style={{ color:accent }}>Desk</span>
-        </div>
+        <img src={moiterLogo} alt="Moiter Workz" style={{ height:32, objectFit:'contain', display:'block' }} />
         <div style={{ fontSize:10, color:'#2E2E3A', marginTop:2 }}>{user.role}</div>
       </div>
 

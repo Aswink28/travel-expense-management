@@ -24,9 +24,6 @@ export function StatCard({ label, value, sub, color, icon, onClick }) {
 // ── WalletCard ────────────────────────────────────────────────
 export function WalletCard({ wallet, color='#0A84FF' }) {
   const bal = Number(wallet?.balance||0)
-  const trv = Number(wallet?.travel_balance||0)
-  const htl = Number(wallet?.hotel_balance||0)
-  const alw = Number(wallet?.allowance_balance||0)
   return (
     <Card style={{ padding:22, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden' }}>
       <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:color, opacity:.06, pointerEvents:'none' }} />
@@ -34,16 +31,8 @@ export function WalletCard({ wallet, color='#0A84FF' }) {
       <div className="syne" style={{ fontSize:36, fontWeight:800, color, letterSpacing:'-.04em', marginBottom:4 }}>
         ₹{bal.toLocaleString('en-IN')}
       </div>
-      <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+      <div style={{ display:'flex', gap:6 }}>
         <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● Amount Loaded</span>
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginTop:12 }}>
-        {[['✈ Travel', trv, '#0A84FF'],['🏨 Hotel', htl, '#BF5AF2'],['🎯 Allowance', alw, '#30D158']].map(([k,v,c]) => (
-          <div key={k} style={{ background:'#1A1A22', borderRadius:8, padding:'8px 10px' }}>
-            <div style={{ fontSize:10, color:'#444', marginBottom:3 }}>{k}</div>
-            <div className="syne" style={{ fontSize:14, fontWeight:700, color:c }}>₹{Number(v).toLocaleString('en-IN')}</div>
-          </div>
-        ))}
       </div>
     </Card>
   )

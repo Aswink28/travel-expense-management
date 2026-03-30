@@ -69,7 +69,7 @@ export default function TicketCard({ ticket, onClose }) {
             </div>
           </div>
           <div class="footer">
-            Issued by TravelDesk &nbsp;·&nbsp; ${new Date(ticket.created_at).toLocaleString('en-IN')}
+            Issued by Moiter Workz &nbsp;·&nbsp; ${new Date(ticket.created_at).toLocaleString('en-IN')}
             &nbsp;·&nbsp; ${ticket.status?.toUpperCase()}
           </div>
         </div>

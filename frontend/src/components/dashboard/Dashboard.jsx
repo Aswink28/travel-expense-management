@@ -47,6 +47,37 @@ export default function Dashboard({ setTab }) {
         <StatCard label={isBkAdmin ? 'Pending Bookings' : 'Pending Actions'} value={isBkAdmin ? Number(stats?.pending_booking||0) : (pendingForMe||0)} sub={isBkAdmin ? 'company requests' : 'need your review'} color="#FFD60A" icon="◉" onClick={() => setTab(isBkAdmin?'booking-panel':'approvals')} />
       </div>
 
+      {/* Recent requests + tickets */}
+      {recentRequests?.length > 0 && (
+        <Card style={{ padding:22, marginBottom:16 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div style={{ fontSize:13, color:'#888', fontWeight:500 }}>Recent Requests</div>
+            <button onClick={() => setTab('my-requests')} style={{ fontSize:11, color:'#0A84FF', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {recentRequests.map(r => (
+              <div key={r.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#1A1A22', borderRadius:10 }}>
+                <span style={{ fontSize:18 }}>{MODE_ICONS[r.travel_mode]||'🚀'}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, color:'#ccc' }}>{r.from_location} → {r.to_location}</div>
+                  <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <StatusPill status={r.status} />
+                  <BookingBadge type={r.booking_type} />
+                  {r.wallet_credited && <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:6 }}>💳 Wallet Loaded</span>}
+                  {r.doc_count > 0 && (
+                    <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:6 }}>
+                      📎 {r.doc_count} ticket{r.doc_count>1?'s':''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
 
         {/* Expense breakdown */}
@@ -99,37 +130,6 @@ export default function Dashboard({ setTab }) {
           ))}
         </Card>
       </div>
-
-      {/* Recent requests + tickets */}
-      {recentRequests?.length > 0 && (
-        <Card style={{ padding:22, marginBottom:16 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-            <div style={{ fontSize:13, color:'#888', fontWeight:500 }}>Recent Requests</div>
-            <button onClick={() => setTab('my-requests')} style={{ fontSize:11, color:'#0A84FF', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {recentRequests.map(r => (
-              <div key={r.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#1A1A22', borderRadius:10 }}>
-                <span style={{ fontSize:18 }}>{MODE_ICONS[r.travel_mode]||'🚀'}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, color:'#ccc' }}>{r.from_location} → {r.to_location}</div>
-                  <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</div>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <StatusPill status={r.status} />
-                  <BookingBadge type={r.booking_type} />
-                  {r.wallet_credited && <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:6 }}>💳 Wallet Loaded</span>}
-                  {r.doc_count > 0 && (
-                    <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:6 }}>
-                      📎 {r.doc_count} ticket{r.doc_count>1?'s':''}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* Tier info */}
       {tier && !isBkAdmin && (
