@@ -14,6 +14,8 @@ import AdminBookingsView from './components/admin/AdminBookingsView'
 import SelfBookingPanel from './components/booking/SelfBookingPanel'
 import MyTicketsPage    from './components/booking/MyTicketsPage'
 import TierConfig     from './components/admin/TierConfig'
+import EmployeeManagement from './components/admin/EmployeeManagement'
+import RoleManagement     from './components/admin/RoleManagement'
 import { requestsAPI } from './services/api'
 
 function WelcomeBanner() {
@@ -74,6 +76,8 @@ function InnerApp() {
     'booking-history':<BookingPanel showHistory={true} />,
     'ad-hoc-booking': <AdHocBookingPanel />,
     'admin-bookings-view': <AdminBookingsView />,
+    'employees':      <EmployeeManagement />,
+    'roles':          <RoleManagement />,
     'tiers':          <TierConfig />,
     'book':           <SelfBookingPanel />,
     'my-tickets':     <MyTicketsPage />,
@@ -96,7 +100,7 @@ function AppRoot() {
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#09090E' }}>
       <div style={{ textAlign:'center' }}>
         <div className="syne" style={{ fontSize:22, fontWeight:800, color:'#F0F0F4', marginBottom:18 }}>
-          Travel<span style={{ color:'#0A84FF' }}>Desk</span>
+          Moiter <span style={{ color:'#0A84FF' }}>Workz</span>
         </div>
         <Spinner size={32} />
       </div>

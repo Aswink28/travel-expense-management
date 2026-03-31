@@ -4,6 +4,7 @@ const cors    = require('cors')
 const path    = require('path')
 const pool    = require('./config/db')
 
+const { setupSwagger } = require('./swagger')
 const app  = express()
 const PORT = process.env.PORT || 5000
 
@@ -37,6 +38,9 @@ app.use((req, res, next) => {
 // ── Static uploads (for file serving) ────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')))
 
+// ── Swagger API Docs ─────────────────────────────────────────
+setupSwagger(app)
+
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth',      require('./routes/auth'))
 app.use('/api/requests',  require('./routes/requests'))
@@ -46,6 +50,8 @@ app.use('/api/dashboard', require('./routes/dashboard'))
 app.use('/api/documents',    require('./routes/documents'))
 app.use('/api/self-booking', require('./routes/selfbooking'))
 app.use('/api/admin',        require('./routes/adminBookings'))
+app.use('/api/employees',    require('./routes/employees'))
+app.use('/api/roles',        require('./routes/roles'))
 app.use('/api/flights',      require('./routes/flights'))
 app.use('/api/hotels',       require('./routes/hotels'))
 

@@ -100,6 +100,21 @@ export const hotelsAPI = {
   bookHotel: body => api.post('/hotels/book-hotel', body),
 }
 
+export const rolesAPI = {
+  list:       ()           => api.get('/roles'),
+  pages:      ()           => api.get('/roles/pages'),
+  create:     body         => api.post('/roles', body),
+  update:     (id, body)   => api.put(`/roles/${id}`, body),
+  remove:     id           => api.delete(`/roles/${id}`),
+}
+
+export const employeesAPI = {
+  list:         ()           => api.get('/employees'),
+  create:       body         => api.post('/employees', body),
+  update:       (id, body)   => api.put(`/employees/${id}`, body),
+  toggleStatus: (id, active) => request(`/employees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) }),
+}
+
 export const adminBookingsAPI = {
   users:           ()           => api.get('/admin/users'),
   userWallet:      userId       => api.get(`/admin/user/wallet/${userId}`),

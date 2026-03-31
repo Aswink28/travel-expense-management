@@ -1,19 +1,13 @@
 import { useAuth } from '../../context/AuthContext'
 import moiterLogo from '../../assets/moiter_workz-logo.png'
 
-const NAV = {
-  'Employee':      [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'my-requests', label:'My Requests', icon:'◈' },{ id:'new-request', label:'New Request', icon:'+' },{ id:'my-wallet', label:'My Wallet', icon:'◉' },{ id:'book', label:'Book Travel', icon:'🎫' },{ id:'my-tickets', label:'My Tickets', icon:'🎟' }],
-  'Tech Lead':     [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'my-requests', label:'My Requests', icon:'◈' },{ id:'approvals',   label:'Approvals',   icon:'◎' },{ id:'new-request', label:'New Request', icon:'+' },{ id:'my-wallet', label:'My Wallet', icon:'◉' },{ id:'book', label:'Book Travel', icon:'🎫' },{ id:'my-tickets', label:'My Tickets', icon:'🎟' }],
-  'Manager':       [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'requests',    label:'All Requests',icon:'◈' },{ id:'approvals',   label:'Approvals',   icon:'◎' },{ id:'new-request', label:'New Request', icon:'+' },{ id:'my-wallet', label:'My Wallet', icon:'◉' },{ id:'book', label:'Book Travel', icon:'🎫' },{ id:'my-tickets', label:'My Tickets', icon:'🎟' }],
-  'Finance':       [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'requests',    label:'All Requests',icon:'◈' },{ id:'approvals',   label:'Finance Queue',icon:'◎' },{ id:'new-request', label:'New Request', icon:'+' },{ id:'my-wallet', label:'My Wallet', icon:'◉' },{ id:'book', label:'Book Travel', icon:'🎫' },{ id:'my-tickets', label:'My Tickets', icon:'🎟' }],
-  'Booking Admin': [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'booking-panel', label:'Booking Panel', icon:'◈' },{ id:'booking-history', label:'History', icon:'◎' },{ id:'ad-hoc-booking', label:'Ad-Hoc Booking', icon:'✈' },{ id:'admin-bookings-view', label:'Admin Bookings', icon:'📋' }],
-  'Super Admin':   [{ id:'dashboard',  label:'Dashboard',   icon:'▦' },{ id:'requests',    label:'All Requests',icon:'◈' },{ id:'approvals',   label:'Approvals',   icon:'◎' },{ id:'new-request', label:'New Request', icon:'+' },{ id:'my-wallet', label:'My Wallet', icon:'◉' },{ id:'my-tickets', label:'My Tickets', icon:'🎟' },{ id:'tiers', label:'Tier Config', icon:'◐' },{ id:'ad-hoc-booking', label:'Ad-Hoc Booking', icon:'✈' },{ id:'admin-bookings-view', label:'Admin Bookings', icon:'📋' }],
-}
+// Fallback if backend hasn't returned pages yet (first load)
+const FALLBACK_NAV = [{ id:'dashboard', label:'Dashboard', icon:'▦' }]
 
 export default function Sidebar({ active, setActive, pendingCount }) {
   const { user, logout } = useAuth()
   if (!user) return null
-  const items  = NAV[user.role] || NAV['Employee']
+  const items  = user.pages?.length ? user.pages : FALLBACK_NAV
   const accent = user.color || '#0A84FF'
 
   return (
@@ -53,7 +47,7 @@ export default function Sidebar({ active, setActive, pendingCount }) {
       </nav>
 
       {/* Wallet quick */}
-      {user.role !== 'Booking Admin' && (
+      {items.some(i => i.id === 'my-wallet') && (
         <div style={{ margin:'0 12px 10px', background:'#111118', border:'1px solid #1E1E2A', borderRadius:10, padding:'12px 14px' }}>
           <div style={{ fontSize:10, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>Wallet</div>
           <div className="syne" style={{ fontSize:17, fontWeight:700, color:accent }}>
