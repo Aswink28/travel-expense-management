@@ -117,7 +117,7 @@ export default function EmployeeManagement() {
         setPopup({
           type: 'success', title: 'Employee Created',
           message: result.message || 'New employee has been created successfully.',
-          details: { empId: result.data?.emp_id, name: form.name, email: form.email, role: form.role, mobile: form.mobile_number },
+          details: { empId: result.data?.emp_id, name: form.name, email: form.email, role: form.role, mobile: form.mobile_number, walletId: result.data?.ppi_wallet_id || '—' },
         })
       }
       load()
@@ -233,7 +233,7 @@ export default function EmployeeManagement() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid #1E1E2A' }}>
-                {['Employee', 'Mobile', 'Role', 'Department', 'Status', 'Wallet', 'Last Login', 'Actions'].map(h => (
+                {['Employee', 'Mobile', 'Role', 'Wallet ID', 'Status', 'Balance', 'Last Login', 'Actions'].map(h => (
                   <th key={h} style={{ padding:'12px 16px', textAlign:'left', fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.04em', fontWeight:500 }}>{h}</th>
                 ))}
               </tr>
@@ -267,7 +267,13 @@ export default function EmployeeManagement() {
                       {emp.role}
                     </span>
                   </td>
-                  <td style={{ padding:'10px 16px', color:'#666' }}>{emp.department || '—'}</td>
+                  <td style={{ padding:'10px 16px' }}>
+                    {emp.ppi_wallet_id ? (
+                      <span style={{ fontSize:10, fontFamily:'monospace', color:'#0A84FF', background:'#0A84FF12', padding:'3px 8px', borderRadius:6 }}>
+                        {emp.ppi_wallet_id.slice(0, 8)}...
+                      </span>
+                    ) : <span style={{ color:'#444' }}>—</span>}
+                  </td>
                   <td style={{ padding:'10px 16px' }}>
                     <span style={{
                       fontSize:11, padding:'3px 10px', borderRadius:20, fontWeight:500,

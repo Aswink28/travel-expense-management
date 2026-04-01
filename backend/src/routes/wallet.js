@@ -1,6 +1,7 @@
 const express = require('express')
 const pool    = require('../config/db')
 const { authenticate, authorise } = require('../middleware')
+const { fetchPpiBalance } = require('../services/ppiWallet')
 const router  = express.Router()
 
 router.use(authenticate)
@@ -12,6 +13,23 @@ router.get('/balance', async (req, res, next) => {
     if (!rows.length) return res.status(404).json({ success:false, message:'Wallet not found' })
     res.json({ success:true, data:rows[0] })
   } catch(e) { next(e) }
+})
+
+// ── GET /api/wallet/ppi-balance — fetch live PPI wallet balance ─
+router.get('/ppi-balance', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT ppi_wallet_id FROM users WHERE id=$1', [req.user.id])
+    if (!rows.length || !rows[0].ppi_wallet_id) {
+      return res.status(404).json({ success: false, message: 'No PPI wallet linked to your account' })
+    }
+
+    const ppiData = await fetchPpiBalance(rows[0].ppi_wallet_id)
+    if (!ppiData) {
+      return res.status(502).json({ success: false, message: 'Unable to fetch wallet balance from PPI service' })
+    }
+
+    res.json({ success: true, data: ppiData })
+  } catch (e) { next(e) }
 })
 
 // ── GET /api/wallet/balance/:userId — admin ───────────────────

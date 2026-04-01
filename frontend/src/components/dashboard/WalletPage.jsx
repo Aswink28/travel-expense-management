@@ -17,6 +17,8 @@ export default function WalletPage() {
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ request_id:'', amount:'', category:'allowance', description:'', reference:'' })
 
+  const ppiWallet = user.ppiWallet
+
   const load = useCallback(async () => {
     try {
       setLoading(true)
@@ -55,6 +57,31 @@ export default function WalletPage() {
 
       {error   && <Alert type="error">{error}</Alert>}
       {success && <Alert type="success">{success}</Alert>}
+
+      {/* PPI Wallet Balance */}
+      {ppiWallet && (
+        <Card style={{ padding:20, marginBottom:16, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>PPI Wallet Balance</div>
+              <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em' }}>
+                ₹{Number(ppiWallet.balance||0).toLocaleString('en-IN')}
+              </div>
+              <div style={{ display:'flex', gap:6, marginTop:8 }}>
+                <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
+                <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:10 }}>KYC: {ppiWallet.kycStatus}</span>
+              </div>
+            </div>
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:10, color:'#444', marginBottom:4 }}>{ppiWallet.walletNumber}</div>
+              <div style={{ fontSize:10, color:'#444' }}>Expires: {ppiWallet.expiryDate}</div>
+              <div style={{ fontSize:10, color:'#444', marginTop:4 }}>Daily limit: ₹{Number(ppiWallet.dailyTxnLimit||0).toLocaleString('en-IN')}</div>
+              <div style={{ fontSize:10, color:'#444' }}>Max balance: ₹{Number(ppiWallet.maxBalanceLimit||0).toLocaleString('en-IN')}</div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Wallet summary */}
       <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr 1fr', gap:14, marginBottom:22 }}>

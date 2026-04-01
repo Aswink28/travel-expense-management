@@ -52,6 +52,7 @@ export const requestsAPI = {
 
 export const walletAPI = {
   balance:      ()         => api.get('/wallet/balance'),
+  ppiBalance:   ()         => api.get('/wallet/ppi-balance'),
   balanceFor:   userId     => api.get(`/wallet/balance/${userId}`),
   transactions: ()         => api.get('/wallet/transactions'),
   txnsFor:      userId     => api.get(`/wallet/transactions/${userId}`),

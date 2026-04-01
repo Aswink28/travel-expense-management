@@ -1,7 +1,6 @@
 import { useAuth } from '../../context/AuthContext'
 import moiterLogo from '../../assets/moiter_workz-logo.png'
 
-// Fallback if backend hasn't returned pages yet (first load)
 const FALLBACK_NAV = [{ id:'dashboard', label:'Dashboard', icon:'▦' }]
 
 export default function Sidebar({ active, setActive, pendingCount }) {
@@ -9,6 +8,7 @@ export default function Sidebar({ active, setActive, pendingCount }) {
   if (!user) return null
   const items  = user.pages?.length ? user.pages : FALLBACK_NAV
   const accent = user.color || '#0A84FF'
+  const ppiBal = user.ppiWallet
 
   return (
     <aside style={{ width:220, background:'#080810', borderRight:'1px solid #14141E', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, height:'100vh', zIndex:100 }}>
@@ -48,12 +48,14 @@ export default function Sidebar({ active, setActive, pendingCount }) {
 
       {/* Wallet quick */}
       {items.some(i => i.id === 'my-wallet') && (
-        <div style={{ margin:'0 12px 10px', background:'#111118', border:'1px solid #1E1E2A', borderRadius:10, padding:'12px 14px' }}>
-          <div style={{ fontSize:10, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>Wallet</div>
-          <div className="syne" style={{ fontSize:17, fontWeight:700, color:accent }}>
-            ₹{Number(user.wallet?.balance||0).toLocaleString('en-IN')}
+        <div onClick={() => setActive('my-wallet')} style={{ margin:'0 12px 10px', background:'#111118', border:'1px solid #1E1E2A', borderRadius:10, padding:'12px 14px', cursor:'pointer' }}>
+          <div style={{ fontSize:10, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>
+            {ppiBal !== null ? 'PPI Wallet' : 'Wallet'}
           </div>
-          <div style={{ fontSize:10, color:'#30D158', marginTop:2 }}>● Loaded</div>
+          <div className="syne" style={{ fontSize:17, fontWeight:700, color:accent }}>
+            ₹{Number(ppiBal?.balance ?? user.wallet?.balance ?? 0).toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize:10, color:'#30D158', marginTop:2 }}>● {ppiBal ? 'Live' : 'Loaded'}</div>
         </div>
       )}
 

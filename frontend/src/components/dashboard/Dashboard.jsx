@@ -12,6 +12,8 @@ export default function Dashboard({ setTab }) {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
 
+  const ppiBal = user.ppiWallet
+
   useEffect(() => {
     dashboardAPI.summary()
       .then(d => {
@@ -41,7 +43,27 @@ export default function Dashboard({ setTab }) {
 
       {/* Top row */}
       <div style={{ display:'grid', gridTemplateColumns: isBkAdmin ? 'repeat(3,1fr)' : '1.4fr 1fr 1fr 1fr', gap:14, marginBottom:22 }}>
-        {!isBkAdmin && <WalletCard wallet={wallet} color={user.color||'#0A84FF'} />}
+        {!isBkAdmin && (
+          <Card style={{ padding:22, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden', cursor:'pointer' }} onClick={() => setTab('my-wallet')}>
+            <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
+            <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>
+              {ppiBal ? 'PPI Wallet Balance' : 'Wallet Balance'}
+            </div>
+            <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em', marginBottom:4 }}>
+              ₹{Number(ppiBal?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              {ppiBal ? (
+                <>
+                  <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● {ppiBal.walletStatus}</span>
+                  <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:10 }}>{ppiBal.walletNumber}</span>
+                </>
+              ) : (
+                <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● Amount Loaded</span>
+              )}
+            </div>
+          </Card>
+        )}
         <StatCard label="Total Requests" value={Number(stats?.total||0)} sub="all time" color="#0A84FF" icon="◈" onClick={() => setTab('my-requests')} />
         <StatCard label="Approved" value={Number(stats?.approved||0)} sub={`₹${Number(stats?.total_approved||0).toLocaleString('en-IN')}`} color="#30D158" icon="◎" />
         <StatCard label={isBkAdmin ? 'Pending Bookings' : 'Pending Actions'} value={isBkAdmin ? Number(stats?.pending_booking||0) : (pendingForMe||0)} sub={isBkAdmin ? 'company requests' : 'need your review'} color="#FFD60A" icon="◉" onClick={() => setTab(isBkAdmin?'booking-panel':'approvals')} />
