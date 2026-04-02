@@ -1,0 +1,16 @@
+name,email,password,mobile_number,date_of_birth,gender,pan_number,aadhaar_number,role,department,reporting_to
+Tamilarasan M,tamilarasan@company.in,pass123,8801234501,1991-06-12,Male,ABCTM5501A,110234567801,Employee,Engineering,Deepa (TL)
+Janani Sriram,janani@company.in,pass123,8801234502,1995-02-28,Female,BCDJS5502B,220345678902,Employee,Frontend,Deepa (TL)
+Balakrishnan P,balakrishnan@company.in,pass123,8801234503,1987-09-04,Male,CDEBP5503C,330456789003,Tech Lead,Backend,Ravi (Mgr)
+Sowmiya Devi,sowmiya@company.in,pass123,8801234504,1993-11-17,Female,DEFSD5504D,440567890104,Employee,QA,Deepa (TL)
+Murugan K,murugan@company.in,pass123,8801234505,1989-04-23,Male,EFGMK5505E,550678901205,Employee,DevOps,Deepa (TL)
+Ishwarya R,ishwarya@company.in,pass123,8801234506,1996-08-09,Female,FGHIR5506F,660789012306,Employee,Design,Deepa (TL)
+Senthilkumar V,senthil@company.in,pass123,8801234507,1988-01-30,Male,GHISV5507G,770890123407,Manager,Operations,CFO
+Deepika Raj,deepika@company.in,pass123,8801234508,1994-05-21,Female,HIJDR5508H,880901234508,Employee,Engineering,Balakrishnan (TL)
+Vignesh S,vignesh@company.in,pass123,8801234509,1992-12-14,Male,IJKVS5509I,990012345609,Employee,Backend,Balakrishnan (TL)
+Abinaya T,abinaya@company.in,pass123,8801234510,1997-03-07,Female,JKLAT5510J,100123456710,Employee,HR,Ravi (Mgr)
+Gowtham R,gowtham@company.in,pass123,8801234511,1990-07-19,Male,KLMGR5511K,210234567811,Finance,Finance,CFO
+Sangeetha M,sangeetha@company.in,pass123,8801234512,1993-10-02,Female,LMNSM5512L,320345678912,Employee,QA,Deepa (TL)
+Prashanth N,prashanth@company.in,pass123,8801234513,1986-06-25,Male,MNOPN5513M,430456789013,Booking Admin,Admin,Manager
+Ramya Lakshmi,ramya@company.in,pass123,8801234514,1995-09-11,Female,NOPRL5514N,540567890114,Employee,Frontend,Deepa (TL)
+Karthikeyan D,karthikeyan@company.in,pass123,8801234515,1991-02-08,Male,OPQKD5515O,650678901215,Employee,Engineering,Balakrishnan (TL)

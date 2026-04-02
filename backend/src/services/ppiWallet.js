@@ -109,4 +109,72 @@ async function fetchPpiBalance(walletId) {
   }
 }
 
-module.exports = { createPpiWallet, fetchPpiBalance }
+// ── Load money into PPI wallet ──────────────────────────────
+// POST /api/external/wallet/:walletId/load
+// Body: { amount, source, referenceId }
+// Response: { success, data: { txn_ref_number, amount, new_balance, transaction_status }, message, traceId }
+async function loadPpiWallet(walletId, amount, referenceId, source = 'Bank') {
+  if (!walletId) throw new Error('walletId is required for PPI load')
+  if (!amount || amount <= 0) throw new Error('amount must be a positive number')
+  if (!referenceId) throw new Error('referenceId is required for idempotency')
+
+  const PPI_BASE = process.env.PPI_API_URL  // e.g. http://192.168.21.120:5100/api/external/wallet
+  const url = `${PPI_BASE}/${walletId}/load`
+  const requestId = uuidv4()
+  const timestamp = new Date().toISOString()
+
+  const body = { amount: Number(amount), source, referenceId }
+
+  console.log(`[PPI-LOAD] Loading ₹${amount} → wallet ${walletId} | ref: ${referenceId} | requestId: ${requestId}`)
+
+  let res, data
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type':     'application/json',
+        'X-Partner-Key':    process.env.PPI_PARTNER_KEY,
+        'X-Partner-Secret': process.env.PPI_PARTNER_SECRET,
+        'X-Request-Id':     requestId,
+        'X-Timestamp':      timestamp,
+      },
+      body: JSON.stringify(body),
+    })
+    data = await res.json()
+  } catch (networkErr) {
+    console.error(`[PPI-LOAD] Network error — ref: ${referenceId}, requestId: ${requestId}`, networkErr.message)
+    return {
+      success: false,
+      error: `PPI network error: ${networkErr.message}`,
+      referenceId,
+      traceId: requestId,
+      retryable: true,
+    }
+  }
+
+  if (!res.ok || !data.success) {
+    console.error(`[PPI-LOAD] Failed — ref: ${referenceId}, status: ${res.status}, response:`, JSON.stringify(data))
+    return {
+      success: false,
+      error: data.message || `PPI returned status ${res.status}`,
+      referenceId,
+      traceId: data.traceId || requestId,
+      retryable: res.status >= 500,  // 5xx = retryable, 4xx = not
+    }
+  }
+
+  const txn = data.data
+  console.log(`[PPI-LOAD] Success — ref: ${referenceId}, txnRef: ${txn.txn_ref_number}, newBalance: ${txn.new_balance}`)
+
+  return {
+    success: true,
+    txn_ref_number:     txn.txn_ref_number,
+    amount:             txn.amount,
+    new_balance:        txn.new_balance,
+    transaction_status: txn.transaction_status,
+    traceId:            data.traceId || requestId,
+    referenceId,
+  }
+}
+
+module.exports = { createPpiWallet, fetchPpiBalance, loadPpiWallet }

@@ -1,6 +1,7 @@
 const express = require('express')
 const pool    = require('../config/db')
 const { authenticate, authorise } = require('../middleware')
+const { loadPpiWallet } = require('../services/ppiWallet')
 const router  = express.Router()
 
 router.use(authenticate)
@@ -218,21 +219,93 @@ router.post('/:id/action', async (req, res, next) => {
 
       if (bothDone) {
         const total = Number(r2.approved_travel_cost||0)+Number(r2.approved_hotel_cost||0)+Number(r2.approved_allowance||0)
-        await client.query("UPDATE travel_requests SET status='approved',approved_total=$1 WHERE id=$2",[total,id])
+        await client.query("UPDATE travel_requests SET status='approved',approved_total=$1,ppi_load_status='loading' WHERE id=$2",[total,id])
 
-        // Credit wallet with 3 separate transactions
+        // ── Fetch user's PPI walletId from DB ──
+        const { rows:userRow } = await client.query('SELECT ppi_wallet_id FROM users WHERE id=$1',[r2.user_id])
+        const ppiWalletId = userRow[0]?.ppi_wallet_id
+
+        // ── Lock internal wallet ──
         const { rows:wallet } = await client.query('SELECT id,balance FROM wallets WHERE user_id=$1 FOR UPDATE',[r2.user_id])
-        if (wallet.length) {
+
+        if (wallet.length && ppiWalletId) {
           let bal = Number(wallet[0].balance)
           const tCost = Number(r2.approved_travel_cost||0)
           const hCost = Number(r2.approved_hotel_cost||0)
           const aCost = Number(r2.approved_allowance||0)
 
-          if (tCost>0) { bal+=tCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,balance_after) VALUES ($1,$2,$3,'credit','travel',$4,$5,$6)`, [wallet[0].id,r2.user_id,id,tCost,`Travel cost — ${id}`,bal]) }
-          if (hCost>0) { bal+=hCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,balance_after) VALUES ($1,$2,$3,'credit','hotel',$4,$5,$6)`, [wallet[0].id,r2.user_id,id,hCost,`Hotel cost — ${id}`,bal]) }
-          if (aCost>0) { bal+=aCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,balance_after) VALUES ($1,$2,$3,'credit','allowance',$4,$5,$6)`, [wallet[0].id,r2.user_id,id,aCost,`Daily allowance (${r2.total_days} days) — ${id}`,bal]) }
+          // ── Build category loads with unique referenceIds for idempotency ──
+          const loads = []
+          if (tCost > 0) loads.push({ category: 'travel',    amount: tCost, desc: `Travel cost — ${id}`,                       ref: `${id}-TRAVEL` })
+          if (hCost > 0) loads.push({ category: 'hotel',     amount: hCost, desc: `Hotel cost — ${id}`,                        ref: `${id}-HOTEL` })
+          if (aCost > 0) loads.push({ category: 'allowance', amount: aCost, desc: `Daily allowance (${r2.total_days} days) — ${id}`, ref: `${id}-ALLOW` })
 
-          await client.query("UPDATE travel_requests SET wallet_credited=TRUE,wallet_credit_amount=$1,wallet_credited_at=NOW() WHERE id=$2",[total,id])
+          let allPpiSuccess = true
+          let ppiError = null
+
+          for (const load of loads) {
+            // ── Idempotency: skip if this referenceId was already loaded ──
+            const { rows: existing } = await client.query(
+              `SELECT id FROM wallet_transactions WHERE request_id=$1 AND reference=$2 AND ppi_status='SUCCESS'`,
+              [id, load.ref]
+            )
+            if (existing.length) {
+              bal += load.amount  // already loaded, just track balance
+              continue
+            }
+
+            // ── Call PPI wallet load API (backend-only, never from frontend) ──
+            const ppiResult = await loadPpiWallet(ppiWalletId, load.amount, load.ref, 'Bank')
+
+            bal += load.amount
+            await client.query(
+              `INSERT INTO wallet_transactions
+                (wallet_id, user_id, request_id, txn_type, category, amount, description, performed_by, balance_after, reference, ppi_txn_ref, ppi_status, ppi_new_balance, ppi_trace_id)
+               VALUES ($1,$2,$3,'credit',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+              [
+                wallet[0].id, r2.user_id, id,
+                load.category, load.amount, load.desc, u.id, bal, load.ref,
+                ppiResult.txn_ref_number || null,
+                ppiResult.success ? 'SUCCESS' : 'FAILED',
+                ppiResult.new_balance || null,
+                ppiResult.traceId || null,
+              ]
+            )
+
+            if (!ppiResult.success) {
+              allPpiSuccess = false
+              ppiError = ppiResult.error
+              console.error(`[WALLET-LOAD] PPI load failed for ${load.ref}: ${ppiResult.error}`)
+            }
+          }
+
+          // ── Update request with load status ──
+          if (allPpiSuccess) {
+            await client.query(
+              "UPDATE travel_requests SET wallet_credited=TRUE, wallet_credit_amount=$1, wallet_credited_at=NOW(), ppi_load_status='loaded', ppi_load_error=NULL WHERE id=$2",
+              [total, id]
+            )
+          } else {
+            await client.query(
+              "UPDATE travel_requests SET wallet_credited=TRUE, wallet_credit_amount=$1, wallet_credited_at=NOW(), ppi_load_status='failed', ppi_load_error=$2 WHERE id=$3",
+              [total, ppiError, id]
+            )
+          }
+        } else if (wallet.length && !ppiWalletId) {
+          // ── No PPI wallet linked — credit internal wallet only ──
+          let bal = Number(wallet[0].balance)
+          const tCost = Number(r2.approved_travel_cost||0)
+          const hCost = Number(r2.approved_hotel_cost||0)
+          const aCost = Number(r2.approved_allowance||0)
+
+          if (tCost>0) { bal+=tCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,performed_by,balance_after,reference,ppi_status) VALUES ($1,$2,$3,'credit','travel',$4,$5,$6,$7,$8,'SKIPPED')`, [wallet[0].id,r2.user_id,id,tCost,`Travel cost — ${id}`,u.id,bal,`${id}-TRAVEL`]) }
+          if (hCost>0) { bal+=hCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,performed_by,balance_after,reference,ppi_status) VALUES ($1,$2,$3,'credit','hotel',$4,$5,$6,$7,$8,'SKIPPED')`, [wallet[0].id,r2.user_id,id,hCost,`Hotel cost — ${id}`,u.id,bal,`${id}-HOTEL`]) }
+          if (aCost>0) { bal+=aCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,performed_by,balance_after,reference,ppi_status) VALUES ($1,$2,$3,'credit','allowance',$4,$5,$6,$7,$8,'SKIPPED')`, [wallet[0].id,r2.user_id,id,aCost,`Daily allowance (${r2.total_days} days) — ${id}`,u.id,bal,`${id}-ALLOW`]) }
+
+          await client.query(
+            "UPDATE travel_requests SET wallet_credited=TRUE, wallet_credit_amount=$1, wallet_credited_at=NOW(), ppi_load_status='loaded', ppi_load_error=NULL WHERE id=$2",
+            [total, id]
+          )
         }
       } else if (hierarchyDone && !financeDone) {
         await client.query("UPDATE travel_requests SET status='pending_finance' WHERE id=$1",[id])

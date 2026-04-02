@@ -39,6 +39,18 @@ async function run() {
   await pool.query(sql)
   console.log('   ✓ All tables, triggers, views created')
 
+  // 2b. Run roles migration (roles + role_pages)
+  console.log('\n2b. Running roles migration...')
+  const rolesSql = fs.readFileSync(path.join(__dirname,'..','sql','roles_migration.sql'),'utf8')
+  await pool.query(rolesSql)
+  console.log('   ✓ Roles and page access seeded')
+
+  // 2c. Run bulk onboarding migration (bulk_jobs, bulk_job_rows, emp_id_seq)
+  console.log('\n2c. Running bulk onboarding migration...')
+  const bulkSql = fs.readFileSync(path.join(__dirname,'..','sql','bulk_onboarding_migration.sql'),'utf8')
+  await pool.query(bulkSql)
+  console.log('   ✓ Bulk onboarding tables and sequence created')
+
   // 3. Create uploads directory
   const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })

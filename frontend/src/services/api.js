@@ -57,6 +57,8 @@ export const walletAPI = {
   transactions: ()         => api.get('/wallet/transactions'),
   txnsFor:      userId     => api.get(`/wallet/transactions/${userId}`),
   debit:        body       => api.post('/wallet/debit', body),
+  loadStatus:   requestId  => api.get(`/wallet/load-status/${requestId}`),
+  retryLoad:    requestId  => api.post(`/wallet/retry-load/${requestId}`, {}),
 }
 
 export const flightsAPI = {

@@ -69,7 +69,17 @@ CREATE TABLE users (
   department      VARCHAR(100)   NOT NULL DEFAULT 'Engineering',
   avatar          VARCHAR(4)     NOT NULL DEFAULT 'XX',
   color           VARCHAR(10)    NOT NULL DEFAULT '#888',
-  reporting_to    VARCHAR(150),
+  reporting_to       VARCHAR(150),
+  mobile_number      VARCHAR(15)    UNIQUE,
+  date_of_birth      DATE,
+  gender             VARCHAR(10),
+  pan_number         VARCHAR(10),
+  aadhaar_number     VARCHAR(12),
+  ppi_wallet_id      VARCHAR(100),
+  ppi_wallet_number  VARCHAR(100),
+  ppi_customer_id    VARCHAR(100),
+  ppi_wallet_status  VARCHAR(50),
+  ppi_kyc_status     VARCHAR(50),
   is_active       BOOLEAN        NOT NULL DEFAULT TRUE,
   last_login      TIMESTAMPTZ,
   created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
@@ -138,9 +148,25 @@ CREATE TABLE travel_requests (
   wallet_credited       BOOLEAN             NOT NULL DEFAULT FALSE,
   wallet_credit_amount  NUMERIC(12,2),
   wallet_credited_at    TIMESTAMPTZ,
+  -- PPI wallet load tracking
+  ppi_load_status       VARCHAR(30)         DEFAULT 'pending',  -- pending / loading / loaded / failed
+  ppi_load_error        TEXT,                                   -- error message if PPI load failed
 
   -- Booking
   booking_status        booking_status_enum NOT NULL DEFAULT 'pending',
+
+  -- Extended trip fields
+  trip_name             VARCHAR(200),
+  trip_type             VARCHAR(50)         DEFAULT 'Domestic',
+  approver_1            VARCHAR(150),
+  approver_2            VARCHAR(150),
+  approver_3            VARCHAR(150),
+  project_name          VARCHAR(200),
+  contact_name          VARCHAR(150),
+  contact_mobile        VARCHAR(20),
+  contact_email         VARCHAR(255),
+  itinerary             JSONB               DEFAULT '{}',
+  passengers            JSONB               DEFAULT '[]',
 
   submitted_at          TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMPTZ         NOT NULL DEFAULT NOW()
@@ -197,6 +223,11 @@ CREATE TABLE wallet_transactions (
   performed_by UUID             REFERENCES users(id),  -- who performed (admin or self)
   balance_after NUMERIC(12,2)   NOT NULL,
   reference    VARCHAR(200),    -- PNR, booking ID etc.
+  -- PPI wallet load tracking
+  ppi_txn_ref      VARCHAR(100),    -- TXN ref from PPI response (e.g. TXN202604020935338833)
+  ppi_status       VARCHAR(30),     -- SUCCESS / FAILED / PENDING
+  ppi_new_balance  NUMERIC(12,2),   -- new_balance returned by PPI after load
+  ppi_trace_id     VARCHAR(100),    -- traceId for PPI support debugging
   created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 

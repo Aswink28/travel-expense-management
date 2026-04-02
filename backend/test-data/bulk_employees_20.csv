@@ -1,0 +1,21 @@
+name,email,password,mobile_number,date_of_birth,gender,pan_number,aadhaar_number,role,department,reporting_to
+Karthik Rajan,karthik@company.in,pass123,9876543201,1992-03-15,Male,ABCPK1234A,234567890101,Employee,Engineering,Deepa (TL)
+Sneha Pillai,sneha@company.in,pass123,9876543202,1994-07-22,Female,BCDPS2345B,345678901202,Employee,Engineering,Deepa (TL)
+Vikram Desai,vikram@company.in,pass123,9876543203,1990-11-08,Male,CDEVD3456C,456789012303,Employee,QA,Deepa (TL)
+Lakshmi Rao,lakshmi@company.in,pass123,9876543204,1993-01-30,Female,DEFLR4567D,567890123404,Employee,QA,Deepa (TL)
+Rajesh Iyer,rajesh@company.in,pass123,9876543205,1988-05-12,Male,EFGRI5678E,678901234505,Tech Lead,Engineering,Ravi (Mgr)
+Ananya Gupta,ananya@company.in,pass123,9876543206,1995-09-18,Female,FGHAG6789F,789012345606,Employee,Design,Deepa (TL)
+Suresh Babu,suresh@company.in,pass123,9876543207,1991-12-03,Male,GHISB7890G,890123456707,Employee,DevOps,Deepa (TL)
+Divya Menon,divya@company.in,pass123,9876543208,1996-04-25,Female,HIJDM8901H,901234567808,Employee,Engineering,Deepa (TL)
+Manoj Kumar,manoj@company.in,pass123,9876543209,1989-08-14,Male,IJKMK9012I,012345678909,Employee,Backend,Deepa (TL)
+Pooja Sharma,pooja@company.in,pass123,9876543210,1993-06-07,Female,JKLPS0123J,123456789010,Employee,Frontend,Deepa (TL)
+Arun Prasad,arun@company.in,pass123,9876543211,1990-02-19,Male,KLMAP1234K,234567890111,Employee,Engineering,Deepa (TL)
+Nithya Venkat,nithya@company.in,pass123,9876543212,1994-10-28,Female,LMNNV2345L,345678901212,Employee,QA,Deepa (TL)
+Sanjay Reddy,sanjay@company.in,pass123,9876543213,1987-03-11,Male,MNOSR3456M,456789012313,Manager,Operations,CFO
+Kavitha Sundaram,kavitha@company.in,pass123,9876543214,1992-08-05,Female,NOPKS4567N,567890123414,Finance,Finance,CFO
+Ganesh Mohan,ganesh@company.in,pass123,9876543215,1991-11-20,Male,OPQGM5678O,678901234515,Employee,Engineering,Rajesh (TL)
+Preethi Balan,preethi@company.in,pass123,9876543216,1995-01-14,Female,PQRPB6789P,789012345616,Employee,HR,Ravi (Mgr)
+Harish Nair,harish@company.in,pass123,9876543217,1988-07-09,Male,QRSHN7890Q,890123456717,Employee,Backend,Deepa (TL)
+Meera Joshi,meera@company.in,pass123,9876543218,1993-12-31,Female,RSTMJ8901R,901234567818,Employee,Design,Deepa (TL)
+Dinesh Patel,dinesh@company.in,pass123,9876543219,1990-09-23,Male,STUDP9012S,012345678919,Booking Admin,Admin,Manager
+Revathi Krishnan,revathi@company.in,pass123,9876543220,1994-05-16,Female,TUVRK0123T,123456789020,Employee,Engineering,Rajesh (TL)
