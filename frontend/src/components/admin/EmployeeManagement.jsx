@@ -15,7 +15,7 @@ function MLabel({ text, required }) {
   return <>{text}{required && <span style={{ color:'#FF453A', marginLeft:2 }}>*</span>}</>
 }
 
-export default function EmployeeManagement() {
+export default function EmployeeManagement({ setTab }) {
   const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [roles, setRoles]         = useState([])
@@ -209,6 +209,7 @@ export default function EmployeeManagement() {
           <option value="">All Roles</option>
           {ROLE_NAMES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
+        <Button variant="purple" onClick={() => setTab?.('bulk-employees')} style={{ whiteSpace:'nowrap' }}>Bulk Upload</Button>
         <Button onClick={openCreate} style={{ whiteSpace:'nowrap' }}>+ New Employee</Button>
       </div>
 

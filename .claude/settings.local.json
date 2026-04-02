@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./src/routes/employees'\\); require\\('./src/routes/auth'\\); require\\('./src/middleware'\\); console.log\\('All OK'\\)\")",
+      "Bash(node -e \"require\\('./src/routes/wallet'\\); require\\('./src/routes/employees'\\); require\\('./src/routes/auth'\\); console.log\\('All OK'\\)\")"
+    ]
+  }
+}

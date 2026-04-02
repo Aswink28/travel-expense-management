@@ -109,6 +109,16 @@ export const rolesAPI = {
   remove:     id           => api.delete(`/roles/${id}`),
 }
 
+export const bulkEmployeesAPI = {
+  upload:       formData   => uploadFile('/employees/bulk/upload', formData),
+  listJobs:     ()         => api.get('/employees/bulk/jobs'),
+  jobDetail:    (id, params={}) => api.get(`/employees/bulk/jobs/${id}?${new URLSearchParams(params)}`),
+  exportErrors: id         => `${BASE}/employees/bulk/jobs/${id}/export-errors`,
+  retryFailed:  id         => api.post(`/employees/bulk/jobs/${id}/retry-failed`),
+  deleteJob:    id         => api.delete(`/employees/bulk/jobs/${id}`),
+  template:     ()         => `${BASE}/employees/bulk/template`,
+}
+
 export const employeesAPI = {
   list:         ()           => api.get('/employees'),
   create:       body         => api.post('/employees', body),

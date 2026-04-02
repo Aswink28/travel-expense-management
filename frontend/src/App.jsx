@@ -16,6 +16,7 @@ import MyTicketsPage    from './components/booking/MyTicketsPage'
 import TierConfig     from './components/admin/TierConfig'
 import EmployeeManagement from './components/admin/EmployeeManagement'
 import RoleManagement     from './components/admin/RoleManagement'
+import BulkEmployeeUpload from './components/admin/BulkEmployeeUpload'
 import { requestsAPI } from './services/api'
 
 function WelcomeBanner() {
@@ -76,7 +77,8 @@ function InnerApp() {
     'booking-history':<BookingPanel showHistory={true} />,
     'ad-hoc-booking': <AdHocBookingPanel />,
     'admin-bookings-view': <AdminBookingsView />,
-    'employees':      <EmployeeManagement />,
+    'employees':      <EmployeeManagement setTab={setTab} />,
+    'bulk-employees': <BulkEmployeeUpload />,
     'roles':          <RoleManagement />,
     'tiers':          <TierConfig />,
     'book':           <SelfBookingPanel />,
