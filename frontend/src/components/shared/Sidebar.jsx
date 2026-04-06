@@ -8,7 +8,6 @@ export default function Sidebar({ active, setActive, pendingCount }) {
   if (!user) return null
   const items  = user.pages?.length ? user.pages : FALLBACK_NAV
   const accent = user.color || '#0A84FF'
-  const ppiBal = user.ppiWallet
 
   return (
     <aside style={{ width:220, background:'#080810', borderRight:'1px solid #14141E', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, height:'100vh', zIndex:100 }}>
@@ -19,7 +18,7 @@ export default function Sidebar({ active, setActive, pendingCount }) {
       </div>
 
       {/* Nav */}
-      <nav style={{ flex:1, padding:'0 10px', display:'flex', flexDirection:'column', gap:2 }}>
+      <nav style={{ flex:1, padding:'0 10px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto', minHeight:0 }}>
         {items.map(item => {
           const isActive = active === item.id
           const hasBadge = item.id === 'approvals' && pendingCount > 0
@@ -45,19 +44,6 @@ export default function Sidebar({ active, setActive, pendingCount }) {
           )
         })}
       </nav>
-
-      {/* Wallet quick */}
-      {items.some(i => i.id === 'my-wallet') && (
-        <div onClick={() => setActive('my-wallet')} style={{ margin:'0 12px 10px', background:'#111118', border:'1px solid #1E1E2A', borderRadius:10, padding:'12px 14px', cursor:'pointer' }}>
-          <div style={{ fontSize:10, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>
-            {ppiBal !== null ? 'PPI Wallet' : 'Wallet'}
-          </div>
-          <div className="syne" style={{ fontSize:17, fontWeight:700, color:accent }}>
-            ₹{Number(ppiBal?.balance ?? user.wallet?.balance ?? 0).toLocaleString('en-IN')}
-          </div>
-          <div style={{ fontSize:10, color:'#30D158', marginTop:2 }}>● {ppiBal ? 'Live' : 'Loaded'}</div>
-        </div>
-      )}
 
       {/* User footer */}
       <div style={{ padding:'10px 12px 16px', borderTop:'1px solid #14141E' }}>

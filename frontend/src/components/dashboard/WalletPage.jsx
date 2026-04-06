@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { walletAPI, requestsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Card, PageTitle, WalletCard, Button, Modal, Alert, Spinner, Select, Input } from '../shared/UI'
+import { Card, PageTitle, Button, Modal, Alert, Spinner, Select, Input } from '../shared/UI'
 
 const CAT_ICONS = { travel:'✈️', hotel:'🏨', allowance:'🎯', credit:'💳', other:'📋' }
 
@@ -17,12 +17,17 @@ export default function WalletPage() {
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ request_id:'', amount:'', category:'allowance', description:'', reference:'' })
 
-  const ppiWallet = user.ppiWallet
+  const [ppiWallet, setPpiWallet] = useState(user.ppiWallet || null)
 
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      const [w, t, r] = await Promise.all([walletAPI.balance(), walletAPI.transactions(), requestsAPI.list('approved')])
+      const [w, t, r] = await Promise.all([
+        walletAPI.balance(),
+        walletAPI.transactions(),
+        requestsAPI.list('approved'),
+        walletAPI.ppiBalance().then(d => { if (d?.data) setPpiWallet(d.data) }).catch(() => {}),
+      ])
       setWallet(w.data)
       updateWallet?.(w.data)
       setTxns(t.data||[])
@@ -58,45 +63,63 @@ export default function WalletPage() {
       {error   && <Alert type="error">{error}</Alert>}
       {success && <Alert type="success">{success}</Alert>}
 
-      {/* PPI Wallet Balance */}
-      {ppiWallet && (
-        <Card style={{ padding:20, marginBottom:16, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-            <div>
-              <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>PPI Wallet Balance</div>
-              <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em' }}>
-                ₹{Number(ppiWallet.balance||0).toLocaleString('en-IN')}
-              </div>
-              <div style={{ display:'flex', gap:6, marginTop:8 }}>
-                <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
-                <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:10 }}>KYC: {ppiWallet.kycStatus}</span>
-              </div>
+      {/* Wallet Balance Card */}
+      <Card style={{ padding:22, marginBottom:16, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
+          <div>
+            <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>Wallet Balance</div>
+            <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em' }}>
+              ₹{Number(ppiWallet?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
             </div>
-            <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:10, color:'#444', marginBottom:4 }}>{ppiWallet.walletNumber}</div>
-              <div style={{ fontSize:10, color:'#444' }}>Expires: {ppiWallet.expiryDate}</div>
-              <div style={{ fontSize:10, color:'#444', marginTop:4 }}>Daily limit: ₹{Number(ppiWallet.dailyTxnLimit||0).toLocaleString('en-IN')}</div>
-              <div style={{ fontSize:10, color:'#444' }}>Max balance: ₹{Number(ppiWallet.maxBalanceLimit||0).toLocaleString('en-IN')}</div>
+            <div style={{ display:'flex', gap:6, marginTop:8 }}>
+              {ppiWallet ? (
+                <>
+                  <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
+                  <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:10 }}>KYC: {ppiWallet.kycStatus}</span>
+                  <span style={{ fontSize:10, background:'#BF5AF218', color:'#BF5AF2', padding:'2px 8px', borderRadius:10 }}>{ppiWallet.walletNumber}</span>
+                </>
+              ) : (
+                <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● Active</span>
+              )}
             </div>
           </div>
-        </Card>
-      )}
-
-      {/* Wallet summary */}
-      <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr 1fr', gap:14, marginBottom:22 }}>
-        <WalletCard wallet={wallet} color={user.color||'#0A84FF'} />
-        <Card style={{ padding:20 }}>
-          <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>Total Credited</div>
-          <div className="syne" style={{ fontSize:28, fontWeight:800, color:'#30D158' }}>₹{Number(wallet?.total_credited||0).toLocaleString('en-IN')}</div>
-          <div style={{ fontSize:11, color:'#444', marginTop:6 }}>from approved requests</div>
-        </Card>
-        <Card style={{ padding:20 }}>
-          <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>Total Spent</div>
-          <div className="syne" style={{ fontSize:28, fontWeight:800, color:'#BF5AF2' }}>₹{Number(wallet?.total_debited||0).toLocaleString('en-IN')}</div>
-          <div style={{ fontSize:11, color:'#444', marginTop:6 }}>all categories</div>
-        </Card>
-      </div>
+          {ppiWallet && (
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:10, color:'#888' }}>Expires</div>
+              <div style={{ fontSize:13, color:'#E2E2E8', fontWeight:500 }}>{ppiWallet.expiryDate || '-'}</div>
+            </div>
+          )}
+        </div>
+        {/* Limits + Stats */}
+        <div style={{ display:'grid', gridTemplateColumns: ppiWallet ? 'repeat(6,1fr)' : 'repeat(2,1fr)', gap:10 }}>
+          {ppiWallet && [
+            ['Max Balance',      ppiWallet.maxBalanceLimit,  '#0A84FF'],
+            ['Monthly Load',     ppiWallet.monthlyLoadLimit, '#30D158'],
+            ['Daily Txn Limit',  ppiWallet.dailyTxnLimit,   '#FFD60A'],
+            ['Monthly Txn Limit',ppiWallet.monthlyTxnLimit,  '#BF5AF2'],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ background:'#111118', border:'1px solid #1A1A24', borderRadius:10, padding:'12px 14px' }}>
+              <div style={{ fontSize:9, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>{label}</div>
+              <div className="syne" style={{ fontSize:15, fontWeight:700, color }}>
+                ₹{Number(value||0).toLocaleString('en-IN')}
+              </div>
+            </div>
+          ))}
+          <div style={{ background:'#111118', border:'1px solid #1A1A24', borderRadius:10, padding:'12px 14px' }}>
+            <div style={{ fontSize:9, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Credited</div>
+            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'#30D158' }}>
+              ₹{Number(wallet?.total_credited||0).toLocaleString('en-IN')}
+            </div>
+          </div>
+          <div style={{ background:'#111118', border:'1px solid #1A1A24', borderRadius:10, padding:'12px 14px' }}>
+            <div style={{ fontSize:9, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Spent</div>
+            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'#FF453A' }}>
+              ₹{Number(wallet?.total_debited||0).toLocaleString('en-IN')}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Log expense */}
       {requests.length > 0 && (

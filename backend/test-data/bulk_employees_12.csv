@@ -1,0 +1,13 @@
+name,email,password,mobile_number,date_of_birth,gender,pan_number,aadhaar_number,role,department,reporting_to
+Naveen Raj,naveen@company.in,pass123,7701234501,1990-05-18,Male,ABCNR6601A,710234567801,Employee,Engineering,Deepa (TL)
+Saranya K,saranya@company.in,pass123,7701234502,1994-08-25,Female,BCDSK6602B,820345678902,Employee,Frontend,Deepa (TL)
+Vijayakumar P,vijayakumar@company.in,pass123,7701234503,1986-12-03,Male,CDEVP6603C,930456789003,Tech Lead,DevOps,Ravi (Mgr)
+Pavithra S,pavithra@company.in,pass123,7701234504,1995-03-14,Female,DEFPS6604D,140567890104,Employee,QA,Deepa (TL)
+Ashok Kumar M,ashok@company.in,pass123,7701234505,1989-07-29,Male,EFGAM6605E,250678901205,Employee,Backend,Deepa (TL)
+Keerthana R,keerthana@company.in,pass123,7701234506,1997-01-11,Female,FGHKR6606F,360789012306,Employee,Design,Deepa (TL)
+Mohanraj V,mohanraj@company.in,pass123,7701234507,1988-10-06,Male,GHIMV6607G,470890123407,Manager,Finance,CFO
+Subashree T,subashree@company.in,pass123,7701234508,1993-06-20,Female,HIJST6608H,580901234508,Employee,HR,Ravi (Mgr)
+Dineshkumar R,dineshkumar@company.in,pass123,7701234509,1991-09-08,Male,IJKDR6609I,690012345609,Employee,Engineering,Vijayakumar (TL)
+Nandhini M,nandhini@company.in,pass123,7701234510,1996-02-17,Female,JKLNM6610J,700123456710,Finance,Finance,CFO
+Praveen S,praveen@company.in,pass123,7701234511,1992-11-30,Male,KLMPS6611K,810234567811,Employee,Backend,Deepa (TL)
+Dharani G,dharani@company.in,pass123,7701234512,1994-04-22,Female,LMNDG6612L,920345678912,Employee,QA,Deepa (TL)

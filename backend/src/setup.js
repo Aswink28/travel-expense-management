@@ -18,9 +18,15 @@ const USERS = [
 ]
 
 async function run() {
+  const forceReset = process.argv.includes('--reset')
+
   console.log('\n╔══════════════════════════════════════════╗')
   console.log('║  TravelDesk v3 — Setup                   ║')
   console.log('╚══════════════════════════════════════════╝\n')
+
+  if (forceReset) {
+    console.log('⚠  --reset flag detected: will DROP and recreate all tables\n')
+  }
 
   // 1. Create DB
   console.log('1. Creating database...')
@@ -33,19 +39,30 @@ async function run() {
   }
   await adminPool.end()
 
-  // 2. Run schema
-  console.log('\n2. Running schema...')
-  const sql = fs.readFileSync(path.join(__dirname,'..','sql','schema.sql'),'utf8')
-  await pool.query(sql)
-  console.log('   ✓ All tables, triggers, views created')
+  // 2. Check if tables already exist
+  const { rows: tableCheck } = await pool.query(
+    "SELECT COUNT(*) c FROM information_schema.tables WHERE table_schema='public' AND table_name='users'"
+  )
+  const tablesExist = Number(tableCheck[0].c) > 0
 
-  // 2b. Run roles migration (roles + role_pages)
+  if (!tablesExist || forceReset) {
+    // Fresh install or forced reset — run full schema (DROP + CREATE)
+    console.log('\n2. Running schema (fresh install)...')
+    const sql = fs.readFileSync(path.join(__dirname,'..','sql','schema.sql'),'utf8')
+    await pool.query(sql)
+    console.log('   ✓ All tables, triggers, views created')
+  } else {
+    console.log('\n2. Tables already exist — skipping schema (data preserved)')
+    console.log('   ℹ  Use "node src/setup.js --reset" to force DROP + recreate')
+  }
+
+  // 2b. Run roles migration (safe — uses IF NOT EXISTS + ON CONFLICT DO NOTHING)
   console.log('\n2b. Running roles migration...')
   const rolesSql = fs.readFileSync(path.join(__dirname,'..','sql','roles_migration.sql'),'utf8')
   await pool.query(rolesSql)
   console.log('   ✓ Roles and page access seeded')
 
-  // 2c. Run bulk onboarding migration (bulk_jobs, bulk_job_rows, emp_id_seq)
+  // 2c. Run bulk onboarding migration (safe — uses IF NOT EXISTS)
   console.log('\n2c. Running bulk onboarding migration...')
   const bulkSql = fs.readFileSync(path.join(__dirname,'..','sql','bulk_onboarding_migration.sql'),'utf8')
   await pool.query(bulkSql)
@@ -56,19 +73,22 @@ async function run() {
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })
   console.log('\n3. Created uploads directory')
 
-  // 4. Set passwords + create wallets
+  // 4. Set passwords + create wallets (only for seed users that exist)
   console.log('\n4. Setting passwords + creating wallets...')
   for (const u of USERS) {
-    const hash = await bcrypt.hash(u.password, 10)
-    await pool.query('UPDATE users SET password_hash=$1 WHERE email=$2', [hash, u.email])
     const { rows } = await pool.query('SELECT id FROM users WHERE email=$1', [u.email])
     if (rows.length) {
+      const hash = await bcrypt.hash(u.password, 10)
+      await pool.query('UPDATE users SET password_hash=$1 WHERE email=$2', [hash, u.email])
       await pool.query('INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [rows[0].id])
+      console.log(`   ✓ ${u.email.padEnd(28)} role: ${u.role.padEnd(14)} pwd: ${u.password}`)
+    } else if (!tablesExist || forceReset) {
+      // Seed users only exist after fresh schema — skip if they don't exist in an existing DB
+      console.log(`   ⚠ ${u.email.padEnd(28)} not found (skipped)`)
     }
-    console.log(`   ✓ ${u.email.padEnd(28)} role: ${u.role.padEnd(14)} pwd: ${u.password}`)
   }
 
-  // 5. Insert sample data
+  // 5. Insert sample data (ON CONFLICT DO NOTHING — safe to re-run)
   console.log('\n5. Inserting sample data...')
 
   const { rows: arjun }  = await pool.query("SELECT id FROM users WHERE email='arjun@company.in'")
@@ -192,4 +212,3 @@ async function run() {
 }
 
 run().catch(e => { console.error('Setup failed:', e.message); console.error(e.stack); process.exit(1) })
-// Note: tickets table is added via schema.sql extension block at bottom

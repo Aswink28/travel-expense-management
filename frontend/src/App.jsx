@@ -17,6 +17,7 @@ import TierConfig     from './components/admin/TierConfig'
 import EmployeeManagement from './components/admin/EmployeeManagement'
 import RoleManagement     from './components/admin/RoleManagement'
 import BulkEmployeeUpload from './components/admin/BulkEmployeeUpload'
+import TransactionsPage   from './components/dashboard/TransactionsPage'
 import { requestsAPI } from './services/api'
 
 function WelcomeBanner() {
@@ -83,6 +84,7 @@ function InnerApp() {
     'tiers':          <TierConfig />,
     'book':           <SelfBookingPanel />,
     'my-tickets':     <MyTicketsPage />,
+    'transactions':   <TransactionsPage />,
   }
 
   return (

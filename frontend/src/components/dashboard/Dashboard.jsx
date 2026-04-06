@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dashboardAPI, docsAPI } from '../../services/api'
+import { dashboardAPI, walletAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, StatCard, WalletCard, Alert, Spinner, PageTitle, StatusPill, ProgressBar, BookingBadge } from '../shared/UI'
 
@@ -11,15 +11,16 @@ export default function Dashboard({ setTab }) {
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
-
-  const ppiBal = user.ppiWallet
+  const [ppiBal,  setPpiBal]  = useState(user.ppiWallet || null)
 
   useEffect(() => {
-    dashboardAPI.summary()
-      .then(d => {
+    Promise.all([
+      dashboardAPI.summary().then(d => {
         setData(d.data)
         if (d.data?.wallet) updateWallet?.(d.data.wallet)
-      })
+      }),
+      walletAPI.ppiBalance().then(d => { if (d?.data) setPpiBal(d.data) }).catch(() => {}),
+    ])
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -47,7 +48,7 @@ export default function Dashboard({ setTab }) {
           <Card style={{ padding:22, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden', cursor:'pointer' }} onClick={() => setTab('my-wallet')}>
             <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
             <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>
-              {ppiBal ? 'PPI Wallet Balance' : 'Wallet Balance'}
+              Wallet Balance
             </div>
             <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em', marginBottom:4 }}>
               ₹{Number(ppiBal?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
@@ -132,7 +133,7 @@ export default function Dashboard({ setTab }) {
         <Card style={{ padding:22, gridColumn: isBkAdmin ? 'span 2' : 'auto' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
             <div style={{ fontSize:13, color:'#888', fontWeight:500 }}>Recent Wallet Activity</div>
-            <button onClick={() => setTab('my-wallet')} style={{ fontSize:11, color:'#0A84FF', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
+            <button onClick={() => setTab('transactions')} style={{ fontSize:11, color:'#0A84FF', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
           </div>
           {!recentTxns?.length ? (
             <div style={{ textAlign:'center', padding:30, color:'#333', fontSize:13 }}>No transactions yet</div>

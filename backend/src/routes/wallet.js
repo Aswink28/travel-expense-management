@@ -1,7 +1,7 @@
 const express = require('express')
 const pool    = require('../config/db')
 const { authenticate, authorise } = require('../middleware')
-const { fetchPpiBalance, loadPpiWallet } = require('../services/ppiWallet')
+const { fetchPpiBalance, loadPpiWallet, fetchPpiTransactions } = require('../services/ppiWallet')
 const router  = express.Router()
 
 router.use(authenticate)
@@ -110,6 +110,55 @@ router.post('/debit', async (req, res, next) => {
     await client.query('COMMIT')
     res.json({ success:true, message:'Expense recorded', data:{ transaction:txn[0], new_balance:newBal } })
   } catch(e) { await client.query('ROLLBACK'); next(e) } finally { client.release() }
+})
+
+// ── GET /api/wallet/ppi-transactions — Fetch PPI transaction history ──
+// Backend securely calls PPI API with partner headers — frontend never sees credentials
+router.get('/ppi-transactions', async (req, res, next) => {
+  try {
+    // Role-based: users can only view their own transactions
+    const { rows } = await pool.query('SELECT ppi_wallet_id FROM users WHERE id=$1', [req.user.id])
+    if (!rows.length || !rows[0].ppi_wallet_id) {
+      return res.json({ success: true, data: [], count: 0, message: 'No PPI wallet linked to your account' })
+    }
+
+    const result = await fetchPpiTransactions(rows[0].ppi_wallet_id)
+
+    if (!result.success) {
+      return res.status(502).json({ success: false, message: result.error || 'Unable to fetch transactions from PPI service', data: [] })
+    }
+
+    res.json({
+      success: true,
+      data: result.data,
+      count: result.count,
+      traceId: result.traceId,
+    })
+  } catch (e) { next(e) }
+})
+
+// ── GET /api/wallet/ppi-transactions/:userId — Admin fetch PPI transactions for a user ──
+router.get('/ppi-transactions/:userId', authorise('Finance', 'Super Admin', 'Manager'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT ppi_wallet_id, name FROM users WHERE id=$1', [req.params.userId])
+    if (!rows.length || !rows[0].ppi_wallet_id) {
+      return res.json({ success: true, data: [], count: 0, message: 'No PPI wallet linked to this user' })
+    }
+
+    const result = await fetchPpiTransactions(rows[0].ppi_wallet_id)
+
+    if (!result.success) {
+      return res.status(502).json({ success: false, message: result.error || 'Unable to fetch transactions from PPI service', data: [] })
+    }
+
+    res.json({
+      success: true,
+      data: result.data,
+      count: result.count,
+      userName: rows[0].name,
+      traceId: result.traceId,
+    })
+  } catch (e) { next(e) }
 })
 
 // ── GET /api/wallet/load-status/:requestId — PPI load status for a request ──

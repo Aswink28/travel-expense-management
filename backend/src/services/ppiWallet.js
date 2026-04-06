@@ -99,10 +99,11 @@ async function fetchPpiBalance(walletId) {
     currency:        w.currency || 'INR',
     walletStatus:    w.walletStatus,
     kycStatus:       w.kycStatus,
-    maxBalanceLimit: w.maxBalanceLimit,
-    dailyTxnLimit:   w.dailyTxnLimit,
-    monthlyTxnLimit: w.monthlyTxnLimit,
-    customerName:    w.customerName,
+    maxBalanceLimit:  w.maxBalanceLimit,
+    monthlyLoadLimit: w.monthlyLoadLimit,
+    dailyTxnLimit:    w.dailyTxnLimit,
+    monthlyTxnLimit:  w.monthlyTxnLimit,
+    customerName:     w.customerName,
     customerMobile:  w.customerMobile,
     activatedAt:     w.activatedAt,
     expiryDate:      w.expiryDate,
@@ -177,4 +178,60 @@ async function loadPpiWallet(walletId, amount, referenceId, source = 'Bank') {
   }
 }
 
-module.exports = { createPpiWallet, fetchPpiBalance, loadPpiWallet }
+// ── Fetch PPI wallet transaction history ────────────────────
+// GET /api/external/wallet/:walletId/transactions
+// Response: { success, data: [...transactions], message, traceId }
+async function fetchPpiTransactions(walletId) {
+  if (!walletId) return { success: false, error: 'No walletId provided', data: [] }
+
+  const PPI_BASE = process.env.PPI_API_URL
+  const url = `${PPI_BASE}/${walletId}/transactions`
+  const requestId = uuidv4()
+  const timestamp = new Date().toISOString()
+
+  console.log(`[PPI-TXN] Fetching transactions — wallet: ${walletId}, requestId: ${requestId}`)
+
+  let res, data
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type':     'application/json',
+        'X-Partner-Key':    process.env.PPI_PARTNER_KEY,
+        'X-Partner-Secret': process.env.PPI_PARTNER_SECRET,
+        'X-Request-Id':     requestId,
+        'X-Timestamp':      timestamp,
+      },
+    })
+    data = await res.json()
+  } catch (networkErr) {
+    console.error(`[PPI-TXN] Network error — requestId: ${requestId}`, networkErr.message)
+    return { success: false, error: `PPI network error: ${networkErr.message}`, data: [], traceId: requestId }
+  }
+
+  if (!res.ok || !data.success) {
+    console.error(`[PPI-TXN] Failed — requestId: ${requestId}, status: ${res.status}`)
+    return {
+      success: false,
+      error: data.message || `PPI returned status ${res.status}`,
+      data: [],
+      traceId: data.traceId || requestId,
+    }
+  }
+
+  // PPI response: { success, data: { transactions: [...], total, page, pageSize } }
+  const txnData = data.data || {}
+  const transactions = Array.isArray(txnData.transactions) ? txnData.transactions : (Array.isArray(txnData) ? txnData : [])
+  console.log(`[PPI-TXN] Fetched ${transactions.length} transactions — wallet: ${walletId}`)
+
+  return {
+    success: true,
+    data: transactions,
+    count: txnData.total || transactions.length,
+    page: txnData.page || 1,
+    pageSize: txnData.pageSize || 20,
+    traceId: data.traceId || requestId,
+  }
+}
+
+module.exports = { createPpiWallet, fetchPpiBalance, loadPpiWallet, fetchPpiTransactions }

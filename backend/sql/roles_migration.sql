@@ -43,7 +43,7 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Employee', 'my-requests',  'My Requests',  '◈', 2),
   ('Employee', 'new-request',  'New Request',  '+', 3),
   ('Employee', 'my-wallet',    'My Wallet',    '◉', 4),
-  ('Employee', 'book',         'Book Travel',  '🎫', 5),
+  ('Employee', 'transactions', 'Transactions', '📊', 5),
   ('Employee', 'my-tickets',   'My Tickets',   '🎟', 6)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
@@ -54,7 +54,7 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Tech Lead', 'approvals',    'Approvals',    '◎', 3),
   ('Tech Lead', 'new-request',  'New Request',  '+', 4),
   ('Tech Lead', 'my-wallet',    'My Wallet',    '◉', 5),
-  ('Tech Lead', 'book',         'Book Travel',  '🎫', 6),
+  ('Tech Lead', 'transactions', 'Transactions', '📊', 6),
   ('Tech Lead', 'my-tickets',   'My Tickets',   '🎟', 7)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
@@ -65,7 +65,7 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Manager', 'approvals',    'Approvals',     '◎', 3),
   ('Manager', 'new-request',  'New Request',   '+', 4),
   ('Manager', 'my-wallet',    'My Wallet',     '◉', 5),
-  ('Manager', 'book',         'Book Travel',   '🎫', 6),
+  ('Manager', 'transactions', 'Transactions',  '📊', 6),
   ('Manager', 'my-tickets',   'My Tickets',    '🎟', 7)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
@@ -76,7 +76,7 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Finance', 'approvals',    'Finance Queue',  '◎', 3),
   ('Finance', 'new-request',  'New Request',    '+', 4),
   ('Finance', 'my-wallet',    'My Wallet',      '◉', 5),
-  ('Finance', 'book',         'Book Travel',    '🎫', 6),
+  ('Finance', 'transactions', 'Transactions',   '📊', 6),
   ('Finance', 'my-tickets',   'My Tickets',     '🎟', 7)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
@@ -96,10 +96,11 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Super Admin', 'approvals',          'Approvals',      '◎',  3),
   ('Super Admin', 'new-request',        'New Request',    '+',  4),
   ('Super Admin', 'my-wallet',          'My Wallet',      '◉',  5),
-  ('Super Admin', 'my-tickets',         'My Tickets',     '🎟', 6),
-  ('Super Admin', 'employees',          'Employees',      '◆',  7),
-  ('Super Admin', 'roles',              'Role Manager',   '⚙',  8),
-  ('Super Admin', 'tiers',              'Tier Config',    '◐',  9),
-  ('Super Admin', 'ad-hoc-booking',     'Ad-Hoc Booking', '✈', 10),
-  ('Super Admin', 'admin-bookings-view','Admin Bookings', '📋', 11)
+  ('Super Admin', 'transactions',       'Transactions',   '📊', 6),
+  ('Super Admin', 'my-tickets',         'My Tickets',     '🎟', 7),
+  ('Super Admin', 'employees',          'Employees',      '◆',  8),
+  ('Super Admin', 'roles',              'Role Manager',   '⚙',  9),
+  ('Super Admin', 'tiers',              'Tier Config',    '◐', 10),
+  ('Super Admin', 'ad-hoc-booking',     'Ad-Hoc Booking', '✈', 11),
+  ('Super Admin', 'admin-bookings-view','Admin Bookings', '📋', 12)
 ON CONFLICT (role_name, page_id) DO NOTHING;

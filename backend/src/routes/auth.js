@@ -19,10 +19,14 @@ router.post('/login', async (req, res, next) => {
     await pool.query('UPDATE users SET last_login=NOW() WHERE id=$1', [rows[0].id])
     const token = jwt.sign({ userId:rows[0].id, role:rows[0].role }, process.env.JWT_SECRET, { expiresIn:process.env.JWT_EXPIRES_IN||'8h' })
     const { rows: w } = await pool.query('SELECT balance,travel_balance,hotel_balance,allowance_balance FROM wallets WHERE user_id=$1', [rows[0].id])
-    const { rows: pages } = await pool.query(
-      'SELECT page_id, page_label, page_icon FROM role_pages WHERE role_name=$1 ORDER BY sort_order',
-      [rows[0].role]
-    )
+    let pages = []
+    try {
+      const { rows: pageRows } = await pool.query(
+        'SELECT page_id, page_label, page_icon FROM role_pages WHERE role_name=$1 ORDER BY sort_order',
+        [rows[0].role]
+      )
+      pages = pageRows
+    } catch (_) { /* role_pages table may not exist yet */ }
     // Fetch live PPI wallet balance (non-blocking — don't fail login if PPI is down)
     const ppiWallet = await fetchPpiBalance(rows[0].ppi_wallet_id)
     res.json({ success:true, token, user: {
@@ -65,10 +69,14 @@ router.post('/oauth/token', express.urlencoded({ extended: false }), async (req,
 router.get('/me', authenticate, async (req, res, next) => {
   try {
     const { rows: w } = await pool.query('SELECT * FROM wallets WHERE user_id=$1', [req.user.id])
-    const { rows: pages } = await pool.query(
-      'SELECT page_id, page_label, page_icon, sort_order FROM role_pages WHERE role_name=$1 ORDER BY sort_order',
-      [req.user.role]
-    )
+    let pages = []
+    try {
+      const { rows: pageRows } = await pool.query(
+        'SELECT page_id, page_label, page_icon, sort_order FROM role_pages WHERE role_name=$1 ORDER BY sort_order',
+        [req.user.role]
+      )
+      pages = pageRows
+    } catch (_) { /* role_pages table may not exist yet */ }
     const u = req.user
     const ppiWallet = await fetchPpiBalance(u.ppi_wallet_id)
     res.json({ success:true, user: {
