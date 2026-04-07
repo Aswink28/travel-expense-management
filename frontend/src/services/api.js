@@ -11,7 +11,8 @@ async function request(path, options = {}) {
     headers: { 'Content-Type':'application/json', ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers },
   })
   const data = await res.json()
-  if (res.status === 401) { removeToken(); window.location.href = '/'; return }
+  if (res.status === 401 && token) { removeToken(); window.location.href = '/'; return }
+  if (res.status === 401) { const e = new Error(data.message || 'Invalid credentials'); e.status = 401; throw e }
   if (!res.ok) { const e = new Error(data.message || 'Request failed'); e.status = res.status; throw e }
   return data
 }
@@ -124,10 +125,12 @@ export const bulkEmployeesAPI = {
 }
 
 export const employeesAPI = {
-  list:         ()           => api.get('/employees'),
-  create:       body         => api.post('/employees', body),
-  update:       (id, body)   => api.put(`/employees/${id}`, body),
-  toggleStatus: (id, active) => request(`/employees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) }),
+  list:           ()           => api.get('/employees'),
+  create:         body         => api.post('/employees', body),
+  update:         (id, body)   => api.put(`/employees/${id}`, body),
+  toggleStatus:   (id, active) => request(`/employees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) }),
+  suspendWallet:  (id, reason) => api.post(`/employees/${id}/suspend-wallet`, { reason }),
+  closeWallet:    (id, reason) => api.post(`/employees/${id}/close-wallet`, { reason }),
 }
 
 export const adminBookingsAPI = {

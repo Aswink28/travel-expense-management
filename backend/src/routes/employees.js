@@ -2,7 +2,7 @@ const express  = require('express')
 const bcrypt   = require('bcryptjs')
 const pool     = require('../config/db')
 const { authenticate, authorise } = require('../middleware')
-const { createPpiWallet } = require('../services/ppiWallet')
+const { createPpiWallet, suspendPpiWallet, closePpiWallet } = require('../services/ppiWallet')
 const router   = express.Router()
 
 router.use(authenticate)
@@ -237,6 +237,151 @@ router.patch('/:id/status', async (req, res, next) => {
     if (!user) return res.status(404).json({ success: false, message: 'Employee not found' })
 
     res.json({ success: true, message: `Employee ${user.is_active ? 'activated' : 'deactivated'}`, data: user })
+  } catch (e) { next(e) }
+})
+
+// ── POST /api/employees/:id/suspend-wallet ──────────────────
+// Allowed: Super Admin, Finance
+router.post('/:id/suspend-wallet', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+
+    // Role check — only Super Admin and Finance can suspend
+    if (!['Super Admin', 'Finance'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only Super Admin or Finance can suspend wallets' })
+    }
+
+    // Validate reason
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ success: false, message: 'Reason is required to suspend a wallet' })
+    }
+
+    // Cannot suspend own wallet
+    if (id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot suspend your own wallet' })
+    }
+
+    // Fetch the employee
+    const { rows: users } = await pool.query(
+      'SELECT id, name, ppi_wallet_id, ppi_wallet_status FROM users WHERE id = $1',
+      [id]
+    )
+    if (!users.length) {
+      return res.status(404).json({ success: false, message: 'Employee not found' })
+    }
+
+    const employee = users[0]
+
+    if (!employee.ppi_wallet_id) {
+      return res.status(400).json({ success: false, message: 'This employee does not have a PPI wallet linked' })
+    }
+
+    if (employee.ppi_wallet_status === 'SUSPENDED') {
+      return res.status(400).json({ success: false, message: `Wallet is already suspended for ${employee.name}` })
+    }
+
+    if (employee.ppi_wallet_status === 'CLOSED') {
+      return res.status(400).json({ success: false, message: `Cannot suspend a closed wallet. ${employee.name}'s wallet is permanently closed` })
+    }
+
+    // Call PPI suspend API (backend only — never from frontend)
+    const result = await suspendPpiWallet(employee.ppi_wallet_id, reason.trim())
+
+    if (!result.success) {
+      return res.status(502).json({ success: false, message: result.error || 'Failed to suspend wallet via PPI service' })
+    }
+
+    // Update local DB
+    await pool.query(
+      'UPDATE users SET ppi_wallet_status = $1 WHERE id = $2',
+      [result.wallet_status || 'SUSPENDED', id]
+    )
+
+    res.json({
+      success: true,
+      message: `Wallet suspended successfully for ${employee.name}`,
+      data: {
+        employee_id: id,
+        employee_name: employee.name,
+        wallet_status: result.wallet_status || 'SUSPENDED',
+        suspended_at: result.suspended_at,
+        reason: reason.trim(),
+        performed_by: req.user.name,
+      }
+    })
+  } catch (e) { next(e) }
+})
+
+// ── POST /api/employees/:id/close-wallet ────────────────────
+// Allowed: Super Admin only
+router.post('/:id/close-wallet', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+
+    // Role check — only Super Admin can permanently close
+    if (req.user.role !== 'Super Admin') {
+      return res.status(403).json({ success: false, message: 'Only Super Admin can permanently close wallets' })
+    }
+
+    // Validate reason
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ success: false, message: 'Reason is required to close a wallet' })
+    }
+
+    // Cannot close own wallet
+    if (id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot close your own wallet' })
+    }
+
+    // Fetch the employee
+    const { rows: users } = await pool.query(
+      'SELECT id, name, ppi_wallet_id, ppi_wallet_status FROM users WHERE id = $1',
+      [id]
+    )
+    if (!users.length) {
+      return res.status(404).json({ success: false, message: 'Employee not found' })
+    }
+
+    const employee = users[0]
+
+    if (!employee.ppi_wallet_id) {
+      return res.status(400).json({ success: false, message: 'This employee does not have a PPI wallet linked' })
+    }
+
+    if (employee.ppi_wallet_status === 'CLOSED') {
+      return res.status(400).json({ success: false, message: `Wallet is already closed for ${employee.name}` })
+    }
+
+    // Call PPI close API (backend only — never from frontend)
+    const result = await closePpiWallet(employee.ppi_wallet_id, reason.trim())
+
+    if (!result.success) {
+      return res.status(502).json({ success: false, message: result.error || 'Failed to close wallet via PPI service' })
+    }
+
+    // Update local DB
+    await pool.query(
+      'UPDATE users SET ppi_wallet_status = $1 WHERE id = $2',
+      [result.wallet_status || 'CLOSED', id]
+    )
+
+    // Deactivate the employee account
+    await pool.query('UPDATE users SET is_active = FALSE WHERE id = $1', [id])
+
+    res.json({
+      success: true,
+      message: `Wallet permanently closed for ${employee.name}. Account deactivated.`,
+      data: {
+        employee_id: id,
+        employee_name: employee.name,
+        wallet_status: result.wallet_status || 'CLOSED',
+        closed_at: result.closed_at,
+        reason: reason.trim(),
+        performed_by: req.user.name,
+      }
+    })
   } catch (e) { next(e) }
 })
 

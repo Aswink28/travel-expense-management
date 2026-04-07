@@ -87,6 +87,18 @@ router.post('/debit', async (req, res, next) => {
     const validCategories = ['travel','hotel','allowance','other']
     if (!validCategories.includes(category)) return res.status(400).json({ success:false, message:`Invalid category. Use: ${validCategories.join(', ')}` })
 
+    // Check PPI wallet status — block if suspended or closed
+    const { rows: userStatus } = await client.query('SELECT ppi_wallet_status FROM users WHERE id=$1', [req.user.id])
+    const walletStatus = (userStatus[0]?.ppi_wallet_status || 'ACTIVE').toUpperCase()
+    if (walletStatus === 'SUSPENDED') {
+      await client.query('ROLLBACK')
+      return res.status(403).json({ success:false, message:'Your wallet is suspended. Transactions are not allowed. Please contact your administrator.' })
+    }
+    if (walletStatus === 'CLOSED') {
+      await client.query('ROLLBACK')
+      return res.status(403).json({ success:false, message:'Your wallet has been permanently closed. No transactions are possible.' })
+    }
+
     // Validate request
     const { rows:req_ } = await client.query(
       "SELECT * FROM travel_requests WHERE id=$1 AND user_id=$2 AND status='approved'",

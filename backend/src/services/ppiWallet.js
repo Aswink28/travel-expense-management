@@ -234,4 +234,100 @@ async function fetchPpiTransactions(walletId) {
   }
 }
 
-module.exports = { createPpiWallet, fetchPpiBalance, loadPpiWallet, fetchPpiTransactions }
+// ── Suspend PPI wallet (temporary freeze) ───────────────────
+// POST /api/external/wallet/:walletId/suspend
+// Body: { reason }
+async function suspendPpiWallet(walletId, reason) {
+  if (!walletId) throw new Error('walletId is required')
+  if (!reason || !reason.trim()) throw new Error('Reason is required for suspension')
+
+  const PPI_BASE = process.env.PPI_API_URL
+  const url = `${PPI_BASE}/${walletId}/suspend`
+  const requestId = uuidv4()
+  const timestamp = new Date().toISOString()
+
+  console.log(`[PPI-SUSPEND] Suspending wallet ${walletId} | reason: ${reason} | requestId: ${requestId}`)
+
+  let res, data
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type':     'application/json',
+        'X-Partner-Key':    process.env.PPI_PARTNER_KEY,
+        'X-Partner-Secret': process.env.PPI_PARTNER_SECRET,
+        'X-Request-Id':     requestId,
+        'X-Timestamp':      timestamp,
+      },
+      body: JSON.stringify({ reason: reason.trim() }),
+    })
+    data = await res.json()
+  } catch (networkErr) {
+    console.error(`[PPI-SUSPEND] Network error — requestId: ${requestId}`, networkErr.message)
+    return { success: false, error: `PPI network error: ${networkErr.message}`, traceId: requestId }
+  }
+
+  if (!res.ok || !data.success) {
+    console.error(`[PPI-SUSPEND] Failed — requestId: ${requestId}, status: ${res.status}, response:`, JSON.stringify(data))
+    return { success: false, error: data.message || `PPI returned status ${res.status}`, traceId: data.traceId || requestId }
+  }
+
+  console.log(`[PPI-SUSPEND] Success — wallet ${walletId} suspended`)
+  return {
+    success: true,
+    wallet_id: data.data?.wallet_id,
+    wallet_status: data.data?.wallet_status,
+    suspended_at: data.data?.suspended_at,
+    traceId: data.traceId || requestId,
+  }
+}
+
+// ── Close PPI wallet (permanent) ────────────────────────────
+// POST /api/external/wallet/:walletId/close
+// Body: { reason }
+async function closePpiWallet(walletId, reason) {
+  if (!walletId) throw new Error('walletId is required')
+  if (!reason || !reason.trim()) throw new Error('Reason is required for closure')
+
+  const PPI_BASE = process.env.PPI_API_URL
+  const url = `${PPI_BASE}/${walletId}/close`
+  const requestId = uuidv4()
+  const timestamp = new Date().toISOString()
+
+  console.log(`[PPI-CLOSE] Closing wallet ${walletId} | reason: ${reason} | requestId: ${requestId}`)
+
+  let res, data
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type':     'application/json',
+        'X-Partner-Key':    process.env.PPI_PARTNER_KEY,
+        'X-Partner-Secret': process.env.PPI_PARTNER_SECRET,
+        'X-Request-Id':     requestId,
+        'X-Timestamp':      timestamp,
+      },
+      body: JSON.stringify({ reason: reason.trim() }),
+    })
+    data = await res.json()
+  } catch (networkErr) {
+    console.error(`[PPI-CLOSE] Network error — requestId: ${requestId}`, networkErr.message)
+    return { success: false, error: `PPI network error: ${networkErr.message}`, traceId: requestId }
+  }
+
+  if (!res.ok || !data.success) {
+    console.error(`[PPI-CLOSE] Failed — requestId: ${requestId}, status: ${res.status}, response:`, JSON.stringify(data))
+    return { success: false, error: data.message || `PPI returned status ${res.status}`, traceId: data.traceId || requestId }
+  }
+
+  console.log(`[PPI-CLOSE] Success — wallet ${walletId} closed`)
+  return {
+    success: true,
+    wallet_id: data.data?.wallet_id,
+    wallet_status: data.data?.wallet_status,
+    closed_at: data.data?.closed_at,
+    traceId: data.traceId || requestId,
+  }
+}
+
+module.exports = { createPpiWallet, fetchPpiBalance, loadPpiWallet, fetchPpiTransactions, suspendPpiWallet, closePpiWallet }

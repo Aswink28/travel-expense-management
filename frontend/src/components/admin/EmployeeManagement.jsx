@@ -32,6 +32,9 @@ export default function EmployeeManagement({ setTab }) {
   const perPage = 10
   const [popup, setPopup] = useState(null)
   const [showPw, setShowPw] = useState(false)
+  const [walletAction, setWalletAction] = useState(null)  // { type:'suspend'|'close', emp }
+  const [walletReason, setWalletReason] = useState('')
+  const [walletActing, setWalletActing] = useState(false)
 
   const ROLE_COLORS = roles.reduce((acc, r) => { acc[r.name] = r.color; return acc }, {})
   const ROLE_NAMES = roles.filter(r => r.is_active).map(r => r.name)
@@ -130,18 +133,44 @@ export default function EmployeeManagement({ setTab }) {
     } finally { setSaving(false) }
   }
 
-  async function toggleStatus(emp) {
+  function openWalletAction(type, emp) {
+    setWalletAction({ type, emp })
+    setWalletReason('')
+  }
+
+  async function handleWalletAction() {
+    if (!walletReason.trim()) {
+      setPopup({ type: 'error', title: 'Reason Required', message: 'Please provide a reason to proceed.' })
+      return
+    }
+    setWalletActing(true)
     try {
-      await employeesAPI.toggleStatus(emp.id, !emp.is_active)
+      const { type, emp } = walletAction
+      let result
+      if (type === 'suspend') {
+        result = await employeesAPI.suspendWallet(emp.id, walletReason.trim())
+      } else {
+        result = await employeesAPI.closeWallet(emp.id, walletReason.trim())
+      }
+      setWalletAction(null)
+      setWalletReason('')
       setPopup({
         type: 'success',
-        title: emp.is_active ? 'Employee Deactivated' : 'Employee Activated',
-        message: `${emp.name} has been ${emp.is_active ? 'deactivated' : 'activated'} successfully.`,
+        title: type === 'suspend' ? 'Wallet Suspended' : 'Wallet Closed',
+        message: result.message,
+        details: {
+          employee: result.data?.employee_name,
+          status: result.data?.wallet_status,
+          reason: result.data?.reason,
+          ...(type === 'suspend' ? { suspended_at: result.data?.suspended_at ? new Date(result.data.suspended_at).toLocaleString('en-IN') : '-' } : {}),
+          ...(type === 'close' ? { closed_at: result.data?.closed_at ? new Date(result.data.closed_at).toLocaleString('en-IN') : '-' } : {}),
+          performed_by: result.data?.performed_by,
+        },
       })
       load()
     } catch (err) {
-      setPopup({ type: 'error', title: 'Action Failed', message: err.message })
-    }
+      setPopup({ type: 'error', title: 'Action Failed', message: err.message || 'Something went wrong. Please try again.' })
+    } finally { setWalletActing(false) }
   }
 
   function f(field, value) {
@@ -217,8 +246,8 @@ export default function EmployeeManagement({ setTab }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:20 }}>
         {[
           ['Total', employees.length, accent],
-          ['Active', employees.filter(e => e.is_active).length, '#30D158'],
-          ['Inactive', employees.filter(e => !e.is_active).length, '#FF453A'],
+          ['Active', employees.filter(e => (e.ppi_wallet_status || 'ACTIVE').toUpperCase() === 'ACTIVE').length, '#30D158'],
+          ['Suspended', employees.filter(e => (e.ppi_wallet_status || '').toUpperCase() === 'SUSPENDED').length, '#FFD60A'],
           ['Roles', new Set(employees.map(e => e.role)).size, '#BF5AF2'],
         ].map(([label, val, color]) => (
           <Card key={label} style={{ padding:'14px 18px' }}>
@@ -234,7 +263,7 @@ export default function EmployeeManagement({ setTab }) {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ borderBottom:'1px solid #1E1E2A' }}>
-                {['Employee', 'Mobile', 'Role', 'Wallet ID', 'Status', 'Balance', 'Last Login', 'Actions'].map(h => (
+                {['Employee', 'Mobile', 'Role', 'Wallet Status', 'Account', 'Balance', 'Last Login', 'Actions'].map(h => (
                   <th key={h} style={{ padding:'12px 16px', textAlign:'left', fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.04em', fontWeight:500 }}>{h}</th>
                 ))}
               </tr>
@@ -269,11 +298,16 @@ export default function EmployeeManagement({ setTab }) {
                     </span>
                   </td>
                   <td style={{ padding:'10px 16px' }}>
-                    {emp.ppi_wallet_id ? (
-                      <span style={{ fontSize:10, fontFamily:'monospace', color:'#0A84FF', background:'#0A84FF12', padding:'3px 8px', borderRadius:6 }}>
-                        {emp.ppi_wallet_id.slice(0, 8)}...
-                      </span>
-                    ) : <span style={{ color:'#444' }}>—</span>}
+                    {emp.ppi_wallet_id ? (() => {
+                      const ws = (emp.ppi_wallet_status || 'ACTIVE').toUpperCase()
+                      const wsColor = ws === 'ACTIVE' ? '#30D158' : ws === 'SUSPENDED' ? '#FFD60A' : '#FF453A'
+                      return (
+                        <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, fontWeight:500, background: wsColor+'14', color: wsColor, display:'inline-flex', alignItems:'center', gap:5 }}>
+                          <span style={{ width:5, height:5, borderRadius:'50%', background: wsColor }} />
+                          {ws}
+                        </span>
+                      )
+                    })() : <span style={{ color:'#444', fontSize:11 }}>No Wallet</span>}
                   </td>
                   <td style={{ padding:'10px 16px' }}>
                     <span style={{
@@ -291,11 +325,16 @@ export default function EmployeeManagement({ setTab }) {
                     {emp.last_login ? new Date(emp.last_login).toLocaleDateString('en-IN') : 'Never'}
                   </td>
                   <td style={{ padding:'10px 16px' }}>
-                    <div style={{ display:'flex', gap:6 }}>
+                    <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                       <Button size="sm" variant="ghost" onClick={() => openEdit(emp)}>Edit</Button>
-                      {emp.id !== user.id && (
-                        <Button size="sm" variant={emp.is_active ? 'danger' : 'success'} onClick={() => toggleStatus(emp)}>
-                          {emp.is_active ? 'Deactivate' : 'Activate'}
+                      {emp.ppi_wallet_id && emp.id !== user.id && (emp.ppi_wallet_status || 'ACTIVE').toUpperCase() === 'ACTIVE' && (
+                        <Button size="sm" style={{ background:'#FFD60A18', color:'#FFD60A', border:'1px solid #FFD60A30' }} onClick={() => openWalletAction('suspend', emp)}>
+                          Suspend
+                        </Button>
+                      )}
+                      {emp.ppi_wallet_id && emp.id !== user.id && (emp.ppi_wallet_status || 'ACTIVE').toUpperCase() !== 'CLOSED' && user.role === 'Super Admin' && (
+                        <Button size="sm" style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }} onClick={() => openWalletAction('close', emp)}>
+                          Close
                         </Button>
                       )}
                     </div>
@@ -409,6 +448,91 @@ export default function EmployeeManagement({ setTab }) {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ── Suspend / Close Wallet Modal ──────────────────── */}
+      {walletAction && (
+        <Modal title="" onClose={() => { setWalletAction(null); setWalletReason('') }} width={460}>
+          <div style={{ padding:'10px 0 6px' }}>
+            {/* Icon */}
+            <div style={{ textAlign:'center', marginBottom:18 }}>
+              <div style={{
+                width:56, height:56, borderRadius:'50%', margin:'0 auto 14px',
+                background: walletAction.type === 'suspend' ? '#FFD60A14' : '#FF453A14',
+                border: `2px solid ${walletAction.type === 'suspend' ? '#FFD60A30' : '#FF453A30'}`,
+                display:'flex', alignItems:'center', justifyContent:'center', fontSize:26,
+              }}>
+                {walletAction.type === 'suspend' ? '⏸' : '⛔'}
+              </div>
+              <div className="syne" style={{ fontSize:18, fontWeight:700, color: walletAction.type === 'suspend' ? '#FFD60A' : '#FF453A' }}>
+                {walletAction.type === 'suspend' ? 'Suspend Wallet' : 'Close Wallet Permanently'}
+              </div>
+              <div style={{ fontSize:13, color:'#888', marginTop:6 }}>
+                {walletAction.type === 'suspend'
+                  ? `This will temporarily freeze ${walletAction.emp.name}'s wallet. No transactions will be allowed until reactivated.`
+                  : `This will permanently close ${walletAction.emp.name}'s wallet and deactivate their account. This action cannot be undone.`
+                }
+              </div>
+            </div>
+
+            {/* Employee info */}
+            <div style={{ background:'#1A1A22', borderRadius:10, padding:'12px 16px', marginBottom:16 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                <span style={{ fontSize:11, color:'#555' }}>Employee</span>
+                <span style={{ fontSize:12, color:'#ccc', fontWeight:500 }}>{walletAction.emp.name}</span>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                <span style={{ fontSize:11, color:'#555' }}>Employee ID</span>
+                <span style={{ fontSize:12, color:'#ccc' }}>{walletAction.emp.emp_id}</span>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between' }}>
+                <span style={{ fontSize:11, color:'#555' }}>Current Wallet Status</span>
+                <span style={{ fontSize:12, color: (walletAction.emp.ppi_wallet_status || 'ACTIVE') === 'ACTIVE' ? '#30D158' : '#FFD60A', fontWeight:500 }}>
+                  {(walletAction.emp.ppi_wallet_status || 'ACTIVE').toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            {/* Reason input */}
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.04em', display:'block', marginBottom:8 }}>
+                Reason <span style={{ color:'#FF453A' }}>*</span>
+              </label>
+              <textarea
+                value={walletReason} onChange={e => setWalletReason(e.target.value)}
+                placeholder={walletAction.type === 'suspend' ? 'e.g. Employee reported lost phone, suspicious activity...' : 'e.g. Employee resigned, termination, compliance requirement...'}
+                rows={3}
+                style={{
+                  width:'100%', background:'#0B0B14', border:'1px solid #252530', borderRadius:8,
+                  color:'#E2E2E8', fontSize:13, padding:'10px 12px', outline:'none', resize:'vertical', fontFamily:'inherit',
+                }}
+              />
+            </div>
+
+            {/* Warning for close */}
+            {walletAction.type === 'close' && (
+              <div style={{ background:'#FF453A10', border:'1px solid #FF453A25', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#FF453A' }}>
+                Warning: This action is permanent and cannot be reversed. The employee's account will also be deactivated.
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <Button variant="ghost" onClick={() => { setWalletAction(null); setWalletReason('') }}>Cancel</Button>
+              <Button
+                disabled={walletActing || !walletReason.trim()}
+                onClick={handleWalletAction}
+                style={{
+                  background: walletAction.type === 'suspend' ? '#FFD60A' : '#FF453A',
+                  color: walletAction.type === 'suspend' ? '#000' : '#fff',
+                  opacity: walletActing || !walletReason.trim() ? 0.5 : 1,
+                }}
+              >
+                {walletActing ? 'Processing...' : walletAction.type === 'suspend' ? 'Suspend Wallet' : 'Close Wallet Permanently'}
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
 

@@ -217,18 +217,21 @@ router.post('/:id/action', async (req, res, next) => {
       const financeDone   = r2.finance_approved
       const bothDone      = hierarchyDone && financeDone
 
+      let walletWarning = null
+
       if (bothDone) {
         const total = Number(r2.approved_travel_cost||0)+Number(r2.approved_hotel_cost||0)+Number(r2.approved_allowance||0)
         await client.query("UPDATE travel_requests SET status='approved',approved_total=$1,ppi_load_status='loading' WHERE id=$2",[total,id])
 
-        // ── Fetch user's PPI walletId from DB ──
-        const { rows:userRow } = await client.query('SELECT ppi_wallet_id FROM users WHERE id=$1',[r2.user_id])
+        // ── Fetch user's PPI walletId and status from DB ──
+        const { rows:userRow } = await client.query('SELECT ppi_wallet_id, ppi_wallet_status FROM users WHERE id=$1',[r2.user_id])
         const ppiWalletId = userRow[0]?.ppi_wallet_id
+        const ppiWalletStatus = (userRow[0]?.ppi_wallet_status || 'ACTIVE').toUpperCase()
 
         // ── Lock internal wallet ──
         const { rows:wallet } = await client.query('SELECT id,balance FROM wallets WHERE user_id=$1 FOR UPDATE',[r2.user_id])
 
-        if (wallet.length && ppiWalletId) {
+        if (wallet.length && ppiWalletId && ppiWalletStatus === 'ACTIVE') {
           let bal = Number(wallet[0].balance)
           const tCost = Number(r2.approved_travel_cost||0)
           const hCost = Number(r2.approved_hotel_cost||0)
@@ -291,6 +294,22 @@ router.post('/:id/action', async (req, res, next) => {
               [total, ppiError, id]
             )
           }
+        } else if (wallet.length && ppiWalletId && ppiWalletStatus !== 'ACTIVE') {
+          // ── PPI wallet is SUSPENDED or CLOSED — credit internal wallet, skip PPI load ──
+          let bal = Number(wallet[0].balance)
+          const tCost = Number(r2.approved_travel_cost||0)
+          const hCost = Number(r2.approved_hotel_cost||0)
+          const aCost = Number(r2.approved_allowance||0)
+
+          if (tCost>0) { bal+=tCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,performed_by,balance_after,reference,ppi_status) VALUES ($1,$2,$3,'credit','travel',$4,$5,$6,$7,$8,'SKIPPED')`, [wallet[0].id,r2.user_id,id,tCost,`Travel cost — ${id}`,u.id,bal,`${id}-TRAVEL`]) }
+          if (hCost>0) { bal+=hCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,performed_by,balance_after,reference,ppi_status) VALUES ($1,$2,$3,'credit','hotel',$4,$5,$6,$7,$8,'SKIPPED')`, [wallet[0].id,r2.user_id,id,hCost,`Hotel cost — ${id}`,u.id,bal,`${id}-HOTEL`]) }
+          if (aCost>0) { bal+=aCost; await client.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,performed_by,balance_after,reference,ppi_status) VALUES ($1,$2,$3,'credit','allowance',$4,$5,$6,$7,$8,'SKIPPED')`, [wallet[0].id,r2.user_id,id,aCost,`Daily allowance (${r2.total_days} days) — ${id}`,u.id,bal,`${id}-ALLOW`]) }
+
+          await client.query(
+            "UPDATE travel_requests SET wallet_credited=TRUE, wallet_credit_amount=$1, wallet_credited_at=NOW(), ppi_load_status='failed', ppi_load_error=$2 WHERE id=$3",
+            [total, `PPI wallet is ${ppiWalletStatus} — load skipped`, id]
+          )
+          walletWarning = `Employee's PPI wallet is ${ppiWalletStatus}. Internal wallet was credited but PPI wallet load was skipped. The employee cannot use these funds until the wallet is reactivated.`
         } else if (wallet.length && !ppiWalletId) {
           // ── No PPI wallet linked — credit internal wallet only ──
           let bal = Number(wallet[0].balance)
@@ -314,7 +333,9 @@ router.post('/:id/action', async (req, res, next) => {
 
     await client.query('COMMIT')
     const { rows } = await pool.query(`SELECT tr.*,COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals FROM travel_requests tr WHERE tr.id=$1`,[id])
-    res.json({ success:true, message:`Request ${action}`, data:rows[0] })
+    const response = { success:true, message:`Request ${action}`, data:rows[0] }
+    if (walletWarning) response.walletWarning = walletWarning
+    res.json(response)
   } catch(e) { await client.query('ROLLBACK'); next(e) } finally { client.release() }
 })
 

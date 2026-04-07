@@ -63,6 +63,26 @@ export default function WalletPage() {
       {error   && <Alert type="error">{error}</Alert>}
       {success && <Alert type="success">{success}</Alert>}
 
+      {/* Suspended / Closed warning */}
+      {ppiWallet && (ppiWallet.walletStatus || '').toUpperCase() === 'SUSPENDED' && (
+        <div style={{ background:'#FFD60A10', border:'1px solid #FFD60A25', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:24 }}>⏸</span>
+          <div>
+            <div style={{ fontSize:14, color:'#FFD60A', fontWeight:600 }}>Wallet Suspended</div>
+            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
+          </div>
+        </div>
+      )}
+      {ppiWallet && (ppiWallet.walletStatus || '').toUpperCase() === 'CLOSED' && (
+        <div style={{ background:'#FF453A10', border:'1px solid #FF453A25', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:24 }}>⛔</span>
+          <div>
+            <div style={{ fontSize:14, color:'#FF453A', fontWeight:600 }}>Wallet Closed</div>
+            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible. Please contact your administrator.</div>
+          </div>
+        </div>
+      )}
+
       {/* Wallet Balance Card */}
       <Card style={{ padding:22, marginBottom:16, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
@@ -121,8 +141,8 @@ export default function WalletPage() {
         </div>
       </Card>
 
-      {/* Log expense */}
-      {requests.length > 0 && (
+      {/* Log expense — blocked if wallet not ACTIVE */}
+      {requests.length > 0 && (!ppiWallet || (ppiWallet.walletStatus || '').toUpperCase() === 'ACTIVE') && (
         <div style={{ marginBottom:20 }}>
           <Button variant="primary" style={{ background:user.color||'#0A84FF' }} onClick={() => { setModal(true); setError('') }}>
             + Log Expense (Self Booking)

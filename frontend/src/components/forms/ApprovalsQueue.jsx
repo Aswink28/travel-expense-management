@@ -15,6 +15,7 @@ export default function ApprovalsQueue() {
   const [amounts, setAmounts] = useState({ travel:'', hotel:'', allowance:'' })
   const [acting,  setActing]  = useState(false)
   const [error,   setError]   = useState('')
+  const [walletWarning, setWalletWarning] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -39,13 +40,16 @@ export default function ApprovalsQueue() {
     if (action === 'rejected' && !note.trim()) { setError('Rejection note is required'); return }
     try {
       setActing(true); setError('')
-      await requestsAPI.action(modal.id, {
+      const result = await requestsAPI.action(modal.id, {
         action, note: note || undefined,
         approved_travel_cost: amounts.travel ? Number(amounts.travel) : undefined,
         approved_hotel_cost:  amounts.hotel  ? Number(amounts.hotel)  : undefined,
         approved_allowance:   amounts.allowance ? Number(amounts.allowance) : undefined,
       })
       setModal(null); setNote('')
+      if (result.walletWarning) {
+        setWalletWarning(result.walletWarning)
+      }
       load()
     } catch(e) { setError(e.message) }
     finally { setActing(false) }
@@ -203,6 +207,28 @@ export default function ApprovalsQueue() {
             <Button variant="ghost"   onClick={() => { setModal(null); setNote(''); setError('') }} disabled={acting}>Cancel</Button>
             <Button variant="danger"  onClick={() => doAction('rejected')} disabled={acting}>{acting?'Saving...':'Reject'}</Button>
             <Button variant="success" onClick={() => doAction('approved')} disabled={acting}>{acting?'Saving...':'Approve ✓'}</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Wallet Warning Popup */}
+      {walletWarning && (
+        <Modal title="" onClose={() => setWalletWarning(null)} width={440}>
+          <div style={{ textAlign:'center', padding:'10px 0 6px' }}>
+            <div style={{
+              width:56, height:56, borderRadius:'50%', margin:'0 auto 14px',
+              background:'#FFD60A14', border:'2px solid #FFD60A30',
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:28,
+            }}>⚠</div>
+            <div className="syne" style={{ fontSize:18, fontWeight:700, marginBottom:8, color:'#FFD60A' }}>
+              Wallet Load Skipped
+            </div>
+            <div style={{ fontSize:13, color:'#999', marginBottom:20, lineHeight:1.6, padding:'0 10px' }}>
+              {walletWarning}
+            </div>
+            <Button style={{ width:'100%', justifyContent:'center', background:'#FFD60A', color:'#000' }} onClick={() => setWalletWarning(null)}>
+              Understood
+            </Button>
           </div>
         </Modal>
       )}

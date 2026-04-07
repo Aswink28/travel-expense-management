@@ -42,6 +42,26 @@ export default function Dashboard({ setTab }) {
     <div className="fade-up">
       <PageTitle title="Dashboard" sub={`${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}`} />
 
+      {/* Wallet suspended/closed warning */}
+      {ppiBal && (ppiBal.walletStatus || '').toUpperCase() === 'SUSPENDED' && (
+        <div style={{ background:'#FFD60A10', border:'1px solid #FFD60A25', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:24 }}>⏸</span>
+          <div>
+            <div style={{ fontSize:14, color:'#FFD60A', fontWeight:600 }}>Wallet Suspended</div>
+            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
+          </div>
+        </div>
+      )}
+      {ppiBal && (ppiBal.walletStatus || '').toUpperCase() === 'CLOSED' && (
+        <div style={{ background:'#FF453A10', border:'1px solid #FF453A25', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:24 }}>⛔</span>
+          <div>
+            <div style={{ fontSize:14, color:'#FF453A', fontWeight:600 }}>Wallet Closed</div>
+            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible.</div>
+          </div>
+        </div>
+      )}
+
       {/* Top row */}
       <div style={{ display:'grid', gridTemplateColumns: isBkAdmin ? 'repeat(3,1fr)' : '1.4fr 1fr 1fr 1fr', gap:14, marginBottom:22 }}>
         {!isBkAdmin && (
