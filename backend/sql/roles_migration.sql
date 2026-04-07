@@ -100,7 +100,5 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Super Admin', 'my-tickets',         'My Tickets',     '🎟', 7),
   ('Super Admin', 'employees',          'Employees',      '◆',  8),
   ('Super Admin', 'roles',              'Role Manager',   '⚙',  9),
-  ('Super Admin', 'tiers',              'Tier Config',    '◐', 10),
-  ('Super Admin', 'ad-hoc-booking',     'Ad-Hoc Booking', '✈', 11),
-  ('Super Admin', 'admin-bookings-view','Admin Bookings', '📋', 12)
+  ('Super Admin', 'tiers',              'Tier Config',    '◐', 10)
 ON CONFLICT (role_name, page_id) DO NOTHING;
