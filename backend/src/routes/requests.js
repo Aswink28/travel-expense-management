@@ -192,6 +192,8 @@ router.post('/:id/action', async (req, res, next) => {
     await client.query('INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note,approved_travel_cost,approved_hotel_cost,approved_allowance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
       [id,u.id,u.name,u.role,action,note||null,approved_travel_cost||null,approved_hotel_cost||null,approved_allowance||null])
 
+    let walletWarning = null
+
     if (action==='rejected') {
       await client.query("UPDATE travel_requests SET status='rejected',rejected_by=$1,rejection_reason=$2 WHERE id=$3",[u.name,note,id])
     } else {
@@ -216,8 +218,6 @@ router.post('/:id/action', async (req, res, next) => {
       const hierarchyDone = r2.hierarchy_approved
       const financeDone   = r2.finance_approved
       const bothDone      = hierarchyDone && financeDone
-
-      let walletWarning = null
 
       if (bothDone) {
         const total = Number(r2.approved_travel_cost||0)+Number(r2.approved_hotel_cost||0)+Number(r2.approved_allowance||0)
