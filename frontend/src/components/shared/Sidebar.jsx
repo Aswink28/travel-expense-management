@@ -1,67 +1,75 @@
 import { useAuth } from '../../context/AuthContext'
+import ThemeSwitcher from './ThemeSwitcher'
 import moiterLogo from '../../assets/moiter_workz-logo.png'
 
-const FALLBACK_NAV = [{ id:'dashboard', label:'Dashboard', icon:'▦' }]
+const FALLBACK_NAV = [{ id: 'dashboard', label: 'Dashboard', icon: '▦' }]
 
 export default function Sidebar({ active, setActive, pendingCount }) {
   const { user, logout } = useAuth()
   if (!user) return null
   const items  = user.pages?.length ? user.pages : FALLBACK_NAV
-  const accent = user.color || '#0A84FF'
+  const accent = user.color || 'var(--accent)'
 
   return (
-    <aside style={{ width:220, background:'#080810', borderRight:'1px solid #14141E', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, height:'100vh', zIndex:100 }}>
+    <aside className="sidebar">
       {/* Logo */}
-      <div style={{ padding:'26px 22px 20px' }}>
-        <img src={moiterLogo} alt="Moiter Workz" style={{ height:32, objectFit:'contain', display:'block' }} />
-        <div style={{ fontSize:10, color:'#2E2E3A', marginTop:2 }}>{user.role}</div>
+      <div className="sidebar-logo">
+        <img src={moiterLogo} alt="Moiter Workz" style={{ height: 32, objectFit: 'contain', display: 'block' }} />
+        <div className="sidebar-role">{user.role}</div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex:1, padding:'0 10px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto', minHeight:0 }}>
+      <nav className="sidebar-nav">
         {items.map(item => {
           const isActive = active === item.id
           const hasBadge = item.id === 'approvals' && pendingCount > 0
           return (
-            <button key={item.id} onClick={() => setActive(item.id)} style={{
-              display:'flex', alignItems:'center', gap:10, padding:'9px 12px',
-              background:isActive ? accent+'16':'none', border:'none',
-              borderRadius:9, borderLeft:`2px solid ${isActive?accent:'transparent'}`,
-              color:isActive?'#E2E2E8':'#3E3E4E', fontSize:13, cursor:'pointer',
-              textAlign:'left', width:'100%', transition:'all .12s', position:'relative',
-            }}
-              onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.color='#777' }}
-              onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.color='#3E3E4E' }}
+            <button
+              key={item.id}
+              onClick={() => setActive(item.id)}
+              className={`sidebar-item ${isActive ? 'active' : ''}`}
+              style={isActive ? {
+                background: `linear-gradient(90deg, ${accent}22, ${accent}06)`,
+                borderLeftColor: accent,
+                boxShadow: `inset 0 0 18px ${accent}18, 0 0 0 1px ${accent}25`,
+              } : undefined}
             >
-              <span style={{ fontSize:13, opacity:isActive?1:.6 }}>{item.icon}</span>
-              {item.label}
-              {hasBadge && (
-                <span style={{ marginLeft:'auto', background:'#FF453A', color:'#fff', fontSize:9, fontWeight:700, borderRadius:'50%', width:17, height:17, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  {pendingCount}
-                </span>
-              )}
+              <span className="sidebar-item-icon">{item.icon}</span>
+              <span className="sidebar-item-label">{item.label}</span>
+              {hasBadge && <span className="sidebar-badge">{pendingCount}</span>}
             </button>
           )
         })}
       </nav>
 
+      {/* Theme switcher */}
+      <div style={{ padding: '12px 12px 0' }}>
+        <div className="sidebar-section-label" style={{ marginBottom: 7 }}>Theme</div>
+        <ThemeSwitcher compact />
+      </div>
+
       {/* User footer */}
-      <div style={{ padding:'10px 12px 16px', borderTop:'1px solid #14141E' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 11px', background:'#111118', borderRadius:9, marginBottom:8 }}>
-          <div style={{ width:30, height:30, borderRadius:'50%', background:accent+'22', border:`1.5px solid ${accent}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:accent, flexShrink:0 }}>
+      <div className="sidebar-footer">
+        <div className="sidebar-user">
+          <div
+            className="sidebar-user-avatar"
+            style={{
+              background: `linear-gradient(135deg, ${accent}33, ${accent}11)`,
+              borderColor: `${accent}55`,
+              color: accent,
+              boxShadow: `0 0 12px ${accent}44`,
+            }}
+          >
             {user.avatar}
           </div>
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:12, color:'#ccc', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.name}</div>
-            <div style={{ fontSize:10, color:accent }}>{user.empId}</div>
+          <div style={{ minWidth: 0 }}>
+            <div className="sidebar-user-name">{user.name}</div>
+            <div className="sidebar-user-id" style={{ color: accent }}>{user.empId}</div>
           </div>
         </div>
-        <div style={{ display:'flex', justifyContent:'space-between', padding:'0 4px' }}>
-          <span style={{ fontSize:11, color:'#30D158' }}>● Online</span>
-          <button onClick={logout} style={{ background:'none', border:'none', fontSize:11, color:'#3E3E4E', cursor:'pointer' }}
-            onMouseEnter={e=>e.currentTarget.style.color='#FF453A'} onMouseLeave={e=>e.currentTarget.style.color='#3E3E4E'}>
-            Sign out
-          </button>
+        <div className="sidebar-status-row">
+          <span className="online">● Online</span>
+          <button className="sidebar-signout" onClick={logout}>Sign out</button>
         </div>
       </div>
     </aside>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import LoginPage      from './components/shared/LoginPage'
 import Sidebar        from './components/shared/Sidebar'
 import { Spinner }    from './components/shared/UI'
@@ -33,14 +34,20 @@ function WelcomeBanner() {
     'Super Admin':   'Full access. Your approval covers both hierarchy and Finance lanes simultaneously.',
   }
   return (
-    <div style={{ background:`${user.color}0C`, border:`1px solid ${user.color}20`, borderRadius:12, padding:'12px 18px', marginBottom:22, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+    <div
+      className="welcome-banner"
+      style={{ background: `${user.color}0C`, borderColor: `${user.color}20` }}
+    >
       <div>
-        <div style={{ fontSize:13, color:'#E2E2E8', fontWeight:500 }}>
-          {greet}, <span style={{ color:user.color }}>{user.name.split(' ')[0]}</span> 👋
+        <div className="welcome-greeting">
+          {greet}, <span style={{ color: user.color }}>{user.name.split(' ')[0]}</span> 👋
         </div>
-        <div style={{ fontSize:11, color:'#444', marginTop:2 }}>{msgs[user.role]}</div>
+        <div className="welcome-sub">{msgs[user.role]}</div>
       </div>
-      <div style={{ fontSize:11, color:user.color, background:`${user.color}12`, border:`1px solid ${user.color}25`, borderRadius:20, padding:'4px 12px' }}>
+      <div
+        className="welcome-badge"
+        style={{ color: user.color, background: `${user.color}12`, borderColor: `${user.color}25` }}
+      >
         {user.empId} · {user.dept}
       </div>
     </div>
@@ -88,9 +95,9 @@ function InnerApp() {
   }
 
   return (
-    <div style={{ display:'flex', minHeight:'100vh' }}>
+    <div className="app-shell">
       <Sidebar active={tab} setActive={setTab} pendingCount={pendingCount} />
-      <main style={{ marginLeft:220, flex:1, padding:'30px 36px', minHeight:'100vh', maxWidth:'calc(100vw - 220px)', overflowX:'hidden' }}>
+      <main className="app-main">
         <WelcomeBanner />
         {pages[tab] || pages['dashboard']}
       </main>
@@ -101,10 +108,10 @@ function InnerApp() {
 function AppRoot() {
   const { user, loading } = useAuth()
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#09090E' }}>
-      <div style={{ textAlign:'center' }}>
-        <div className="syne" style={{ fontSize:22, fontWeight:800, color:'#F0F0F4', marginBottom:18 }}>
-          Moiter <span style={{ color:'#0A84FF' }}>Workz</span>
+    <div className="app-loading">
+      <div className="app-loading-inner">
+        <div className="app-loading-brand">
+          Moiter <span className="login-gradient-text">Workz</span>
         </div>
         <Spinner size={32} />
       </div>
@@ -114,5 +121,11 @@ function AppRoot() {
 }
 
 export default function App() {
-  return <AuthProvider><AppRoot /></AuthProvider>
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoot />
+      </AuthProvider>
+    </ThemeProvider>
+  )
 }
