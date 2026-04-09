@@ -3,13 +3,75 @@ import { useAuth } from '../../context/AuthContext'
 import ThemeSwitcher from './ThemeSwitcher'
 
 const DEMO = [
-  { name: 'Arjun Sharma',   email: 'arjun@company.in',  role: 'Employee',      color: '#0A84FF', avatar: 'AS', password: 'pass123' },
-  { name: 'Deepa Krishnan', email: 'deepa@company.in',  role: 'Tech Lead',     color: '#BF5AF2', avatar: 'DK', password: 'pass123' },
-  { name: 'Ravi Kumar',     email: 'ravi@company.in',   role: 'Manager',       color: '#FF9F0A', avatar: 'RK', password: 'pass123' },
-  { name: 'Anil Menon',     email: 'anil@company.in',   role: 'Finance',       color: '#40C8E0', avatar: 'AM', password: 'pass123' },
-  { name: 'Meena Iyer',     email: 'meena@company.in',  role: 'Booking Admin', color: '#FF6B6B', avatar: 'MI', password: 'pass123' },
-  { name: 'Super Admin',    email: 'admin@company.in',  role: 'Super Admin',   color: '#30D158', avatar: 'SA', password: 'admin123' },
+  { name: 'Arjun Sharma',   email: 'arjun@company.in',  role: 'Employee',      color: '#5BAEFF', avatar: 'AS', password: 'pass123' },
+  { name: 'Deepa Krishnan', email: 'deepa@company.in',  role: 'Tech Lead',     color: '#B868FF', avatar: 'DK', password: 'pass123' },
+  { name: 'Ravi Kumar',     email: 'ravi@company.in',   role: 'Manager',       color: '#FFA84A', avatar: 'RK', password: 'pass123' },
+  { name: 'Anil Menon',     email: 'anil@company.in',   role: 'Finance',       color: '#5EE9DD', avatar: 'AM', password: 'pass123' },
+  { name: 'Meena Iyer',     email: 'meena@company.in',  role: 'Booking Admin', color: '#FF6B8A', avatar: 'MI', password: 'pass123' },
+  { name: 'Super Admin',    email: 'admin@company.in',  role: 'Super Admin',   color: '#5EE9B5', avatar: 'SA', password: 'admin123' },
 ]
+
+// ── Inline icons (Lucide-style) ──────────────────────────────
+const MailIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-10 5L2 7" />
+  </svg>
+)
+
+const LockIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+)
+
+const EyeIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+const EyeOffIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+)
+
+
+// ── Animated wave background ─────────────────────────────────
+const Waves = () => (
+  <div className="login-waves">
+    {[1, 2, 3, 4].map(i => (
+      <div className="login-wave-line" key={i}>
+        <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id={`waveg${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stopColor="#5BAEFF" stopOpacity="0" />
+              <stop offset="50%"  stopColor="#B868FF" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#FF6BD6" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d={
+              i === 1 ? 'M 0 100 Q 300 20  600 100 T 1200 100' :
+              i === 2 ? 'M 0 80  Q 400 160 800 80  T 1600 80'  :
+              i === 3 ? 'M 0 120 Q 350 60  700 120 T 1400 120' :
+                        'M 0 90  Q 450 170 900 90  T 1800 90'
+            }
+            fill="none"
+            stroke={`url(#waveg${i})`}
+            strokeWidth="1.5"
+          />
+        </svg>
+      </div>
+    ))}
+  </div>
+)
 
 export default function LoginPage() {
   const { login, error, setError } = useAuth()
@@ -18,6 +80,7 @@ export default function LoginPage() {
   const [selected, setSelected] = useState(null)
   const [loading,  setLoading]  = useState(false)
   const [showPwd,  setShowPwd]  = useState(false)
+  const [remember, setRemember] = useState(true)
 
   function pick(u) { setSelected(u); setEmail(u.email); setPassword(u.password); setError('') }
 
@@ -29,174 +92,149 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-page">
-      {/* Animated background glows */}
-      <div className="login-bg-glow-1" style={{ position: 'fixed', width: 600, height: 600, borderRadius: '50%', background: 'var(--accent)', filter: 'blur(140px)', opacity: 0.06, top: '-200px', left: '-100px', pointerEvents: 'none' }} />
-      <div className="login-bg-glow-2" style={{ position: 'fixed', width: 500, height: 500, borderRadius: '50%', background: 'var(--accent-2)', filter: 'blur(120px)', opacity: 0.05, bottom: '-150px', right: '-100px', pointerEvents: 'none' }} />
-      <div className="login-bg-glow-3" style={{ position: 'fixed', width: 400, height: 400, borderRadius: '50%', background: 'var(--purple)', filter: 'blur(110px)', opacity: 0.035, top: '40%', right: '-50px', pointerEvents: 'none' }} />
+    <>
+      {/* Cosmic background layers */}
+      <div className="login-cosmic" />
+      <div className="login-stars" />
+      <Waves />
 
-      {/* Floating particles */}
-      <div className="login-particles">
-        <span /><span /><span /><span /><span />
-        <span /><span /><span /><span /><span />
-      </div>
-
-      {/* Theme switcher in corner */}
-      <div className="login-theme-switch">
+      {/* Theme switcher */}
+      <div className="login-cosmic-theme-switch">
         <ThemeSwitcher compact />
       </div>
 
-      <div className="login-shell login-card">
+      <div className="login-cosmic-page">
+        <div className="login-cosmic-shell">
 
-        {/* Left — role cards */}
-        <div className="login-left">
-          <div className="login-form-row" style={{ marginBottom: 24 }}>
-            <div className="login-brand">
-              <span className="login-gradient-text">Travel</span>
-              <span className="text-primary">Desk</span>
-            </div>
-            <div className="login-tagline">Travel & Expense Management v3</div>
-          </div>
-          <div className="login-form-row login-section-label">Select role to login</div>
-          <div className="login-role-list">
-            {DEMO.map(u => {
-              const isSel = selected?.email === u.email
-              return (
-                <button
-                  key={u.email}
-                  onClick={() => pick(u)}
-                  className="login-role-card"
-                  style={isSel ? {
-                    background: `linear-gradient(90deg, ${u.color}25, ${u.color}08)`,
-                    borderColor: u.color + '66',
-                    transform: 'translateX(4px)',
-                    boxShadow: `0 0 24px ${u.color}33, inset 0 0 12px ${u.color}11`,
-                  } : undefined}
-                >
-                  <div
-                    className="sidebar-user-avatar"
-                    style={{
-                      width: 34, height: 34,
-                      background: `linear-gradient(135deg, ${u.color}33, ${u.color}11)`,
-                      borderColor: u.color + '55',
-                      color: u.color,
-                      boxShadow: isSel ? `0 0 16px ${u.color}66` : 'none',
-                    }}
-                  >
-                    {u.avatar}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="login-role-name">{u.name}</div>
-                    <div className="login-role-title" style={{ color: u.color }}>{u.role}</div>
-                  </div>
-                  {isSel && (
-                    <div
-                      style={{
-                        width: 18, height: 18, borderRadius: '50%',
-                        background: u.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, color: '#000', fontWeight: 700,
-                        boxShadow: `0 0 12px ${u.color}`,
-                      }}
-                    >
-                      ✓
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-          <div className="login-form-row login-hint">
-            ✦ Click a role above to auto-fill
-          </div>
-        </div>
-
-        {/* Right — form */}
-        <div className="login-right">
-          {selected && (
-            <span
-              className="login-form-row login-portal-pill"
-              style={{
-                background: `linear-gradient(135deg, ${selected.color}22, ${selected.color}08)`,
-                border: `1px solid ${selected.color}40`,
-                color: selected.color,
-                boxShadow: `0 0 20px ${selected.color}33`,
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: selected.color, boxShadow: `0 0 8px ${selected.color}` }} />
-              {selected.role} Portal
+          {/* LEFT — Simple Hero */}
+          <div className="login-hero">
+            <span className="login-hero-badge">
+              <span className="login-hero-badge-dot" />
+              Corporate Portal
             </span>
-          )}
 
-          <h1 className="login-form-row login-greeting">
-            {selected ? `Hi, ${selected.name.split(' ')[0]}!` : 'Welcome back'}
-          </h1>
-          <p className="login-form-row login-subtitle">
-            {selected ? 'Credentials auto-filled. Click Sign in to continue.' : 'Enter your credentials to continue.'}
-          </p>
+            <h1 className="login-hero-title">
+              Travel Smart.<br />
+              Spend <span className="gradient-word">Smarter.</span>
+            </h1>
 
-          <form onSubmit={handleSubmit}>
-            <div className="login-form-row field">
-              <label className="field-label">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError('') }}
-                placeholder="you@company.in"
-                required
-                className="login-input"
-              />
+            <p className="login-hero-subtitle">
+              The all-in-one corporate travel & expense platform.
+              Book flights, trains, hotels and buses — all in one secure portal.
+            </p>
+
+            {/* 4 travel icons in one row */}
+            <div className="login-icon-row">
+              <div className="login-icon-pill">✈</div>
+              <div className="login-icon-pill">🚆</div>
+              <div className="login-icon-pill">🏨</div>
+              <div className="login-icon-pill">🚌</div>
             </div>
-            <div className="login-form-row field" style={{ marginBottom: 22 }}>
-              <label className="field-label">Password</label>
-              <div style={{ position: 'relative' }}>
+          </div>
+
+          {/* RIGHT — Login Card */}
+          <div className="login-glass-card">
+            <h1 className="login-card-title">Corporate Expense<br />Management</h1>
+            <p className="login-card-subtitle">Please sign in to access the admin portal.</p>
+
+            <form onSubmit={handleSubmit}>
+              {/* Email */}
+              <div className="login-input-wrap">
+                <span className="login-input-icon"><MailIcon /></span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError('') }}
+                  placeholder="admin@example.com"
+                  required
+                  className="login-cosmic-input"
+                />
+              </div>
+
+              {/* Password */}
+              <div className="login-input-wrap">
+                <span className="login-input-icon"><LockIcon /></span>
                 <input
                   type={showPwd ? 'text' : 'password'}
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError('') }}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   required
-                  className="login-input"
-                  style={{ paddingRight: 44 }}
+                  className="login-cosmic-input"
+                  style={{ paddingRight: 46 }}
                 />
-                <button type="button" onClick={() => setShowPwd(v => !v)} className="login-toggle-pwd">
-                  {showPwd ? 'Hide' : 'Show'}
+                <button
+                  type="button"
+                  className="login-pwd-toggle"
+                  onClick={() => setShowPwd(v => !v)}
+                  aria-label={showPwd ? 'Hide password' : 'Show password'}
+                >
+                  {showPwd ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
-            </div>
 
-            {error && (
-              <div className="fade-up login-error">
-                ✕ {error}
+              {/* Remember + Forgot */}
+              <div className="login-options-row">
+                <label className="login-remember">
+                  <input
+                    type="checkbox"
+                    className="login-checkbox"
+                    checked={remember}
+                    onChange={e => setRemember(e.target.checked)}
+                  />
+                  Remember me
+                </label>
+                <button type="button" className="login-forgot">Forgot password?</button>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="login-form-row login-submit"
-              style={selected ? {
-                background: `linear-gradient(135deg, ${selected.color}, ${selected.color}cc)`,
-                boxShadow: `0 8px 32px ${selected.color}55, 0 1px 0 rgba(255,255,255,.2) inset`,
-              } : undefined}
-            >
-              {loading ? (
-                <>
-                  <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-                  Signing in...
-                </>
-              ) : `Sign in${selected ? ` as ${selected.name.split(' ')[0]}` : ''}`}
-            </button>
-          </form>
+              {/* Error */}
+              {error && (
+                <div className="fade-up login-cosmic-error">
+                  ✕ {error}
+                </div>
+              )}
 
-          {selected && (
-            <div className="fade-up login-credentials-hint">
-              <span><span className="text-faint">Email: </span><span className="font-mono text-muted">{selected.email}</span></span>
-              <span><span className="text-faint">Pass: </span><span className="font-mono text-muted">{selected.password}</span></span>
+              {/* Submit */}
+              <button type="submit" className="login-cosmic-submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <span>Sign In</span>
+                )}
+              </button>
+            </form>
+
+            {/* Support */}
+            <div className="login-support">
+              Having trouble? <a>Contact support</a>
             </div>
-          )}
+
+            {/* Demo accounts */}
+            <div className="login-demo-row">
+              <div className="login-demo-label">Demo accounts</div>
+              {DEMO.map(u => (
+                <button
+                  key={u.email}
+                  type="button"
+                  className="login-demo-chip"
+                  onClick={() => pick(u)}
+                  style={{
+                    borderColor: selected?.email === u.email ? u.color + 'AA' : u.color + '55',
+                    color: u.color,
+                    boxShadow: selected?.email === u.email ? `0 0 14px ${u.color}66` : 'none',
+                  }}
+                >
+                  {u.role}
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
-    </div>
+    </>
   )
 }

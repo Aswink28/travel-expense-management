@@ -67,6 +67,7 @@ export const walletAPI = {
 export const flightsAPI = {
   search:     body => api.post('/flights/search', body),
   bookTicket: body => api.post('/flights/book-ticket', body),
+  fareRule:   body => api.post('/flights/air/fare-rule', body),
 }
 
 export const bookingsAPI = {

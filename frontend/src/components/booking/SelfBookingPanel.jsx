@@ -538,12 +538,18 @@ export default function SelfBookingPanel() {
                           <div key={fare.type} style={{ border: fare.type === 'Saver' ? '1px solid #E1395F' : '1px solid #eaeaea', borderRadius: 8, padding: 20, background: '#fff', position: 'relative', boxShadow: fare.type==='Saver' ? '0 0 0 1px #E1395F' : 'none' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid #eaeaea', paddingBottom: 12 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: '#333' }}>{fare.type} Fare</span>
-                              <span style={{ fontSize: 12, color: '#30D158' }}>Refundable</span>
+                              <span style={{ fontSize: 12, color: fare.refundable ? '#30D158' : '#FF453A' }}>
+                                {fare.refundable ? 'Refundable' : 'Non-Refundable'}
+                              </span>
                             </div>
                             <div style={{ fontSize: 13, color: '#444', display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                              <div>❌ Cancel for ₹3300</div>
-                              <div>🔄 Change for ₹2500 <span style={{ color: '#E1395F', cursor: 'pointer' }}>Click here!</span></div>
-                              <div>✅ Baggage | 7 KG/15 KG</div>
+                              <div>❌ Cancellation | {fare.refundable ? 'Allowed' : 'Not Allowed'}</div>
+                              <div>🔄 Date Change | {fare.refundable ? 'Allowed' : 'Not Allowed'}</div>
+                              {(fare.cabinBaggage || flight.cabinBaggage) && (
+                                <div>🎒 Cabin | {fare.cabinBaggage || flight.cabinBaggage}</div>
+                              )}
+                              <div>🧳 Check-in | {fare.baggage || flight.baggage || 'Not Included'}</div>
+                              {fare.foodOnboard && <div>🍽 Meal | {fare.foodOnboard}</div>}
                             </div>
                             
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
