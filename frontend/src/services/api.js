@@ -65,9 +65,28 @@ export const walletAPI = {
 }
 
 export const flightsAPI = {
-  search:     body => api.post('/flights/search', body),
-  bookTicket: body => api.post('/flights/book-ticket', body),
-  fareRule:   body => api.post('/flights/air/fare-rule', body),
+  search:           body => api.post('/flights/search', body),
+  bookTicket:       body => api.post('/flights/book-ticket', body),
+  // Air API lifecycle
+  sectors:          ()   => api.post('/flights/air/sectors', {}),
+  airSearch:        body => api.post('/flights/air/search', body),
+  fareRule:         body => api.post('/flights/air/fare-rule', body),
+  lowFare:          body => api.post('/flights/air/low-fare', body),
+  reprice:          body => api.post('/flights/air/reprice', body),
+  getSSR:           body => api.post('/flights/air/ssr', body),
+  getSeatMap:       body => api.post('/flights/air/seat-map', body),
+  tempBooking:      body => api.post('/flights/air/temp-booking', body),
+  ticketing:        body => api.post('/flights/air/ticket', body),
+  reprint:          body => api.post('/flights/air/reprint', body),
+  history:          body => api.post('/flights/air/history', body),
+  cancel:           body => api.post('/flights/air/cancel', body),
+  releasePnr:       body => api.post('/flights/air/release-pnr', body),
+  getPostSSR:       body => api.post('/flights/air/post-ssr', body),
+  initiatePostSSR:  body => api.post('/flights/air/post-ssr/initiate', body),
+  confirmPostSSR:   body => api.post('/flights/air/post-ssr/confirm', body),
+  getBalance:       refNo => api.get(`/flights/air/balance?refNo=${refNo}`),
+  addPayment:       body => api.post('/flights/air/payment', body),
+  bookFull:         body => api.post('/flights/air/book', body),
 }
 
 export const bookingsAPI = {

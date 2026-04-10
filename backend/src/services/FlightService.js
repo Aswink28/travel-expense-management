@@ -14,6 +14,7 @@
 const Amadeus  = require('amadeus')
 const airApi   = require('./airApi')
 const { resolveAirportCode } = require('./airApi/airportCodes')
+const logger   = require('../config/logger').child({ module: 'FlightService' })
 require('dotenv').config()
 
 class FlightService {
@@ -43,7 +44,7 @@ class FlightService {
       this.providerName = 'mock'
     }
 
-    console.log(`[FlightService] active provider: ${this.providerName}`)
+    logger.info('provider initialized', { provider: this.providerName })
   }
 
   /** Expose the underlying Air API provider for the new lifecycle routes. */
@@ -82,7 +83,7 @@ class FlightService {
       }
       return this._getMockFlights(source, destination, date, travelClass)
     } catch (e) {
-      console.error(`[FlightService:${this.providerName}] search failed:`, e.message)
+      logger.error('search failed, falling back to mock', { provider: this.providerName, error: e.message })
       return this._getMockFlights(source, destination, date, travelClass)
     }
   }

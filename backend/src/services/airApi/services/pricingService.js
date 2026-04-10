@@ -7,13 +7,14 @@
 const { post } = require('../httpClient')
 const { airUrl } = require('../config')
 
-async function reprice ({ searchKey, flights }) {
+async function reprice ({ searchKey, flights, customerMobile = '9999999999' }) {
   if (!searchKey || !Array.isArray(flights) || !flights.length) {
     throw new Error('searchKey and flights[] are required')
   }
   return post(airUrl('Air_Reprice'), {
     Search_Key:         searchKey,
     AirRepriceRequests: flights.map(f => ({ Flight_Key: f.flightKey, Fare_Id: f.fareId || null })),
+    Customer_Mobile:    customerMobile,
   }, { method: 'Air_Reprice' })
 }
 

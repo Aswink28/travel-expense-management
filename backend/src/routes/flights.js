@@ -3,6 +3,7 @@ const pool = require("../config/db");
 const { authenticate, authorise } = require("../middleware");
 const flightService = require("../services/FlightService");
 const { sendTicketEmail } = require("../services/emailService");
+const logger = require("../config/logger").child({ module: 'flights' });
 
 const router = express.Router();
 
@@ -184,7 +185,7 @@ router.post("/book-ticket", async (req, res, next) => {
       selectedFlight,
       newBalance: newBal,
     }).catch((err) =>
-      console.error("[Email] Failed to send ticket email:", err.message),
+      logger.error("ticket email failed", { error: err.message, requestId: req.correlationId }),
     );
 
     res.json({

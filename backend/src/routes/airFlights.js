@@ -33,6 +33,7 @@ const airApi = require('../services/airApi')
 const { AirApiError } = require('../services/airApi/httpClient')
 const { toAirApiDate } = require('../services/FlightService')
 const { resolveAirportCode } = require('../services/airApi/airportCodes')
+const logger = require('../config/logger').child({ module: 'airFlights' })
 
 const router = express.Router()
 router.use(authenticate)
@@ -54,6 +55,11 @@ function send (res, fn) {
     .then(fn)
     .then(data => res.json({ success: true, data }))
     .catch(err => {
+      const level = (err.status >= 500 || err instanceof AirApiError) ? 'error' : 'warn'
+      logger[level]('air api route error', {
+        message: err.message, code: err.code, status: err.status,
+        requestId: err.requestId, correlationId: res.req?.correlationId,
+      })
       if (err instanceof AirApiError) {
         return res.status(err.status || 502).json({
           success: false,
@@ -110,7 +116,11 @@ router.post('/fare-rule', (req, res) => send(res, () => {
 
 router.post('/low-fare', (req, res) => send(res, () => {
   require_(req.body, ['origin', 'destination', 'month', 'year'])
-  return airApi.lowFare(req.body)
+  return airApi.lowFare({
+    ...req.body,
+    origin: resolveAirportCode(req.body.origin),
+    destination: resolveAirportCode(req.body.destination),
+  })
 }))
 
 // ── Pricing ───────────────────────────────────────────────────

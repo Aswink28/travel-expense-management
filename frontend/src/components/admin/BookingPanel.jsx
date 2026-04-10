@@ -148,10 +148,45 @@ function getHour(timeStr) {
   return h;
 }
 
+/* ─── IATA code to city name (for Sector Deals display) ─── */
+const IATA_CITY = {
+  DEL: 'Delhi', BOM: 'Mumbai', MAA: 'Chennai', BLR: 'Bangalore', HYD: 'Hyderabad',
+  CCU: 'Kolkata', PNQ: 'Pune', GOI: 'Goa', JAI: 'Jaipur', AMD: 'Ahmedabad',
+  COK: 'Kochi', LKO: 'Lucknow', GAU: 'Guwahati', PAT: 'Patna', IXC: 'Chandigarh',
+  BBI: 'Bhubaneswar', VNS: 'Varanasi', ATQ: 'Amritsar', IXR: 'Ranchi', NAG: 'Nagpur',
+  SXR: 'Srinagar', IXB: 'Bagdogra', TRV: 'Trivandrum', CJB: 'Coimbatore',
+  IXM: 'Madurai', VTZ: 'Vizag', IDR: 'Indore', BDQ: 'Vadodara', UDR: 'Udaipur',
+  RPR: 'Raipur', DED: 'Dehradun', IXA: 'Agartala', IXE: 'Mangalore',
+};
+function cityName(code) { return IATA_CITY[code] || code; }
+
 /* ═══════════════════════════════════════════ */
+function Toast({ message, type = 'info', onClose }) {
+  const colors = { info: C.accent, success: C.green, warn: C.amber, error: C.red }
+  const icons = { info: 'ℹ️', success: '✅', warn: '⚠️', error: '❌' }
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
+  return (
+    <div style={{
+      position: 'fixed', top: 24, right: 24, zIndex: 9999,
+      background: C.card, border: `1px solid ${colors[type]}40`,
+      borderRadius: 14, padding: '14px 20px', maxWidth: 420,
+      boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${colors[type]}20`,
+      animation: 'fadeUp .25s ease', display: 'flex', alignItems: 'flex-start', gap: 12,
+    }}>
+      <span style={{ fontSize: 18, flexShrink: 0 }}>{icons[type]}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.5 }}>{message}</div>
+      </div>
+      <span onClick={onClose} style={{ fontSize: 16, color: C.muted, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>✕</span>
+    </div>
+  )
+}
+
 export default function BookingPanel() {
   const { user } = useAuth();
   const [modeTab, setModeTab] = useState("Flight");
+  const [toast, setToast] = useState(null); // { message, type }
+  const showToast = useCallback((message, type = 'info') => setToast({ message, type }), []);
   const [tripType, setTripType] = useState("one-way");
   const [form, setForm] = useState({
     requestId: "",
@@ -176,7 +211,49 @@ export default function BookingPanel() {
 
   // Fare rule popup
   const [fareRuleData, setFareRuleData] = useState(null); // { rules, flight, fare }
-  const [fareRuleLoading, setFareRuleLoading] = useState(false);
+  const [fareRuleLoading, setFareRuleLoading] = useState(null); // null or 'flightId:fareId'
+
+  // Special deals (Series fares from SectorAvailability)
+  const [sectorDeals, setSectorDeals] = useState([]);
+
+  // Low fare calendar (API 4)
+  const [lowFareData, setLowFareData] = useState(null); // { fares, origin, destination, month, year }
+  const [lowFareLoading, setLowFareLoading] = useState(false);
+
+  // SSR selection (API 6)
+  const [ssrData, setSsrData] = useState(null); // { ssrs[], flight, fare }
+  const [ssrLoading, setSsrLoading] = useState(null); // null or flightId being loaded
+  const [selectedSSRs, setSelectedSSRs] = useState([]); // [ssrKey, ...]
+
+  // Seat map (API 7)
+  const [seatMapData, setSeatMapData] = useState(null); // { seatMap[], flight }
+  const [seatMapLoading, setSeatMapLoading] = useState(null); // null or flightId being loaded
+  const [selectedSeat, setSelectedSeat] = useState(null); // seatNumber
+
+  // Air API booking lifecycle (APIs 5,8,9,17,18)
+  const [airBookingStep, setAirBookingStep] = useState(null); // null | 'repricing' | 'booking' | 'paying' | 'ticketing' | 'done' | 'error'
+  const [airBookingResult, setAirBookingResult] = useState(null);
+
+  // Reprint / History / Cancel (APIs 10-13)
+  const [reprintData, setReprintData] = useState(null);
+  const [reprintLoading, setReprintLoading] = useState(false);
+  const [airHistory, setAirHistory] = useState(null);
+  const [airHistoryLoading, setAirHistoryLoading] = useState(false);
+  const [cancelResult, setCancelResult] = useState(null);
+
+  // Post-booking SSR (APIs 14-16)
+  const [postSSRData, setPostSSRData] = useState(null);
+  const [postSSRLoading, setPostSSRLoading] = useState(false);
+  const [selectedPostSSRs, setSelectedPostSSRs] = useState([]);
+
+  // Hold & Pay Later
+  const [holdLoading, setHoldLoading] = useState(null); // null or 'flightId:fareId' of the card being held
+  const [holdResult, setHoldResult] = useState(null); // { bookingRefNo, airlinePnr, blockedExpiry, totalAmount, flight, fare }
+  const [heldFlights, setHeldFlights] = useState([]); // list of held PNRs
+  const [payingHeld, setPayingHeld] = useState(null); // bookingRefNo being ticketed
+
+  // Active panel for post-booking management
+  const [mgmtPanel, setMgmtPanel] = useState(null); // null | 'reprint' | 'history' | 'cancel' | 'postssr' | 'held'
 
   /* ─── Hotel state ─── */
   const [hotelForm, setHotelForm] = useState({
@@ -223,13 +300,24 @@ export default function BookingPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, h] = await Promise.all([
+      const [p, h, sec] = await Promise.all([
         bookingsAPI.pending(),
         bookingsAPI.history(),
+        flightsAPI.sectors().catch(() => ({ data: { raw: { SectorsPIs: [] } } })),
       ]);
       const pr = p.data || [];
       setAllPending(pr);
       setHistory(h.data || []);
+      // Parse sector deals
+      const sectors = (sec.data?.raw?.SectorsPIs || []).map(s => {
+        const dates = (s.AvailableDates || '').split('|').filter(Boolean);
+        return {
+          origin: s.Origin, destination: s.Destination,
+          dates, firstDate: dates[0], lastDate: dates[dates.length - 1],
+          maxTravelDate: s.MaxTravelDate,
+        };
+      });
+      setSectorDeals(sectors);
       // Auto-select first flight request
       const firstFlight = pr.find(
         (r) => r.travel_mode?.toLowerCase() === "flight",
@@ -456,7 +544,8 @@ export default function BookingPanel() {
     if (!flight.searchKey || !flight.flightKey || !fare.fareId) {
       return setErr('Fare rule details not available for this flight.')
     }
-    setFareRuleLoading(true)
+    const key = `${flight.flightId}:${fare.fareId}`
+    setFareRuleLoading(key)
     setFareRuleData(null)
     try {
       const r = await flightsAPI.fareRule({
@@ -468,7 +557,280 @@ export default function BookingPanel() {
     } catch (e) {
       setErr(e.message || 'Failed to load fare rules')
     } finally {
-      setFareRuleLoading(false)
+      setFareRuleLoading(null)
+    }
+  }
+
+  /* ─── Low Fare Calendar (API 4) ─── */
+  const fetchLowFare = async () => {
+    if (!form.origin || !form.destination) return setErr('Fill Origin and Destination first.')
+    setLowFareLoading(true); setLowFareData(null); setErr('')
+    try {
+      const now = new Date()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const year = now.getFullYear()
+      const r = await flightsAPI.lowFare({ origin: form.origin, destination: form.destination, month, year })
+      setLowFareData({ fares: r.data, origin: form.origin, destination: form.destination, month, year })
+    } catch (e) {
+      // Low fare is not available on all routes — show a user-friendly message
+      const msg = e.message || ''
+      if (msg.includes('Oops') || msg.includes('No data found') || msg.includes('no response')) {
+        setErr(`Low fare calendar is not available for ${form.origin} → ${form.destination}. Try a different route or use the regular Search.`)
+      } else {
+        setErr(msg || 'Failed to load low fares')
+      }
+    }
+    finally { setLowFareLoading(false) }
+  }
+
+  /* ─── SSR Selection (API 6) ─── */
+  const fetchSSR = async (flight, fare) => {
+    if (!flight.searchKey || !flight.flightKey) return showToast('SSR not available for this flight.', 'warn')
+    setSsrLoading(flight.flightId); setSsrData(null); setSelectedSSRs([])
+    try {
+      const r = await flightsAPI.getSSR({ searchKey: flight.searchKey, flightKeys: [flight.flightKey] })
+      const ssrs = r.data?.ssrs || []
+      if (ssrs.length === 0) {
+        showToast('No meals or baggage options available for this flight from the airline.', 'warn')
+      } else {
+        setSsrData({ ssrs, flight, fare })
+      }
+    } catch (e) {
+      const msg = e.message || 'Failed to load SSR'
+      if (msg.includes('Not Available') || msg.includes('failed with an error')) {
+        showToast('Meals & baggage add-ons are not available for this flight. The airline does not offer ancillary services on this route/fare.', 'warn')
+      } else {
+        showToast('Failed to load add-ons: ' + msg, 'error')
+      }
+    }
+    finally { setSsrLoading(null) }
+  }
+
+  const toggleSSR = (ssrKey) => {
+    setSelectedSSRs(prev => prev.includes(ssrKey) ? prev.filter(k => k !== ssrKey) : [...prev, ssrKey])
+  }
+
+  /* ─── Seat Map (API 7) ─── */
+  const fetchSeatMap = async (flight) => {
+    if (!flight.searchKey || !flight.flightKey) return showToast('Seat map not available for this flight.', 'warn')
+    setSeatMapLoading(flight.flightId); setSeatMapData(null); setSelectedSeat(null)
+    try {
+      const r = await flightsAPI.getSeatMap({ searchKey: flight.searchKey, flightKeys: [flight.flightKey] })
+      const seatMap = r.data?.seatMap || []
+      if (seatMap.length === 0 || !seatMap[0]?.rows?.length) {
+        showToast('Seat selection is not available for this flight. The airline does not provide seat maps on this route/fare.', 'warn')
+      } else {
+        setSeatMapData({ seatMap, flight })
+      }
+    } catch (e) {
+      const msg = e.message || 'Failed to load seat map'
+      if (msg.includes('Not Available') || msg.includes('failed with an error')) {
+        showToast('Seat selection is not available for this flight. The airline does not provide seat maps on this route/fare.', 'warn')
+      } else {
+        showToast('Failed to load seat map: ' + msg, 'error')
+      }
+    }
+    finally { setSeatMapLoading(null) }
+  }
+
+  /* ─── Full Air API Booking (APIs 5→8→18→9) ─── */
+  const executeAirBooking = async (flight, fare, passengers) => {
+    setAirBookingStep('repricing'); setAirBookingResult(null); setErr('')
+    try {
+      const result = await flightsAPI.bookFull({
+        searchKey: flight.searchKey,
+        flightKey: flight.flightKey,
+        fareId: fare.fareId,
+        passengers,
+        passengerEmail: passengers[0]?.email || 'booking@company.com',
+        passengerMobile: passengers[0]?.mobile || '9999999999',
+        ssrDetails: selectedSSRs.map(k => ({ SSR_Key: k })),
+        seatDetails: selectedSeat ? [{ Seat_Number: selectedSeat }] : [],
+      })
+      setAirBookingStep('done')
+      setAirBookingResult(result.data)
+    } catch (e) {
+      setAirBookingStep('error')
+      setErr(e.message || 'Booking failed')
+    }
+  }
+
+  /* ─── Reprint (API 10) ─── */
+  const fetchReprint = async (bookingRefNo, airlinePnr = '') => {
+    if (!bookingRefNo && !airlinePnr) return setErr('Enter Booking Ref or Airline PNR.')
+    setReprintLoading(true); setReprintData(null)
+    try {
+      const r = await flightsAPI.reprint({ bookingRefNo, airlinePnr })
+      setReprintData(r.data)
+    } catch (e) { setErr(e.message || 'Reprint failed') }
+    finally { setReprintLoading(false) }
+  }
+
+  /* ─── History (API 11) ─── */
+  const fetchAirHistory = async (fromDate, toDate) => {
+    if (!fromDate || !toDate) return setErr('Select date range.')
+    setAirHistoryLoading(true); setAirHistory(null)
+    try {
+      const r = await flightsAPI.history({ fromDate, toDate })
+      setAirHistory(r.data)
+    } catch (e) { setErr(e.message || 'History fetch failed') }
+    finally { setAirHistoryLoading(false) }
+  }
+
+  /* ─── Cancel (API 12) ─── */
+  const executeCancellation = async (bookingRefNo, airlinePnr, cancelDetails = [], remarks = '') => {
+    setCancelResult(null); setErr('')
+    try {
+      const r = await flightsAPI.cancel({ bookingRefNo, airlinePnr, cancelDetails, remarks, cancellationType: 0 })
+      setCancelResult(r.data)
+    } catch (e) { setErr(e.message || 'Cancellation failed') }
+  }
+
+  /* ─── Release PNR (API 13) ─── */
+  const executeReleasePnr = async (bookingRefNo, airlinePnr) => {
+    setErr('')
+    try {
+      await flightsAPI.releasePnr({ bookingRefNo, airlinePnr })
+      setErr(''); setReprintData(null)
+      showToast('PNR released successfully', 'success')
+    } catch (e) { setErr(e.message || 'Release failed') }
+  }
+
+  /* ─── Post-Booking SSR (APIs 14-16) ─── */
+  const fetchPostSSR = async (bookingRefNo, airlinePnr = '') => {
+    setPostSSRLoading(true); setPostSSRData(null); setSelectedPostSSRs([])
+    try {
+      const r = await flightsAPI.getPostSSR({ bookingRefNo, airlinePnr })
+      setPostSSRData({ ssrs: r.data?.ssrs || [], bookingRefNo, airlinePnr })
+    } catch (e) { setErr(e.message || 'Failed to load post-booking SSR') }
+    finally { setPostSSRLoading(false) }
+  }
+
+  const confirmPostSSR = async () => {
+    if (!postSSRData || !selectedPostSSRs.length) return
+    setErr('')
+    try {
+      await flightsAPI.confirmPostSSR({
+        bookingRefNo: postSSRData.bookingRefNo,
+        airlinePnr: postSSRData.airlinePnr,
+        selections: selectedPostSSRs.map(k => ({ paxId: 1, ssrKey: k })),
+      })
+      showToast('Ancillary services confirmed!', 'success')
+      setPostSSRData(null); setSelectedPostSSRs([])
+    } catch (e) { setErr(e.message || 'Post-SSR confirmation failed') }
+  }
+
+  /* ─── Agency Balance (API 17) ─── */
+  const [agencyBalance, setAgencyBalance] = useState(null)
+  const fetchAgencyBalance = async (refNo) => {
+    try {
+      const r = await flightsAPI.getBalance(refNo)
+      setAgencyBalance(r.data)
+    } catch (e) { setErr(e.message || 'Balance check failed') }
+  }
+
+  /* ─── Hold Flight: TempBooking without payment/ticketing ─── */
+  const holdFlight = async (flight, fare) => {
+    if (!flight.searchKey || !flight.flightKey) return showToast('Cannot hold this flight — missing booking keys.', 'error')
+    const req = flightPending.find(r => r.id === form.requestId)
+    if (!req) return showToast('Select an approved flight request first.', 'warn')
+
+    const holdKey = `${flight.flightId}:${fare.fareId}`
+    setHoldLoading(holdKey); setHoldResult(null); setErr('')
+    try {
+      // Step 1: Reprice to validate fare
+      const rp = await flightsAPI.reprice({
+        searchKey: flight.searchKey,
+        flights: [{ flightKey: flight.flightKey, fareId: fare.fareId }],
+      })
+      if (rp.data?.fareChanged) {
+        showToast('Fare has changed since search. Please search again.', 'warn')
+        setHoldLoading(null)
+        return
+      }
+
+      // Step 2: TempBooking — creates PNR hold without payment
+      const r = await flightsAPI.tempBooking({
+        searchKey: flight.searchKey,
+        flightKey: flight.flightKey,
+        passengerEmail: req.user_email || 'booking@company.com',
+        passengerMobile: req.user_mobile || '9999999999',
+        passengers: [{
+          id: 1, type: 'ADT', title: 'Mr',
+          firstName: (req.user_name || 'Guest').split(' ')[0],
+          lastName: (req.user_name || 'Guest').split(' ').slice(1).join(' ') || 'User',
+          gender: 'M',
+        }],
+      })
+
+      const held = {
+        bookingRefNo: r.data?.bookingRefNo || '',
+        airlinePnr:   r.data?.airlinePnr || '',
+        blockedExpiry: r.data?.blockedExpiry || '',
+        totalAmount:   r.data?.totalAmount || fare.price,
+        status:        r.data?.status || 'Held',
+        flight: { airline: flight.airline, flightNumber: flight.flightNumber, departureTime: flight.departureTime, arrivalTime: flight.arrivalTime, duration: flight.duration, origin: flight.origin || form.origin, destination: flight.destination || form.destination },
+        fare: { type: fare.type, price: fare.price },
+        heldAt: new Date().toISOString(),
+        employeeName: req.user_name,
+        requestId: form.requestId,
+      }
+
+      setHoldResult(held)
+      setHeldFlights(prev => [held, ...prev])
+      showToast(`Flight held! PNR: ${held.bookingRefNo || held.airlinePnr || 'pending'}`, 'success')
+    } catch (e) {
+      showToast('Hold failed: ' + (e.message || 'Unknown error'), 'error')
+    } finally {
+      setHoldLoading(false)
+    }
+  }
+
+  /* ─── Pay & Ticket a held flight ─── */
+  const payAndTicketHeld = async (held) => {
+    setPayingHeld(held.bookingRefNo); setErr('')
+    try {
+      // AddPayment → Air_Ticketing (orchestrated)
+      const r = await flightsAPI.ticketing({
+        bookingRefNo: held.bookingRefNo,
+        ticketingType: 1,
+      })
+      showToast(`Ticket issued! PNR: ${r.data?.ticket?.airlinePnr || held.bookingRefNo}`, 'success')
+      // Update held list — mark as ticketed
+      setHeldFlights(prev => prev.map(h =>
+        h.bookingRefNo === held.bookingRefNo ? { ...h, status: 'Ticketed', ticketResult: r.data } : h
+      ))
+    } catch (e) {
+      showToast('Ticketing failed: ' + (e.message || 'Unknown error'), 'error')
+    } finally {
+      setPayingHeld(null)
+    }
+  }
+
+  /* ─── Release a held PNR ─── */
+  const releaseHeld = async (held) => {
+    setErr('')
+    try {
+      await flightsAPI.releasePnr({ bookingRefNo: held.bookingRefNo, airlinePnr: held.airlinePnr })
+      showToast('PNR released successfully', 'success')
+      setHeldFlights(prev => prev.map(h =>
+        h.bookingRefNo === held.bookingRefNo ? { ...h, status: 'Released' } : h
+      ))
+    } catch (e) {
+      showToast('Release failed: ' + (e.message || 'Unknown error'), 'error')
+    }
+  }
+
+  /* ─── Check status of a held PNR ─── */
+  const checkHeldStatus = async (held) => {
+    try {
+      const r = await flightsAPI.reprint({ bookingRefNo: held.bookingRefNo, airlinePnr: held.airlinePnr })
+      setHeldFlights(prev => prev.map(h =>
+        h.bookingRefNo === held.bookingRefNo ? { ...h, status: r.data?.status || h.status, latestReprint: r.data } : h
+      ))
+      showToast(`Status: ${r.data?.status || 'Unknown'}`, 'info')
+    } catch (e) {
+      showToast('Status check failed: ' + (e.message || 'Unknown error'), 'error')
     }
   }
 
@@ -547,7 +909,23 @@ export default function BookingPanel() {
     // The supplier returns HTML in FareRuleDesc — extract and clean it
     const fareRules = rules?.FareRules || [];
     const ruleHtml = fareRules.map(r => r.FareRuleDesc || '').join('');
-    // Parse out the key sections from supplier HTML into structured text
+    // Clean supplier HTML into readable text
+    const cleanHtml = (raw) => {
+      return raw
+        .replace(/<br\s*\/?>/gi, '\n')       // <br>, <br/>, <br />
+        .replace(/<\/br>/gi, '\n')            // </br>
+        .replace(/__nls__/g, '\n')            // supplier's custom line break
+        .replace(/<[^>]*>/g, '')              // strip all remaining HTML tags
+        .replace(/&nbsp;/gi, ' ')             // &nbsp; → space
+        .replace(/&amp;/gi, '&')              // &amp; → &
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#?\w+;/gi, '')             // any remaining HTML entities
+        .replace(/[ \t]+/g, ' ')              // collapse spaces (but keep \n)
+        .replace(/\n\s*\n/g, '\n')            // collapse blank lines
+        .trim();
+    };
     const parseRuleText = (html) => {
       if (!html) return [];
       const sections = [];
@@ -555,18 +933,13 @@ export default function BookingPanel() {
       const rowRegex = /<th[^>]*(?:colspan[^>]*)?>([^<]*)<\/th>\s*(?:<th[^>]*>[^<]*<\/th>\s*)?<td>([\s\S]*?)<\/td>/gi;
       let match;
       while ((match = rowRegex.exec(html)) !== null) {
-        const label = match[1].replace(/<[^>]*>/g, '').trim();
-        let content = match[2]
-          .replace(/<br\s*\/?>/gi, '\n')
-          .replace(/__nls__/g, '\n')
-          .replace(/<[^>]*>/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
+        const label = cleanHtml(match[1]).trim();
+        const content = cleanHtml(match[2]).trim();
         if (label && content) sections.push({ label, content });
       }
       // Fallback: strip all HTML
       if (!sections.length && html) {
-        const text = html.replace(/<br\s*\/?>/gi, '\n').replace(/__nls__/g, '\n').replace(/<[^>]*>/g, '').trim();
+        const text = cleanHtml(html);
         if (text) sections.push({ label: 'Fare Rules', content: text });
       }
       return sections;
@@ -587,7 +960,7 @@ export default function BookingPanel() {
           onClick={e => e.stopPropagation()}
           style={{
             background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20,
-            padding: 32, width: 520, maxHeight: '80vh', overflow: 'auto',
+            padding: 32, width: 520, maxWidth: '95vw', maxHeight: '80vh', overflowY: 'auto', overflowX: 'hidden',
             boxShadow: '0 24px 80px rgba(0,0,0,.6)',
           }}
         >
@@ -621,7 +994,7 @@ export default function BookingPanel() {
                   <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>{icon}</span> {rule.label}
                   </div>
-                  <div style={{ fontSize: 12, color: C.text, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                  <div style={{ fontSize: 12, color: C.text, lineHeight: 1.7, whiteSpace: 'pre-line', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     {rule.content}
                   </div>
                 </div>
@@ -645,6 +1018,283 @@ export default function BookingPanel() {
           >
             Close
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ──── LOW FARE CALENDAR POPUP (API 4) ──── */
+  if (lowFareData) {
+    const raw = lowFareData.fares;
+    // Navigate through possible nesting: data.fares.LowFares or data.fares.fares.LowFares
+    const dailyFares = raw?.LowFares || raw?.fares?.LowFares || raw?.LowFareDetails || raw?.Fares || [];
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }} onClick={() => setLowFareData(null)}>
+        <style>{GLOBAL_CSS}</style>
+        <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 32, width: 560, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 8 }}>📅 Low Fare Calendar</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>{lowFareData.origin} → {lowFareData.destination}</div>
+            <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>{lowFareData.month}/{lowFareData.year}</div>
+          </div>
+          {dailyFares.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+              {dailyFares.map((d, i) => {
+                const date = d.TravelDate || d.Date || d.DepartureDate || '';
+                const price = d.Total_Amount || d.Amount || d.Fare || d.MinFare || 0;
+                return (
+                  <div key={i} onClick={() => { setForm(v => ({ ...v, date: date.split(' ')[0]?.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$1-$2') || '' })); setLowFareData(null); }}
+                    style={{ background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '8px 4px', textAlign: 'center', cursor: 'pointer', transition: 'all .15s' }}>
+                    <div style={{ fontSize: 10, color: C.sub }}>
+                      {(() => { const [m,d2,y] = (date.split(' ')[0] || '').split('/'); return d2 ? `${d2}/${m}` : date; })()}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: price > 0 ? C.green : C.muted, marginTop: 2 }}>
+                      {price > 0 ? `₹${Number(price).toLocaleString('en-IN')}` : '—'}
+                    </div>
+                    {d.AirlineCode && <div style={{ fontSize: 9, color: C.muted, marginTop: 1 }}>{d.AirlineCode}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 20 }}>
+              No daily fare breakdown available for this route.
+            </div>
+          )}
+          <button onClick={() => setLowFareData(null)} style={{ width: '100%', marginTop: 16, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ──── SSR SELECTION POPUP (API 6) ──── */
+  if (ssrData) {
+    const { ssrs, flight, fare } = ssrData;
+    const ssrTotal = ssrs.filter(s => selectedSSRs.includes(s.ssrKey)).reduce((sum, s) => sum + s.price, 0);
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }} onClick={() => setSsrData(null)}>
+        <style>{GLOBAL_CSS}</style>
+        <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 32, width: 520, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 8 }}>🍽 Add Meals & Baggage</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>{flight.airline} · {flight.flightNumber}</div>
+            <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>{fare.type} Fare · ₹{fare.price?.toLocaleString('en-IN')}</div>
+          </div>
+          {ssrs.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {ssrs.map(s => {
+                const isSelected = selectedSSRs.includes(s.ssrKey);
+                return (
+                  <div key={s.ssrKey} onClick={() => toggleSSR(s.ssrKey)} style={{
+                    background: isSelected ? `${C.accent}15` : C.bg, border: `1px solid ${isSelected ? C.accent : C.divider}`,
+                    borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all .15s',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{s.desc || s.code}</div>
+                      <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>{s.type} · {s.code}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>₹{s.price?.toLocaleString('en-IN')}</span>
+                      <span style={{ fontSize: 16, color: isSelected ? C.accent : C.muted }}>{isSelected ? '☑' : '☐'}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 30 }}>No ancillary services available for this flight.</div>
+          )}
+          {selectedSSRs.length > 0 && (
+            <div style={{ marginTop: 16, padding: '12px 16px', background: C.bg, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.accent}40` }}>
+              <span style={{ fontSize: 13, color: C.sub }}>Selected: {selectedSSRs.length} item(s)</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: C.accent }}>+ ₹{ssrTotal.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button onClick={() => setSsrData(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
+            {selectedSSRs.length > 0 && (
+              <button onClick={() => { setSsrData(null); }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ──── SEAT MAP POPUP (API 7) ──── */
+  if (seatMapData) {
+    const { seatMap, flight } = seatMapData;
+    const segment = seatMap[0];
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }} onClick={() => setSeatMapData(null)}>
+        <style>{GLOBAL_CSS}</style>
+        <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 32, width: 480, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: C.green, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 8 }}>💺 Choose Your Seat</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>{flight.airline} · {flight.flightNumber}</div>
+          </div>
+          {segment && segment.rows?.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+              {segment.rows.map(row => (
+                <div key={row.rowNumber} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <span style={{ width: 24, fontSize: 10, color: C.muted, textAlign: 'right' }}>{row.rowNumber}</span>
+                  {row.seats.map(seat => (
+                    <div key={seat.seatNumber}
+                      onClick={() => seat.available && setSelectedSeat(selectedSeat === seat.seatNumber ? null : seat.seatNumber)}
+                      style={{
+                        width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9, fontWeight: 700, cursor: seat.available ? 'pointer' : 'not-allowed',
+                        background: selectedSeat === seat.seatNumber ? C.accent : seat.available ? C.bg : `${C.red}20`,
+                        color: selectedSeat === seat.seatNumber ? '#fff' : seat.available ? C.text : C.muted,
+                        border: `1px solid ${selectedSeat === seat.seatNumber ? C.accent : seat.available ? C.divider : `${C.red}30`}`,
+                        transition: 'all .15s',
+                      }}
+                      title={seat.available ? `${seat.seatNumber} — ₹${seat.price}` : `${seat.seatNumber} — Occupied`}
+                    >
+                      {seat.seatNumber.replace(/\d+/, '')}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 10, color: C.sub }}>
+                <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 3, background: C.bg, border: `1px solid ${C.divider}`, marginRight: 4, verticalAlign: 'middle' }} /> Available</span>
+                <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 3, background: `${C.red}20`, border: `1px solid ${C.red}30`, marginRight: 4, verticalAlign: 'middle' }} /> Occupied</span>
+                <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 3, background: C.accent, marginRight: 4, verticalAlign: 'middle' }} /> Selected</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 30 }}>
+              {seatMap.length === 0 ? 'Seat map not available for this flight.' : (
+                <pre style={{ color: C.text, fontSize: 11, textAlign: 'left', whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>{JSON.stringify(seatMap, null, 2)}</pre>
+              )}
+            </div>
+          )}
+          {selectedSeat && (
+            <div style={{ marginTop: 16, padding: '12px 16px', background: C.bg, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.green}40` }}>
+              <span style={{ fontSize: 13, color: C.text }}>Selected: <strong>{selectedSeat}</strong></span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>₹{segment?.rows?.flatMap(r => r.seats).find(s => s.seatNumber === selectedSeat)?.price?.toLocaleString('en-IN') || '0'}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button onClick={() => setSeatMapData(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
+            {selectedSeat && (
+              <button onClick={() => setSeatMapData(null)} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Seat</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ──── HOLD RESULT MODAL ──── */
+  if (holdResult) {
+    const h = holdResult;
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)', animation: 'fadeUp .2s ease' }} onClick={() => setHoldResult(null)}>
+        <style>{GLOBAL_CSS}</style>
+        <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.amber}40`, borderRadius: 20, padding: 32, width: 480, boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
+            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 8 }}>Flight Held Successfully</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>PNR on Hold</div>
+          </div>
+
+          <div style={{ background: C.bg, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: C.sub }}>Booking Ref</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.amber }}>{h.bookingRefNo || '—'}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: C.sub }}>Airline PNR</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{h.airlinePnr || '—'}</div>
+              </div>
+            </div>
+            <div style={{ borderTop: `1px solid ${C.divider}`, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: C.sub }}>Flight</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{h.flight.airline} · {h.flight.flightNumber}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: C.sub }}>Route</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{h.flight.origin} → {h.flight.destination}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: C.sub }}>Time</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{h.flight.departureTime} → {h.flight.arrivalTime}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: C.sub }}>Fare</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{h.fare.type} · ₹{h.totalAmount?.toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: C.sub }}>Employee</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{h.employeeName}</span>
+              </div>
+              {h.blockedExpiry && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: C.sub }}>Hold Expires</span>
+                  <span style={{ color: C.red, fontWeight: 700 }}>{h.blockedExpiry}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ background: `${C.amber}10`, border: `1px solid ${C.amber}30`, borderRadius: 10, padding: '12px 16px', fontSize: 12, color: C.amber, marginBottom: 20 }}>
+            ⏳ This PNR is held but NOT ticketed. Go to <strong>Booking Management → Held Flights</strong> to pay and issue the ticket before the hold expires.
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setHoldResult(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
+            <button onClick={() => { setHoldResult(null); setMgmtPanel('held'); }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, #FFB84D)`, color: '#000', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ──── AIR BOOKING PROGRESS (APIs 5,8,9,17,18) ──── */
+  if (airBookingStep) {
+    const steps = [
+      { key: 'repricing', label: 'Validating fare...', icon: '🔄' },
+      { key: 'booking', label: 'Creating PNR hold...', icon: '📝' },
+      { key: 'paying', label: 'Processing payment...', icon: '💳' },
+      { key: 'ticketing', label: 'Issuing ticket...', icon: '🎫' },
+      { key: 'done', label: 'Booking confirmed!', icon: '✅' },
+      { key: 'error', label: 'Booking failed', icon: '❌' },
+    ];
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+        <style>{GLOBAL_CSS}</style>
+        <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 36, width: 440, boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 20 }}>✈ Air API Booking</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {steps.filter(s => s.key !== 'error' || airBookingStep === 'error').filter(s => s.key !== 'done' || airBookingStep === 'done').slice(0, airBookingStep === 'done' ? 5 : airBookingStep === 'error' ? 6 : undefined).map(s => {
+              const isCurrent = s.key === airBookingStep;
+              const isPast = steps.findIndex(x => x.key === airBookingStep) > steps.findIndex(x => x.key === s.key);
+              return (
+                <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: isPast ? 0.5 : 1 }}>
+                  <span style={{ fontSize: 18 }}>{isPast ? '✓' : s.icon}</span>
+                  <span style={{ fontSize: 14, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? C.text : C.sub }}>
+                    {s.label} {isCurrent && airBookingStep !== 'done' && airBookingStep !== 'error' && <DotLoader />}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {airBookingResult && airBookingStep === 'done' && (
+            <div style={{ marginTop: 20, background: C.bg, borderRadius: 12, padding: 16, border: `1px solid ${C.green}30` }}>
+              <div style={{ fontSize: 12, color: C.sub }}>Booking Reference</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.green, marginTop: 4 }}>{airBookingResult.ticket?.bookingRefNo || airBookingResult.tempBooking?.bookingRefNo || '—'}</div>
+              {airBookingResult.ticket?.airlinePnr && (
+                <div style={{ fontSize: 12, color: C.sub, marginTop: 8 }}>Airline PNR: <strong style={{ color: C.text }}>{airBookingResult.ticket.airlinePnr}</strong></div>
+              )}
+            </div>
+          )}
+          {(airBookingStep === 'done' || airBookingStep === 'error') && (
+            <button onClick={() => { setAirBookingStep(null); setAirBookingResult(null); }} style={{ width: '100%', marginTop: 20, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
+          )}
         </div>
       </div>
     );
@@ -1884,6 +2534,7 @@ export default function BookingPanel() {
         }}
       >
         <style>{GLOBAL_CSS}</style>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         {err && <ErrBar>{err}</ErrBar>}
         {booked && (
@@ -2710,20 +3361,49 @@ export default function BookingPanel() {
                                   }
                                 />
                               )}
-                              <div
-                                onClick={() => fetchFareRule(fl, fare)}
-                                style={{
-                                  marginTop: 4,
-                                  fontSize: 11,
-                                  color: C.accent,
-                                  cursor: fareRuleLoading ? 'wait' : 'pointer',
-                                  fontWeight: 600,
-                                  textAlign: 'center',
-                                  opacity: fareRuleLoading ? 0.5 : 1,
-                                }}
-                              >
-                                {fareRuleLoading ? '⏳ Loading...' : '📋 View Policy Details'}
-                              </div>
+                              {(() => {
+                                const thisKey = `${fl.flightId}:${fare.fareId}`;
+                                const isFareRuleThis = fareRuleLoading === thisKey;
+                                const isSSRThis = ssrLoading === fl.flightId;
+                                const isSeatThis = seatMapLoading === fl.flightId;
+                                return (
+                                  <>
+                                    <div
+                                      onClick={() => !fareRuleLoading && fetchFareRule(fl, fare)}
+                                      style={{
+                                        marginTop: 4, fontSize: 11, color: C.accent,
+                                        cursor: isFareRuleThis ? 'wait' : 'pointer',
+                                        fontWeight: 600, textAlign: 'center',
+                                        opacity: (fareRuleLoading && !isFareRuleThis) ? 0.4 : 1,
+                                      }}
+                                    >
+                                      {isFareRuleThis ? '⏳ Loading...' : '📋 View Policy Details'}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
+                                      <div
+                                        onClick={() => !ssrLoading && fetchSSR(fl, fare)}
+                                        style={{
+                                          fontSize: 11, color: C.amber, fontWeight: 600,
+                                          cursor: isSSRThis ? 'wait' : 'pointer',
+                                          opacity: (ssrLoading && !isSSRThis) ? 0.4 : 1,
+                                        }}
+                                      >
+                                        {isSSRThis ? '⏳ Loading...' : '🍽 Add Meals/Baggage'}
+                                      </div>
+                                      <div
+                                        onClick={() => !seatMapLoading && fetchSeatMap(fl)}
+                                        style={{
+                                          fontSize: 11, color: C.green, fontWeight: 600,
+                                          cursor: isSeatThis ? 'wait' : 'pointer',
+                                          opacity: (seatMapLoading && !isSeatThis) ? 0.4 : 1,
+                                        }}
+                                      >
+                                        {isSeatThis ? '⏳ Loading...' : '💺 Choose Seat'}
+                                      </div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                             </div>
                             <button
                               onClick={() => {
@@ -2757,6 +3437,37 @@ export default function BookingPanel() {
                             >
                               {booking ? <DotLoader /> : "✈ Select & Book"}
                             </button>
+                            {(() => {
+                              const thisHoldKey = `${fl.flightId}:${fare.fareId}`;
+                              const isThisLoading = holdLoading === thisHoldKey;
+                              const anyLoading = !!holdLoading;
+                              return (
+                                <button
+                                  onClick={() => holdFlight(fl, fare)}
+                                  disabled={anyLoading || booking}
+                                  style={{
+                                    width: '100%',
+                                    background: 'none',
+                                    color: C.amber,
+                                    border: `1px solid ${C.amber}40`,
+                                    padding: '9px 0',
+                                    borderRadius: 10,
+                                    fontWeight: 700,
+                                    cursor: (anyLoading || booking) ? 'default' : 'pointer',
+                                    fontSize: 12,
+                                    transition: 'all .2s',
+                                    opacity: (anyLoading || booking) ? 0.5 : 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                    marginTop: 8,
+                                  }}
+                                >
+                                  {isThisLoading ? <DotLoader /> : '🔒 Hold & Pay Later'}
+                                </button>
+                              );
+                            })()}
                           </div>
                         ))}
                       </div>
@@ -2781,6 +3492,7 @@ export default function BookingPanel() {
       }}
     >
       <style>{GLOBAL_CSS}</style>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Hero */}
       <div style={{ marginBottom: 28 }}>
@@ -2831,6 +3543,86 @@ export default function BookingPanel() {
           </div>
           <TicketCard ticket={booked} onClose={() => setBooked(null)} />
         </div>
+      )}
+
+      {/* ── Special Fare Deals (from Air_SectorAvailabilityPI) ── */}
+      {modeTab === 'Flight' && sectorDeals.length > 0 && !rawResults && (
+        <GlassCard style={{ marginBottom: 28, padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            padding: '16px 24px',
+            borderBottom: `1px solid ${C.cardBorder}`,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{ fontSize: 18 }}>🔥</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>Special Fare Deals</div>
+              <div style={{ fontSize: 11, color: C.sub }}>Bulk-negotiated series fares at discounted rates</div>
+            </div>
+          </div>
+          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {sectorDeals.map((deal, i) => {
+              const fromDate = deal.firstDate;
+              const toDate = deal.lastDate;
+              // Parse MM/DD/YYYY to display-friendly format
+              const fmtDate = (d) => {
+                if (!d) return '';
+                const [m, day, y] = d.split('/');
+                const dt = new Date(y, m - 1, day);
+                return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+              };
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: C.bg, borderRadius: 12, padding: '14px 20px',
+                  border: `1px solid ${C.divider}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12,
+                      background: `linear-gradient(135deg, ${C.accent}30, ${C.accent}10)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18,
+                    }}>✈️</div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>
+                        {cityName(deal.origin)} → {cityName(deal.destination)}
+                        <span style={{ fontSize: 11, color: C.muted, fontWeight: 500, marginLeft: 8 }}>
+                          {deal.origin} → {deal.destination}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.sub, marginTop: 3 }}>
+                        📅 {fmtDate(fromDate)} — {fmtDate(toDate)}
+                        <span style={{ marginLeft: 12, color: C.green, fontWeight: 600 }}>
+                          {deal.dates.length} dates available
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setForm(v => ({
+                        ...v,
+                        origin: cityName(deal.origin),
+                        destination: cityName(deal.destination),
+                        date: '',
+                      }));
+                      setModeTab('Flight');
+                    }}
+                    style={{
+                      background: `linear-gradient(135deg, ${C.accent}, #9B6BFF)`,
+                      color: '#fff', border: 'none', padding: '9px 18px',
+                      borderRadius: 10, fontWeight: 700, cursor: 'pointer',
+                      fontSize: 12, boxShadow: `0 4px 14px ${C.accentGlow}`,
+                      transition: 'all .2s', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Search Deals →
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </GlassCard>
       )}
 
       {/* ── Search Card ── */}
@@ -3351,6 +4143,20 @@ export default function BookingPanel() {
                 >
                   {searching ? <DotLoader /> : "🔍 Search"}
                 </button>
+                {modeTab === 'Flight' && (
+                  <button
+                    onClick={fetchLowFare}
+                    disabled={lowFareLoading}
+                    style={{
+                      background: 'none', border: `1px solid ${C.accent}40`, borderRadius: 10,
+                      padding: '0 16px', height: '100%', minWidth: 90, fontSize: 12,
+                      fontWeight: 700, color: C.accent, cursor: lowFareLoading ? 'wait' : 'pointer',
+                      marginLeft: 8, transition: 'all .2s',
+                    }}
+                  >
+                    {lowFareLoading ? '⏳' : '📅 Low Fares'}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -3589,6 +4395,319 @@ export default function BookingPanel() {
           )}
         </GlassCard>
       </div>
+
+      {/* ── Booking Management Section (APIs 10-16, 17) ── */}
+      {modeTab === 'Flight' && (
+        <GlassCard style={{ marginTop: 28, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>✈ Booking Management</div>
+              <div style={{ fontSize: 11, color: C.sub }}>Reprint, history, cancellation & post-booking services</div>
+            </div>
+          </div>
+          {/* Tab buttons */}
+          <div style={{ display: 'flex', borderBottom: `1px solid ${C.cardBorder}`, padding: '0 24px' }}>
+            {[
+              { id: 'held', icon: '🔒', label: `Held Flights${heldFlights.filter(h => h.status === 'Held').length ? ` (${heldFlights.filter(h => h.status === 'Held').length})` : ''}` },
+              { id: 'reprint', icon: '🔄', label: 'Reprint' },
+              { id: 'history', icon: '📋', label: 'History' },
+              { id: 'cancel', icon: '❌', label: 'Cancel' },
+              { id: 'postssr', icon: '🍽', label: 'Add Services' },
+              { id: 'balance', icon: '💰', label: 'Agency Balance' },
+            ].map(t => (
+              <button key={t.id} onClick={() => setMgmtPanel(mgmtPanel === t.id ? null : t.id)} style={{
+                padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: mgmtPanel === t.id ? `2px solid ${C.accent}` : '2px solid transparent',
+                color: mgmtPanel === t.id ? C.accent : C.muted, fontSize: 12, fontWeight: mgmtPanel === t.id ? 700 : 400,
+                transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Panel content */}
+          <div style={{ padding: 24 }}>
+            {/* Held Flights — Hold & Pay Later */}
+            {mgmtPanel === 'held' && (
+              <div>
+                {heldFlights.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 30 }}>
+                    No held flights. Use the <strong>"🔒 Hold & Pay Later"</strong> button on a fare card to hold a flight.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {heldFlights.map((h, i) => {
+                      const isActive = h.status === 'Held';
+                      const isTicketed = h.status === 'Ticketed';
+                      const isReleased = h.status === 'Released';
+                      const statusColor = isTicketed ? C.green : isReleased ? C.red : C.amber;
+                      return (
+                        <div key={i} style={{
+                          background: C.bg, borderRadius: 12, padding: 16,
+                          border: `1px solid ${isActive ? C.amber + '40' : C.divider}`,
+                          opacity: isActive ? 1 : 0.6,
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+                                {h.flight.airline} · {h.flight.flightNumber}
+                              </div>
+                              <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>
+                                {h.flight.origin} → {h.flight.destination} · {h.flight.departureTime} → {h.flight.arrivalTime}
+                              </div>
+                              <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>
+                                For: {h.employeeName} · {h.fare.type} · ₹{h.totalAmount?.toLocaleString('en-IN')}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {h.status}
+                              </div>
+                              <div style={{ fontSize: 15, fontWeight: 900, color: C.amber, marginTop: 4 }}>
+                                {h.bookingRefNo || '—'}
+                              </div>
+                              {h.airlinePnr && (
+                                <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>PNR: {h.airlinePnr}</div>
+                              )}
+                            </div>
+                          </div>
+                          {h.blockedExpiry && isActive && (
+                            <div style={{ fontSize: 11, color: C.red, fontWeight: 600, marginBottom: 10 }}>
+                              ⏳ Hold expires: {h.blockedExpiry}
+                            </div>
+                          )}
+                          {isActive && (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                onClick={() => payAndTicketHeld(h)}
+                                disabled={payingHeld === h.bookingRefNo}
+                                style={{
+                                  flex: 1, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: '#000',
+                                  border: 'none', padding: '10px 0', borderRadius: 8, fontWeight: 700,
+                                  cursor: payingHeld ? 'wait' : 'pointer', fontSize: 12,
+                                  opacity: payingHeld === h.bookingRefNo ? 0.6 : 1,
+                                }}
+                              >
+                                {payingHeld === h.bookingRefNo ? '⏳ Processing...' : '💳 Pay & Issue Ticket'}
+                              </button>
+                              <button
+                                onClick={() => checkHeldStatus(h)}
+                                style={{
+                                  background: C.bg, color: C.accent, border: `1px solid ${C.accent}40`,
+                                  padding: '10px 14px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11,
+                                }}
+                              >
+                                🔍 Status
+                              </button>
+                              <button
+                                onClick={() => releaseHeld(h)}
+                                style={{
+                                  background: `${C.red}15`, color: C.red, border: `1px solid ${C.red}40`,
+                                  padding: '10px 14px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11,
+                                }}
+                              >
+                                ✕ Release
+                              </button>
+                            </div>
+                          )}
+                          {isTicketed && h.ticketResult && (
+                            <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 8 }}>
+                              ✅ Ticketed — PNR: {h.ticketResult.ticket?.airlinePnr || h.airlinePnr}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reprint (API 10) + Release (API 13) */}
+            {mgmtPanel === 'reprint' && (() => {
+              const RefInput = () => {
+                const [refNo, setRefNo] = useState('');
+                const [pnr, setPnr] = useState('');
+                return (
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR (optional)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <button onClick={() => fetchReprint(refNo, pnr)} disabled={reprintLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                        {reprintLoading ? '⏳' : '🔍 Fetch'}
+                      </button>
+                    </div>
+                    {reprintData && (
+                      <div style={{ background: C.bg, borderRadius: 12, padding: 16, border: `1px solid ${C.divider}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 12, color: C.sub }}>Booking Ref</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{reprintData.bookingRefNo || '—'}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 12, color: C.sub }}>Airline PNR</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: C.green }}>{reprintData.airlinePnr || '—'}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, fontSize: 12, color: C.sub, marginBottom: 12 }}>
+                          <span>Status: <strong style={{ color: C.text }}>{reprintData.status}</strong></span>
+                          <span>Amount: <strong style={{ color: C.text }}>₹{reprintData.totalAmount?.toLocaleString('en-IN') || '—'}</strong></span>
+                          {reprintData.blockedExpiry && <span>Expiry: <strong style={{ color: C.amber }}>{reprintData.blockedExpiry}</strong></span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => executeReleasePnr(reprintData.bookingRefNo, reprintData.airlinePnr)} style={{ background: `${C.red}20`, color: C.red, border: `1px solid ${C.red}40`, padding: '8px 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11 }}>Release PNR</button>
+                        </div>
+                        <pre style={{ marginTop: 12, fontSize: 10, color: C.muted, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>{JSON.stringify(reprintData.raw, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return <RefInput />;
+            })()}
+
+            {/* History (API 11) */}
+            {mgmtPanel === 'history' && (() => {
+              const HistPanel = () => {
+                const [from, setFrom] = useState('');
+                const [to, setTo] = useState('');
+                return (
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                      <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <button onClick={() => {
+                        const fmtD = d => { const p = d.split('-'); return `${p[1]}/${p[2]}/${p[0]}`; };
+                        fetchAirHistory(fmtD(from), fmtD(to));
+                      }} disabled={airHistoryLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                        {airHistoryLoading ? '⏳' : '📋 Fetch'}
+                      </button>
+                    </div>
+                    {airHistory && (
+                      <div style={{ background: C.bg, borderRadius: 12, padding: 16, border: `1px solid ${C.divider}`, maxHeight: 400, overflow: 'auto' }}>
+                        <pre style={{ fontSize: 11, color: C.text, whiteSpace: 'pre-wrap' }}>{JSON.stringify(airHistory, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return <HistPanel />;
+            })()}
+
+            {/* Cancel (API 12) */}
+            {mgmtPanel === 'cancel' && (() => {
+              const CancelPanel = () => {
+                const [refNo, setRefNo] = useState('');
+                const [pnr, setPnr] = useState('');
+                const [remarks, setRemarks] = useState('');
+                return (
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                    </div>
+                    <input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Cancellation remarks (optional)" style={{ width: '100%', background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }} />
+                    <button onClick={() => executeCancellation(refNo, pnr, [], remarks)} style={{ background: `linear-gradient(135deg,${C.red},#FF6B6B)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                      ❌ Submit Cancellation
+                    </button>
+                    {cancelResult && (
+                      <div style={{ marginTop: 16, background: C.bg, borderRadius: 12, padding: 16, border: `1px solid ${C.divider}` }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.green, marginBottom: 8 }}>Cancellation submitted</div>
+                        <div style={{ fontSize: 12, color: C.sub }}>Ref: {cancelResult.bookingRefNo} · Status: {cancelResult.status}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return <CancelPanel />;
+            })()}
+
+            {/* Post-Booking SSR (APIs 14-16) */}
+            {mgmtPanel === 'postssr' && (() => {
+              const PostSSRPanel = () => {
+                const [refNo, setRefNo] = useState('');
+                const [pnr, setPnr] = useState('');
+                return (
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR (optional)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <button onClick={() => fetchPostSSR(refNo, pnr)} disabled={postSSRLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                        {postSSRLoading ? '⏳' : '🍽 Load Services'}
+                      </button>
+                    </div>
+                    {postSSRData && (
+                      <div>
+                        {postSSRData.ssrs.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {postSSRData.ssrs.map(s => {
+                              const sel = selectedPostSSRs.includes(s.ssrKey);
+                              return (
+                                <div key={s.ssrKey} onClick={() => setSelectedPostSSRs(prev => sel ? prev.filter(k => k !== s.ssrKey) : [...prev, s.ssrKey])} style={{
+                                  background: sel ? `${C.accent}15` : C.bg, border: `1px solid ${sel ? C.accent : C.divider}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                }}>
+                                  <div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{s.desc || s.code}</div>
+                                    <div style={{ fontSize: 11, color: C.sub }}>{s.type}</div>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>₹{s.price?.toLocaleString('en-IN')}</span>
+                                    <span style={{ fontSize: 16, color: sel ? C.accent : C.muted }}>{sel ? '☑' : '☐'}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {selectedPostSSRs.length > 0 && (
+                              <button onClick={confirmPostSSR} style={{ marginTop: 12, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                                Confirm {selectedPostSSRs.length} Service(s) & Pay
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 20 }}>No post-booking services available.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return <PostSSRPanel />;
+            })()}
+
+            {/* Agency Balance (API 17) */}
+            {mgmtPanel === 'balance' && (() => {
+              const BalPanel = () => {
+                const [refNo, setRefNo] = useState('');
+                return (
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <button onClick={() => fetchAgencyBalance(refNo)} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                        💰 Check Balance
+                      </button>
+                    </div>
+                    {agencyBalance && (
+                      <div style={{ background: C.bg, borderRadius: 12, padding: 20, border: `1px solid ${C.green}30`, textAlign: 'center' }}>
+                        <div style={{ fontSize: 12, color: C.sub, marginBottom: 4 }}>Agency Wallet Balance</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: C.green }}>₹{agencyBalance.balance?.toLocaleString('en-IN') || '0'}</div>
+                        <div style={{ fontSize: 11, color: C.sub, marginTop: 8 }}>{agencyBalance.currency || 'INR'}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return <BalPanel />;
+            })()}
+
+            {!mgmtPanel && (
+              <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 20 }}>
+                Select a tab above to manage bookings
+              </div>
+            )}
+          </div>
+        </GlassCard>
+      )}
     </div>
   );
 }

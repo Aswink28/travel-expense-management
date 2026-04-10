@@ -7,3 +7,10 @@ backend/node_modules/
 .env
 frontend/.env
 backend/.env
+
+# Log files
+backend/logs/
+backend/airapi.log
+
+# Build artifacts
+frontend/dist/
