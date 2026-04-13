@@ -255,6 +255,20 @@ input, select, textarea, button {
   color: inherit;
 }
 
+select {
+  background: var(--bg-input, #1A1A22);
+  border: 1px solid var(--border-input, #2A2A35);
+  border-radius: 8px;
+  color: var(--text-primary, #E2E2E8);
+  padding: 7px 12px;
+  outline: none;
+}
+
+select option {
+  background: var(--bg-card, #12121E);
+  color: var(--text-primary, #E2E2E8);
+}
+
 button { background: none; border: none; cursor: pointer; }
 
 a { color: var(--accent); text-decoration: none; }

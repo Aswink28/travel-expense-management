@@ -353,7 +353,7 @@ export default function EmployeeManagement({ setTab }) {
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:4 }}>
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} style={{
-                background:'none', border:'1px solid #2A2A35', borderRadius:6, color:safePage<=1?'#333':'#999',
+                background:'none', border:'1px solid #2A2A35', borderRadius:6, color:safePage<=1?'#555':'#999',
                 padding:'5px 10px', fontSize:12, cursor:safePage<=1?'default':'pointer',
               }}>← Prev</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -369,7 +369,7 @@ export default function EmployeeManagement({ setTab }) {
                     }}>{p}</button>
                 )}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} style={{
-                background:'none', border:'1px solid #2A2A35', borderRadius:6, color:safePage>=totalPages?'#333':'#999',
+                background:'none', border:'1px solid #2A2A35', borderRadius:6, color:safePage>=totalPages?'#555':'#999',
                 padding:'5px 10px', fontSize:12, cursor:safePage>=totalPages?'default':'pointer',
               }}>Next →</button>
             </div>
@@ -525,7 +525,7 @@ export default function EmployeeManagement({ setTab }) {
                 onClick={handleWalletAction}
                 style={{
                   background: walletAction.type === 'suspend' ? '#FFD60A' : '#FF453A',
-                  color: walletAction.type === 'suspend' ? '#000' : '#fff',
+                  color: walletAction.type === 'suspend' ? '#0B0B14' : '#fff',
                   opacity: walletActing || !walletReason.trim() ? 0.5 : 1,
                 }}
               >

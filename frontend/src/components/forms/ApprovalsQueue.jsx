@@ -76,7 +76,7 @@ export default function ApprovalsQueue() {
       </Card>
 
       {queue.length === 0 ? (
-        <div style={{ textAlign:'center', padding:60, color:'#333' }}>
+        <div style={{ textAlign:'center', padding:60, color:'#666' }}>
           <div style={{ fontSize:36, marginBottom:12 }}>◎</div>
           <div style={{ fontSize:14 }}>All caught up!</div>
         </div>
@@ -226,7 +226,7 @@ export default function ApprovalsQueue() {
             <div style={{ fontSize:13, color:'#999', marginBottom:20, lineHeight:1.6, padding:'0 10px' }}>
               {walletWarning}
             </div>
-            <Button style={{ width:'100%', justifyContent:'center', background:'#FFD60A', color:'#000' }} onClick={() => setWalletWarning(null)}>
+            <Button style={{ width:'100%', justifyContent:'center', background:'#FFD60A', color:'#0B0B14' }} onClick={() => setWalletWarning(null)}>
               Understood
             </Button>
           </div>

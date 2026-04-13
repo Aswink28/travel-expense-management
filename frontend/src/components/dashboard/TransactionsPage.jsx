@@ -153,7 +153,7 @@ export default function TransactionsPage() {
       {/* Transaction table */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {paged.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#333', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: 60, color: '#555', fontSize: 13 }}>
             {rawData.length === 0 ? 'No transaction history available' : 'No transactions match your filters'}
           </div>
         ) : tab === 'ppi' ? (
@@ -176,7 +176,7 @@ export default function TransactionsPage() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: '#888' }}>
                       {date ? new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                      <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
                         {date ? new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
                       </div>
                     </td>
@@ -193,12 +193,12 @@ export default function TransactionsPage() {
                         {type.toLowerCase() === 'debit' ? '-' : '+'}{Number(t.amount || 0).toLocaleString('en-IN')}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 11, color: fee > 0 ? '#FFD60A' : '#333' }}>
+                    <td style={{ padding: '12px 14px', fontSize: 11, color: fee > 0 ? '#FFD60A' : '#555' }}>
                       {fee > 0 ? `₹${fee.toLocaleString('en-IN')}` : '-'}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ fontSize: 10, color: '#555', fontFamily: 'monospace' }}>{t.txn_ref_number || '-'}</div>
-                      {t.merchant_name && <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>{t.merchant_name}</div>}
+                      {t.merchant_name && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{t.merchant_name}</div>}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: (t.transaction_status || '').toUpperCase() === 'SUCCESS' ? '#30D15818' : '#FFD60A18', color: (t.transaction_status || '').toUpperCase() === 'SUCCESS' ? '#30D158' : '#FFD60A' }}>
@@ -227,13 +227,13 @@ export default function TransactionsPage() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: '#888' }}>
                       {new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
                         {new Date(t.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 12, color: '#ccc', maxWidth: 240 }}>
                       <div>{t.description}</div>
-                      {t.reference && <div style={{ fontSize: 10, color: '#444', marginTop: 2 }}>Ref: {t.reference}</div>}
+                      {t.reference && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>Ref: {t.reference}</div>}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ fontSize: 13 }}>{catIcons[t.category] || '📋'}</span>
@@ -262,7 +262,7 @@ export default function TransactionsPage() {
       {totalPages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16 }}>
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #1E1E2A', background: '#111118', color: page === 1 ? '#333' : '#888', cursor: page === 1 ? 'default' : 'pointer', fontSize: 12 }}>
+            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #1E1E2A', background: '#111118', color: page === 1 ? '#555' : '#888', cursor: page === 1 ? 'default' : 'pointer', fontSize: 12 }}>
             Prev
           </button>
           {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
@@ -280,10 +280,10 @@ export default function TransactionsPage() {
             )
           })}
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #1E1E2A', background: '#111118', color: page === totalPages ? '#333' : '#888', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 12 }}>
+            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #1E1E2A', background: '#111118', color: page === totalPages ? '#555' : '#888', cursor: page === totalPages ? 'default' : 'pointer', fontSize: 12 }}>
             Next
           </button>
-          <span style={{ fontSize: 11, color: '#444', marginLeft: 8 }}>
+          <span style={{ fontSize: 11, color: '#666', marginLeft: 8 }}>
             Page {page} of {totalPages} ({filtered.length} transactions)
           </span>
         </div>

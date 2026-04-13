@@ -1247,7 +1247,7 @@ export default function BookingPanel() {
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setHoldResult(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
-            <button onClick={() => { setHoldResult(null); setMgmtPanel('held'); }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, #FFB84D)`, color: '#000', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
+            <button onClick={() => { setHoldResult(null); setMgmtPanel('held'); }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, #FFB84D)`, color: '#0B0B14', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
           </div>
         </div>
       </div>
@@ -4483,7 +4483,7 @@ export default function BookingPanel() {
                                 onClick={() => payAndTicketHeld(h)}
                                 disabled={payingHeld === h.bookingRefNo}
                                 style={{
-                                  flex: 1, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: '#000',
+                                  flex: 1, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: '#0B0B14',
                                   border: 'none', padding: '10px 0', borderRadius: 8, fontWeight: 700,
                                   cursor: payingHeld ? 'wait' : 'pointer', fontSize: 12,
                                   opacity: payingHeld === h.bookingRefNo ? 0.6 : 1,

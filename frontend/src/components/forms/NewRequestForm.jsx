@@ -224,10 +224,10 @@ export default function NewRequestForm({ onSuccess }) {
 
   // --- VELOCITY DESIGN SYSTEM STYLES ---
   const accent = user?.color || '#0A84FF'
-  const sectionTitleStyle = { fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 20 }
-  const labelStyle = { fontSize: 11, color: '#888', marginBottom: 6, display: 'block', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }
-  const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid #2A2A35', background: '#13131A', outline: 'none', fontSize: 14, color: '#fff', transition: 'border 0.2s' }
-  const cardStyle = { background: '#1A1A22', borderRadius: 12, padding: 24, border: '1px solid #2A2A35' }
+  const sectionTitleStyle = { fontSize: 16, fontWeight: 700, color: 'var(--text-primary, #F0F0F8)', marginBottom: 20 }
+  const labelStyle = { fontSize: 11, color: 'var(--text-muted, #9090A8)', marginBottom: 6, display: 'block', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border, #2A2A35)', background: 'var(--bg-input, #13131A)', outline: 'none', fontSize: 14, color: 'var(--text-primary, #F0F0F8)', transition: 'border 0.2s' }
+  const cardStyle = { background: 'var(--bg-card, #1A1A22)', borderRadius: 12, padding: 24, border: '1px solid var(--border, #2A2A35)' }
   // Returns red-border style when field is empty after a submit attempt
   const req = (val) => submitted && !String(val || '').trim()
     ? { ...inputStyle, border: '1px solid #FF453A', boxShadow: '0 0 0 2px #FF453A22' }
@@ -237,24 +237,24 @@ export default function NewRequestForm({ onSuccess }) {
     <div style={{ ...cardStyle, textAlign: 'center', padding: 80, maxWidth: 600, margin: '40px auto' }}>
       <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
       <div style={{ fontSize: 24, fontWeight: 800, color: '#30D158', marginBottom: 8 }}>Success</div>
-      <div style={{ color: '#aaa' }}>{success}</div>
+      <div style={{ color: 'var(--text-muted, #9090A8)' }}>{success}</div>
     </div>
   )
 
   return (
-    <div className="fade-up" style={{ maxWidth: 1200, margin: '0 auto', color: '#E2E2E8' }}>
+    <div className="fade-up" style={{ maxWidth: 1200, margin: '0 auto', color: 'var(--text-body, #E2E2E8)' }}>
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <button
           onClick={() => onSuccess && onSuccess()}
-          style={{ background: '#1A1A22', border: '1px solid #2A2A35', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ background: 'var(--bg-card, #1A1A22)', border: '1px solid var(--border, #2A2A35)', color: 'var(--text-primary, #F0F0F8)', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
         >
           ←
         </button>
         <div style={{ flex: 1 }}>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#fff' }}>Draft Travel Request</h2>
-          <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>Company booked travel workflows</div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #F0F0F8)' }}>Draft Travel Request</h2>
+          <div style={{ fontSize: 12, color: 'var(--text-muted, #9090A8)', marginTop: 4 }}>Company booked travel workflows</div>
         </div>
         <button
           onClick={handleDemoFill}
@@ -283,13 +283,13 @@ export default function NewRequestForm({ onSuccess }) {
             <div>
               <label style={labelStyle}>Trip Type</label>
               <div style={{ display: 'flex', gap: 12 }}>
-                <label style={{ flex: 1, padding: 12, background: form.trip_type === 'Domestic' ? `${accent}15` : '#13131A', border: `1px solid ${form.trip_type === 'Domestic' ? accent : '#2A2A35'}`, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s' }}>
+                <label style={{ flex: 1, padding: 12, background: form.trip_type === 'Domestic' ? `${accent}15` : 'var(--bg-input, #13131A)', border: `1px solid ${form.trip_type === 'Domestic' ? accent : 'var(--border, #2A2A35)'}`, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s' }}>
                   <input type="radio" checked={form.trip_type === 'Domestic'} onChange={() => set('trip_type', 'Domestic')} style={{ accentColor: accent }} />
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: form.trip_type === 'Domestic' ? accent : '#E2E2E8' }}>Domestic</div>
                   </div>
                 </label>
-                <label style={{ flex: 1, padding: 12, background: form.trip_type === 'International' ? `${accent}15` : '#13131A', border: `1px solid ${form.trip_type === 'International' ? accent : '#2A2A35'}`, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s' }}>
+                <label style={{ flex: 1, padding: 12, background: form.trip_type === 'International' ? `${accent}15` : 'var(--bg-input, #13131A)', border: `1px solid ${form.trip_type === 'International' ? accent : 'var(--border, #2A2A35)'}`, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s' }}>
                   <input type="radio" checked={form.trip_type === 'International'} onChange={() => set('trip_type', 'International')} style={{ accentColor: accent }} />
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: form.trip_type === 'International' ? accent : '#E2E2E8' }}>International</div>
@@ -359,7 +359,7 @@ export default function NewRequestForm({ onSuccess }) {
 
       {/* ITINERARY TABS */}
       <div style={{ ...cardStyle, marginBottom: 24, padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid #2A2A35', padding: '0 16px', background: '#13131A' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #2A2A35', padding: '0 16px', background: 'var(--bg-input, #13131A)' }}>
           {['Flight', 'Bus', 'Hotel'].map(mode => (
             <div 
               key={mode} 
@@ -367,7 +367,7 @@ export default function NewRequestForm({ onSuccess }) {
               style={{ 
                 padding: '16px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                 borderBottom: activeTab === mode ? `3px solid ${accent}` : '3px solid transparent',
-                color: activeTab === mode ? accent : '#666',
+                color: activeTab === mode ? accent : 'var(--text-faint, #666)',
                 fontWeight: activeTab === mode ? 600 : 500,
                 transition: 'all .2s'
               }}
@@ -490,7 +490,7 @@ export default function NewRequestForm({ onSuccess }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ color: '#888', borderBottom: '1px solid #2A2A35', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <tr style={{ color: 'var(--text-muted, #9090A8)', borderBottom: '1px solid #2A2A35', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {['Type','Title','Firstname','Lastname','DOB','Passport','Nationality','Expiry',''].map(h => (
                     <th key={h} style={{ padding: '0 8px 12px', textAlign: h ? 'left' : 'center', fontWeight: 600, fontSize: 11 }}>{h}</th>
                   ))}
@@ -508,7 +508,7 @@ export default function NewRequestForm({ onSuccess }) {
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13}} placeholder="IN" value={p.nationality} onChange={e => updatePassenger(idx, 'nationality', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px' }}><input type="date" style={{...inputStyle, padding: '8px', fontSize: 13, colorScheme: 'dark'}} value={p.passport_expiry} onChange={e => updatePassenger(idx, 'passport_expiry', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px', textAlign: 'center' }}>
-                      {passengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removePassenger(idx) }} style={{ border: 'none', background: 'none', color: '#FF453A', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: '#444' }}>—</span>}
+                      {passengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removePassenger(idx) }} style={{ border: 'none', background: 'none', color: '#FF453A', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, #666)' }}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -522,7 +522,7 @@ export default function NewRequestForm({ onSuccess }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ color: '#888', borderBottom: '1px solid #2A2A35', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <tr style={{ color: 'var(--text-muted, #9090A8)', borderBottom: '1px solid #2A2A35', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {['Type','Title','Firstname','Lastname','Age',''].map(h => (
                     <th key={h} style={{ padding: '0 8px 12px', textAlign: h ? 'left' : 'center', fontWeight: 600, fontSize: 11 }}>{h}</th>
                   ))}
@@ -537,7 +537,7 @@ export default function NewRequestForm({ onSuccess }) {
                     <td style={{ padding: '12px 6px' }}><input style={{...req(p.lastname), padding: '8px', fontSize: 13}} placeholder="Doe" value={p.lastname} onChange={e => updateBusPax(idx, 'lastname', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13, width: 70}} placeholder="25" value={p.age} onChange={e => updateBusPax(idx, 'age', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px', textAlign: 'center' }}>
-                      {busPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeBusPax(idx) }} style={{ border: 'none', background: 'none', color: '#FF453A', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: '#444' }}>—</span>}
+                      {busPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeBusPax(idx) }} style={{ border: 'none', background: 'none', color: '#FF453A', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, #666)' }}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -551,7 +551,7 @@ export default function NewRequestForm({ onSuccess }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ color: '#888', borderBottom: '1px solid #2A2A35', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <tr style={{ color: 'var(--text-muted, #9090A8)', borderBottom: '1px solid #2A2A35', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {['Room No','Paxtype','Title','Firstname','Lastname','Address','Country','State','City','Postalcode','Area','PAN Number',''].map(h => (
                     <th key={h} style={{ padding: '0 8px 12px', textAlign: h ? 'left' : 'center', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
@@ -573,7 +573,7 @@ export default function NewRequestForm({ onSuccess }) {
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13}} placeholder="Anna Nagar" value={p.area} onChange={e => updateHotelPax(idx, 'area', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13}} placeholder="ABCDE1234F" value={p.pan_number} onChange={e => updateHotelPax(idx, 'pan_number', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px', textAlign: 'center' }}>
-                      {hotelPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeHotelPax(idx) }} style={{ border: 'none', background: 'none', color: '#FF453A', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: '#444' }}>—</span>}
+                      {hotelPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeHotelPax(idx) }} style={{ border: 'none', background: 'none', color: '#FF453A', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, #666)' }}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -589,12 +589,12 @@ export default function NewRequestForm({ onSuccess }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 40 }}>
         <button 
           onClick={(e) => { e.preventDefault(); if(onSuccess) onSuccess() }}
-          style={{ padding: '12px 28px', borderRadius: 8, background: '#13131A', color: '#aaa', border: '1px solid #2A2A35', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '12px 28px', borderRadius: 8, background: 'var(--bg-input, #13131A)', color: 'var(--text-muted, #9090A8)', border: '1px solid var(--border, #2A2A35)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
         >Cancel</button>
-        
-        <button 
+
+        <button
           onClick={(e) => { e.preventDefault(); handleSubmit(true) }}
-          style={{ padding: '12px 28px', borderRadius: 8, background: '#1A1A22', color: '#fff', border: '1px solid #2A2A35', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+          style={{ padding: '12px 28px', borderRadius: 8, background: 'var(--bg-card, #1A1A22)', color: 'var(--text-primary, #F0F0F8)', border: '1px solid var(--border, #2A2A35)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
         >Save Draft</button>
         
         <button 

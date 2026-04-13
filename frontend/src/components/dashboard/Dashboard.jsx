@@ -48,7 +48,7 @@ export default function Dashboard({ setTab }) {
           <span style={{ fontSize:24 }}>⏸</span>
           <div>
             <div style={{ fontSize:14, color:'#FFD60A', fontWeight:600 }}>Wallet Suspended</div>
-            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
+            <div style={{ fontSize:12, color:'var(--text-muted, #888)', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
           </div>
         </div>
       )}
@@ -57,7 +57,7 @@ export default function Dashboard({ setTab }) {
           <span style={{ fontSize:24 }}>⛔</span>
           <div>
             <div style={{ fontSize:14, color:'#FF453A', fontWeight:600 }}>Wallet Closed</div>
-            <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible.</div>
+            <div style={{ fontSize:12, color:'var(--text-muted, #888)', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible.</div>
           </div>
         </div>
       )}
@@ -65,9 +65,9 @@ export default function Dashboard({ setTab }) {
       {/* Top row */}
       <div style={{ display:'grid', gridTemplateColumns: isBkAdmin ? 'repeat(3,1fr)' : '1.4fr 1fr 1fr 1fr', gap:14, marginBottom:22 }}>
         {!isBkAdmin && (
-          <Card style={{ padding:22, background:'#0E0E16', borderColor:'#1E1E2A', position:'relative', overflow:'hidden', cursor:'pointer' }} onClick={() => setTab('my-wallet')}>
+          <Card style={{ padding:22, background:'var(--bg-card-deep, #0E0E16)', borderColor:'var(--border, #1E1E2A)', position:'relative', overflow:'hidden', cursor:'pointer' }} onClick={() => setTab('my-wallet')}>
             <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
-            <div style={{ fontSize:11, color:'#555', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>
+            <div style={{ fontSize:11, color:'var(--text-faint, #555)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>
               Wallet Balance
             </div>
             <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em', marginBottom:4 }}>
@@ -77,7 +77,7 @@ export default function Dashboard({ setTab }) {
               {ppiBal ? (
                 <>
                   <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● {ppiBal.walletStatus}</span>
-                  <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:10 }}>{ppiBal.walletNumber}</span>
+                  <span style={{ fontSize:10, background:'#0A84FF18', color:'var(--accent, #0A84FF)', padding:'2px 8px', borderRadius:10 }}>{ppiBal.walletNumber}</span>
                 </>
               ) : (
                 <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● Amount Loaded</span>
@@ -94,23 +94,23 @@ export default function Dashboard({ setTab }) {
       {recentRequests?.length > 0 && (
         <Card style={{ padding:22, marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-            <div style={{ fontSize:13, color:'#888', fontWeight:500 }}>Recent Requests</div>
-            <button onClick={() => setTab('my-requests')} style={{ fontSize:11, color:'#0A84FF', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
+            <div style={{ fontSize:13, color:'var(--text-muted, #888)', fontWeight:500 }}>Recent Requests</div>
+            <button onClick={() => setTab('my-requests')} style={{ fontSize:11, color:'var(--accent, #0A84FF)', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {recentRequests.map(r => (
-              <div key={r.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'#1A1A22', borderRadius:10 }}>
+              <div key={r.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'var(--bg-card, #1A1A22)', borderRadius:10 }}>
                 <span style={{ fontSize:18 }}>{MODE_ICONS[r.travel_mode]||'🚀'}</span>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, color:'#ccc' }}>{r.from_location} → {r.to_location}</div>
-                  <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</div>
+                  <div style={{ fontSize:13, color:'var(--text-body, #ccc)' }}>{r.from_location} → {r.to_location}</div>
+                  <div style={{ fontSize:11, color:'var(--text-faint, #555)', marginTop:2 }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <StatusPill status={r.status} />
                   <BookingBadge type={r.booking_type} />
                   {r.wallet_credited && <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:6 }}>💳 Wallet Loaded</span>}
                   {r.doc_count > 0 && (
-                    <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:6 }}>
+                    <span style={{ fontSize:10, background:'#0A84FF18', color:'var(--accent, #0A84FF)', padding:'2px 8px', borderRadius:6 }}>
                       📎 {r.doc_count} ticket{r.doc_count>1?'s':''}
                     </span>
                   )}
@@ -126,7 +126,7 @@ export default function Dashboard({ setTab }) {
         {/* Expense breakdown — Donut chart */}
         {!isBkAdmin && (() => {
           const cats = [
-            { key:'travel',    label:'Travel',    icon:'✈',  color:'#0A84FF', spent:Number(expBreakdown.travel?.spent||0),    credited:Number(expBreakdown.travel?.credited||0),    remaining:Number(wallet?.travel_balance||0) },
+            { key:'travel',    label:'Travel',    icon:'✈',  color:'var(--accent, #0A84FF)', spent:Number(expBreakdown.travel?.spent||0),    credited:Number(expBreakdown.travel?.credited||0),    remaining:Number(wallet?.travel_balance||0) },
             { key:'hotel',     label:'Hotel',     icon:'🏨', color:'#BF5AF2', spent:Number(expBreakdown.hotel?.spent||0),     credited:Number(expBreakdown.hotel?.credited||0),     remaining:Number(wallet?.hotel_balance||0) },
             { key:'allowance', label:'Allowance', icon:'🎯', color:'#30D158', spent:Number(expBreakdown.allowance?.spent||0), credited:Number(expBreakdown.allowance?.credited||0), remaining:Number(wallet?.allowance_balance||0) },
           ]
@@ -160,7 +160,7 @@ export default function Dashboard({ setTab }) {
 
           return (
             <Card style={{ padding:22, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-              <div style={{ fontSize:13, color:'#888', fontWeight:500, marginBottom:16, flexShrink:0 }}>Expense Breakdown</div>
+              <div style={{ fontSize:13, color:'var(--text-muted, #888)', fontWeight:500, marginBottom:16, flexShrink:0 }}>Expense Breakdown</div>
 
               <div style={{ display:'flex', alignItems:'center', gap:20, flex:1, minHeight:0 }}>
                 {/* Donut Chart */}
@@ -169,7 +169,7 @@ export default function Dashboard({ setTab }) {
                     {/* Background ring */}
                     <circle
                       cx={cx} cy={cy} r={radius}
-                      fill="none" stroke="#1A1A22" strokeWidth={stroke}
+                      fill="none" stroke="var(--bg-card, #1A1A22)" strokeWidth={stroke}
                     />
                     {/* Segments */}
                     {segments.map((seg, i) => (
@@ -186,10 +186,10 @@ export default function Dashboard({ setTab }) {
                   </svg>
                   {/* Center label */}
                   <div style={{ position:'absolute', top:0, left:0, width:size, height:size, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-                    <div style={{ fontSize:9, color:'#444', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                    <div style={{ fontSize:9, color:'var(--text-dim, #444)', textTransform:'uppercase', letterSpacing:'.06em' }}>
                       {useSpent ? 'Spent' : 'Credited'}
                     </div>
-                    <div className="syne" style={{ fontSize:18, fontWeight:800, color:'#E2E2E8', lineHeight:1.2, marginTop:2 }}>
+                    <div className="syne" style={{ fontSize:18, fontWeight:800, color:'var(--text-body, #E2E2E8)', lineHeight:1.2, marginTop:2 }}>
                       ₹{(useSpent ? totalSpent : totalCredited).toLocaleString('en-IN')}
                     </div>
                   </div>
@@ -205,10 +205,10 @@ export default function Dashboard({ setTab }) {
                         <div style={{ width:10, height:10, borderRadius:3, background:c.color, flexShrink:0 }} />
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8 }}>
-                            <span style={{ fontSize:12, color:'#ccc' }}>{c.icon} {c.label}</span>
+                            <span style={{ fontSize:12, color:'var(--text-body, #ccc)' }}>{c.icon} {c.label}</span>
                             <span style={{ fontSize:11, color:c.color, fontWeight:600 }}>{pct}%</span>
                           </div>
-                          <div style={{ fontSize:10, color:'#555', marginTop:2 }}>
+                          <div style={{ fontSize:10, color:'var(--text-faint, #555)', marginTop:2 }}>
                             ₹{c.spent.toLocaleString('en-IN')} / ₹{c.credited.toLocaleString('en-IN')}
                           </div>
                         </div>
@@ -224,23 +224,23 @@ export default function Dashboard({ setTab }) {
         {/* Recent transactions */}
         <Card style={{ padding:22, gridColumn: isBkAdmin ? 'span 2' : 'auto', display:'flex', flexDirection:'column', minHeight:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, flexShrink:0 }}>
-            <div style={{ fontSize:13, color:'#888', fontWeight:500 }}>Recent Wallet Activity</div>
-            <button onClick={() => setTab('transactions')} style={{ fontSize:11, color:'#0A84FF', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
+            <div style={{ fontSize:13, color:'var(--text-muted, #888)', fontWeight:500 }}>Recent Wallet Activity</div>
+            <button onClick={() => setTab('transactions')} style={{ fontSize:11, color:'var(--accent, #0A84FF)', background:'none', border:'none', cursor:'pointer' }}>View all →</button>
           </div>
           <div style={{ flex:1, overflowY:'auto', minHeight:0, paddingRight:4 }}>
             {!recentTxns?.length ? (
-              <div style={{ textAlign:'center', padding:30, color:'#333', fontSize:13 }}>No transactions yet</div>
+              <div style={{ textAlign:'center', padding:30, color:'#666', fontSize:13 }}>No transactions yet</div>
             ) : recentTxns.map((t,i) => (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom: i<recentTxns.length-1?'1px solid #16161E':'none' }}>
                 <div>
-                  <div style={{ fontSize:12, color:'#ccc' }}>{t.description}</div>
-                  <div style={{ fontSize:10, color:'#444', marginTop:2 }}>{t.category} · {new Date(t.created_at).toLocaleDateString('en-IN')}</div>
+                  <div style={{ fontSize:12, color:'var(--text-body, #ccc)' }}>{t.description}</div>
+                  <div style={{ fontSize:10, color:'var(--text-dim, #444)', marginTop:2 }}>{t.category} · {new Date(t.created_at).toLocaleDateString('en-IN')}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
                   <div style={{ fontSize:13, fontWeight:600, color:t.txn_type==='credit'?'#30D158':'#FF453A' }}>
                     {t.txn_type==='credit'?'+':'−'}₹{Number(t.amount).toLocaleString('en-IN')}
                   </div>
-                  <div style={{ fontSize:10, color:'#444' }}>Bal: ₹{Number(t.balance_after).toLocaleString('en-IN')}</div>
+                  <div style={{ fontSize:10, color:'var(--text-dim, #444)' }}>Bal: ₹{Number(t.balance_after).toLocaleString('en-IN')}</div>
                 </div>
               </div>
             ))}
@@ -251,7 +251,7 @@ export default function Dashboard({ setTab }) {
       {/* Tier info */}
       {tier && !isBkAdmin && (
         <Card style={{ padding:18 }}>
-          <div style={{ fontSize:11, color:'#3A3A4A', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:12 }}>Your Tier — {user.role}</div>
+          <div style={{ fontSize:11, color:'var(--text-label, #3A3A4A)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:12 }}>Your Tier — {user.role}</div>
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
             {[
               ['Allowed Modes', (tier.allowed_modes||[]).join(', ')],
@@ -259,8 +259,8 @@ export default function Dashboard({ setTab }) {
               ['Daily Allow.',  `₹${tier.daily_allowance||0}/day`],
               ['Hotel/Night',   `₹${tier.max_hotel_per_night||0}`],
             ].map(([k,v]) => (
-              <div key={k} style={{ background:'#1A1A22', borderRadius:9, padding:'10px 14px', minWidth:140 }}>
-                <div style={{ fontSize:10, color:'#3A3A4A', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:4 }}>{k}</div>
+              <div key={k} style={{ background:'var(--bg-card, #1A1A22)', borderRadius:9, padding:'10px 14px', minWidth:140 }}>
+                <div style={{ fontSize:10, color:'var(--text-label, #3A3A4A)', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:4 }}>{k}</div>
                 <div style={{ fontSize:12, color:user.color||'#0A84FF' }}>{v}</div>
               </div>
             ))}
@@ -272,8 +272,8 @@ export default function Dashboard({ setTab }) {
       {pendingForMe > 0 && !isBkAdmin && (
         <div onClick={() => setTab('approvals')} style={{ marginTop:14, background:`${user.color}14`, border:`1px solid ${user.color}28`, borderRadius:12, padding:'14px 20px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
-            <div style={{ fontSize:14, color:'#E2E2E8', fontWeight:500 }}>{pendingForMe} request{pendingForMe>1?'s':''} waiting for your approval</div>
-            <div style={{ fontSize:12, color:'#555', marginTop:2 }}>Click to review →</div>
+            <div style={{ fontSize:14, color:'var(--text-body, #E2E2E8)', fontWeight:500 }}>{pendingForMe} request{pendingForMe>1?'s':''} waiting for your approval</div>
+            <div style={{ fontSize:12, color:'var(--text-faint, #555)', marginTop:2 }}>Click to review →</div>
           </div>
           <div className="syne" style={{ fontSize:32, fontWeight:800, color:user.color }}>{pendingForMe}</div>
         </div>

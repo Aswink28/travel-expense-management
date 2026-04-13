@@ -67,10 +67,10 @@ export default function MyTicketsPage() {
 
       {/* Empty state */}
       {displayed.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'#333' }}>
+        <div style={{ textAlign:'center', padding:'60px 0', color:'#666' }}>
           <div style={{ fontSize:40, marginBottom:12 }}>🎫</div>
           <div style={{ fontSize:15, color:'#555' }}>No tickets yet</div>
-          <div style={{ fontSize:12, color:'#333', marginTop:6 }}>
+          <div style={{ fontSize:12, color:'#666', marginTop:6 }}>
             Tickets booked by your Booking Admin will appear here automatically.
           </div>
         </div>
