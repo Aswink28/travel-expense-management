@@ -1071,35 +1071,61 @@ export default function BookingPanel() {
   if (ssrData) {
     const { ssrs, flight, fare } = ssrData;
     const ssrTotal = ssrs.filter(s => selectedSSRs.includes(s.ssrKey)).reduce((sum, s) => sum + s.price, 0);
+    // Group SSR items by type
+    const typeIcons = { MEALS: '🍽', BAGGAGE: '🧳', ADDITIONALBAGGAGE: '🧳', SEAT: '💺', FASTFORWARD: '⚡', 'FREQUENT FLYER': '✈' };
+    const typeColors = { MEALS: C.amber, BAGGAGE: C.accent, ADDITIONALBAGGAGE: C.accent, SEAT: C.green, FASTFORWARD: '#BF5AF2', 'FREQUENT FLYER': C.sub };
+    const grouped = {};
+    ssrs.forEach(s => {
+      const key = s.typeName || 'OTHER';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    });
+
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }} onClick={() => setSsrData(null)}>
         <style>{GLOBAL_CSS}</style>
-        <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 32, width: 520, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 32, width: 560, maxWidth: '95vw', maxHeight: '80vh', overflowY: 'auto', overflowX: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.6)' }}>
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 8 }}>🍽 Add Meals & Baggage</div>
+            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 8 }}>✈ Add-on Services</div>
             <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>{flight.airline} · {flight.flightNumber}</div>
             <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>{fare.type} Fare · ₹{fare.price?.toLocaleString('en-IN')}</div>
           </div>
-          {ssrs.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {ssrs.map(s => {
-                const isSelected = selectedSSRs.includes(s.ssrKey);
-                return (
-                  <div key={s.ssrKey} onClick={() => toggleSSR(s.ssrKey)} style={{
-                    background: isSelected ? `${C.accent}15` : C.bg, border: `1px solid ${isSelected ? C.accent : C.divider}`,
-                    borderRadius: 10, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all .15s',
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{s.desc || s.code}</div>
-                      <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>{s.type} · {s.code}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>₹{s.price?.toLocaleString('en-IN')}</span>
-                      <span style={{ fontSize: 16, color: isSelected ? C.accent : C.muted }}>{isSelected ? '☑' : '☐'}</span>
-                    </div>
+          {Object.keys(grouped).length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {Object.entries(grouped).map(([typeName, items]) => (
+                <div key={typeName}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: typeColors[typeName] || C.sub, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{typeIcons[typeName] || '📋'}</span>
+                    {typeName} ({items.length})
                   </div>
-                );
-              })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {items.map(s => {
+                      const isSelected = selectedSSRs.includes(s.ssrKey);
+                      return (
+                        <div key={s.ssrKey} onClick={() => toggleSSR(s.ssrKey)} style={{
+                          background: isSelected ? `${(typeColors[typeName] || C.accent)}15` : C.bg,
+                          border: `1px solid ${isSelected ? (typeColors[typeName] || C.accent) : C.divider}`,
+                          borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all .15s',
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, wordBreak: 'break-word' }}>{s.typeDesc || s.code}</div>
+                            {s.code && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{s.code}</div>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 10 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: s.price > 0 ? C.green : C.muted }}>
+                              {s.price > 0 ? `₹${s.price.toLocaleString('en-IN')}` : 'Free'}
+                            </span>
+                            <span style={{ fontSize: 16, color: isSelected ? (typeColors[typeName] || C.accent) : C.muted }}>
+                              {isSelected ? '☑' : '☐'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 30 }}>No ancillary services available for this flight.</div>
@@ -1113,7 +1139,7 @@ export default function BookingPanel() {
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             <button onClick={() => setSsrData(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
             {selectedSSRs.length > 0 && (
-              <button onClick={() => { setSsrData(null); }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
+              <button onClick={() => { setSsrData(null); showToast(`${selectedSSRs.length} add-on(s) selected`, 'success'); }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
             )}
           </div>
         </div>
@@ -1138,21 +1164,25 @@ export default function BookingPanel() {
               {segment.rows.map(row => (
                 <div key={row.rowNumber} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                   <span style={{ width: 24, fontSize: 10, color: C.muted, textAlign: 'right' }}>{row.rowNumber}</span>
-                  {row.seats.map(seat => (
-                    <div key={seat.seatNumber}
-                      onClick={() => seat.available && setSelectedSeat(selectedSeat === seat.seatNumber ? null : seat.seatNumber)}
-                      style={{
-                        width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 9, fontWeight: 700, cursor: seat.available ? 'pointer' : 'not-allowed',
-                        background: selectedSeat === seat.seatNumber ? C.accent : seat.available ? C.bg : `${C.red}20`,
-                        color: selectedSeat === seat.seatNumber ? '#fff' : seat.available ? C.text : C.muted,
-                        border: `1px solid ${selectedSeat === seat.seatNumber ? C.accent : seat.available ? C.divider : `${C.red}30`}`,
-                        transition: 'all .15s',
-                      }}
-                      title={seat.available ? `${seat.seatNumber} — ₹${seat.price}` : `${seat.seatNumber} — Occupied`}
-                    >
-                      {seat.seatNumber.replace(/\d+/, '')}
-                    </div>
+                  {row.seats.map((seat, si) => (
+                    seat.isGap ? (
+                      <div key={`gap-${si}`} style={{ width: 20, height: 32 }} />
+                    ) : (
+                      <div key={seat.seatNumber}
+                        onClick={() => seat.available && setSelectedSeat(selectedSeat === seat.seatNumber ? null : seat.seatNumber)}
+                        style={{
+                          width: 34, height: 34, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 8, fontWeight: 700, cursor: seat.available ? 'pointer' : 'not-allowed',
+                          background: selectedSeat === seat.seatNumber ? C.accent : seat.available ? C.bg : `${C.red}15`,
+                          color: selectedSeat === seat.seatNumber ? '#fff' : seat.available ? C.text : C.muted,
+                          border: `1px solid ${selectedSeat === seat.seatNumber ? C.accent : seat.available ? C.divider : `${C.red}20`}`,
+                          transition: 'all .15s',
+                        }}
+                        title={seat.available ? `${seat.seatNumber}${seat.price > 0 ? ` — ₹${seat.price}` : ' — Free'}` : `${seat.seatNumber} — Occupied`}
+                      >
+                        {seat.seatNumber.replace(/^\d+/, '')}
+                      </div>
+                    )
                   ))}
                 </div>
               ))}
@@ -1173,7 +1203,10 @@ export default function BookingPanel() {
           {selectedSeat && (
             <div style={{ marginTop: 16, padding: '12px 16px', background: C.bg, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.green}40` }}>
               <span style={{ fontSize: 13, color: C.text }}>Selected: <strong>{selectedSeat}</strong></span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>₹{segment?.rows?.flatMap(r => r.seats).find(s => s.seatNumber === selectedSeat)?.price?.toLocaleString('en-IN') || '0'}</span>
+              {(() => {
+                const seatPrice = segment?.rows?.flatMap(r => r.seats).find(s => s.seatNumber === selectedSeat)?.price || 0;
+                return <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>{seatPrice > 0 ? `₹${seatPrice.toLocaleString('en-IN')}` : 'Free'}</span>;
+              })()}
             </div>
           )}
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>

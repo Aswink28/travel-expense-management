@@ -14,7 +14,15 @@ export default function Sidebar({ active, setActive, pendingCount }) {
     <aside className="sidebar">
       {/* Logo */}
       <div className="sidebar-logo">
-        <img src={moiterLogo} alt="Moiter Workz" style={{ height: 32, objectFit: 'contain', display: 'block' }} />
+        <div className="brand-mark">
+          <img src={moiterLogo} alt="Moicorp" />
+          <div>
+            <div className="brand-text">
+              Moi<span className="brand-highlight">corp</span>
+            </div>
+            <div className="brand-sub">Travel Desk</div>
+          </div>
+        </div>
         <div className="sidebar-role">{user.role}</div>
       </div>
 

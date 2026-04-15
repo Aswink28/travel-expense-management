@@ -185,32 +185,59 @@ function normalizeBalance (raw) {
 
 function normalizeSSR (raw) {
   if (!raw) return []
-  const list = raw.AirSSRResponseDetails || raw.SSRDetails || raw.SSR || []
-  return list.flatMap(group => (group.SSR_Items || group.Items || []).map(it => ({
-    ssrKey:    safeStr(it.SSR_Key || it.Key),
-    code:      safeStr(it.SSR_Code || it.Code),
-    type:      safeStr(it.SSR_Type || it.Type),
-    desc:      safeStr(it.Description),
-    price:     safeNum(it.Amount || it.Price),
-    flightKey: safeStr(group.Flight_Key),
-  })))
+  // Real response shape: SSRFlightDetails[].SSRDetails[]
+  const flights = raw.SSRFlightDetails || raw.AirSSRResponseDetails || []
+  return flights.flatMap(group => {
+    const items = group.SSRDetails || group.SSR_Items || group.Items || []
+    return items.map(it => ({
+      ssrKey:    safeStr(it.SSR_Key),
+      code:      safeStr(it.SSR_Code),
+      typeName:  safeStr(it.SSR_TypeName),       // MEALS, BAGGAGE, SEAT, FASTFORWARD, ADDITIONALBAGGAGE
+      typeDesc:  safeStr(it.SSR_TypeDesc),        // "Veg Biryani + Beverage of choice"
+      price:     safeNum(it.Total_Amount),
+      currency:  safeStr(it.Currency_Code, 'INR'),
+      flightId:  safeStr(it.Flight_ID),
+      segmentId: safeNum(it.Segment_Id),
+      ssrType:   safeNum(it.SSR_Type),            // 0=Baggage, 1=Meal, 3=Seat, 9=FastForward, 11=FreqFlyer, 16=AdditionalBaggage
+    }))
+  })
 }
 
 function normalizeSeatMap (raw) {
   if (!raw) return []
-  const segs = raw.SeatMapResponseDetails || raw.SeatMap || []
-  return segs.map(seg => ({
-    flightKey: safeStr(seg.Flight_Key),
-    rows: (seg.Rows || []).map(r => ({
-      rowNumber: safeNum(r.RowNumber),
-      seats: (r.Seats || []).map(s => ({
-        seatNumber: safeStr(s.SeatNumber || s.Seat_Number),
-        available:  Boolean(s.Available ?? !s.IsBooked),
-        price:      safeNum(s.Amount || s.Price),
-        type:       safeStr(s.SeatType),
-      })),
-    })),
-  }))
+  // Real response: AirSeatMaps[].Seat_Segments[].Seat_Row[].Seat_Details[]
+  const maps = raw.AirSeatMaps || []
+  return maps.map(flight => {
+    const segments = flight.Seat_Segments || flight.AirSeatMapDetails || []
+    const allRows = []
+    for (const seg of segments) {
+      const rows = seg.Seat_Row || seg.Rows || []
+      rows.forEach((row, rowIdx) => {
+        const seats = (row.Seat_Details || row.Seats || []).map(s => {
+          if (!s.SSR_Code) return { seatNumber: '', available: false, isGap: true, price: 0 }
+          return {
+            seatNumber: safeStr(s.SSR_Code),
+            ssrKey:     safeStr(s.SSR_Key),
+            available:  s.SSR_Status === 0,     // 0=available, 2=occupied
+            price:      safeNum(s.Total_Amount),
+            currency:   safeStr(s.Currency_Code, 'INR'),
+            desc:       safeStr(s.SSR_TypeDesc),
+            isGap:      false,
+          }
+        })
+        if (seats.some(s => !s.isGap)) {
+          // Extract row number from first real seat (e.g. "3A" → 3)
+          const firstSeat = seats.find(s => !s.isGap)
+          const rowNum = firstSeat ? parseInt(firstSeat.seatNumber) || (rowIdx + 1) : (rowIdx + 1)
+          allRows.push({ rowNumber: rowNum, seats })
+        }
+      })
+    }
+    return {
+      flightId: safeStr(flight.Flight_Id),
+      rows: allRows,
+    }
+  })
 }
 
 module.exports = {

@@ -1852,6 +1852,60 @@ table tbody td {
   padding: 26px 22px 20px;
 }
 
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark img {
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: height 0.3s ease;
+}
+
+.brand-text {
+  font-family: 'Syne', 'Inter', system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  line-height: 1;
+  color: var(--text-primary, #F0F0F8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand-text .brand-highlight {
+  background: var(--accent-grad, linear-gradient(135deg, #0A84FF, #BF5AF2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand-sub {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--accent, #0A84FF);
+  opacity: 0.55;
+  margin-top: 3px;
+  transition: opacity 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .brand-mark img { height: 16px; }
+  .brand-text { font-size: 16px; }
+  .brand-sub { font-size: 8px; letter-spacing: 1.5px; }
+}
+
+@media (max-width: 640px) {
+  .brand-text { font-size: 14px; }
+  .brand-sub { display: none; }
+}
+
 .sidebar-role {
   font-size: var(--fs-2xs);
   color: var(--text-label);

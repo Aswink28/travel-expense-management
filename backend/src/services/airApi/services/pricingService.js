@@ -28,13 +28,19 @@ async function getSSR ({ searchKey, flightKeys }) {
   }, { method: 'Air_GetSSR' })
 }
 
-async function getSeatMap ({ searchKey, flightKeys }) {
+async function getSeatMap ({ searchKey, flightKeys, paxDetails }) {
   if (!searchKey || !Array.isArray(flightKeys) || !flightKeys.length) {
     throw new Error('searchKey and flightKeys[] are required')
   }
   return post(airUrl('Air_GetSeatMap'), {
     Search_Key:  searchKey,
     Flight_Keys: flightKeys,
+    PAX_Details: paxDetails || [{
+      Pax_Id: 1, Pax_type: 0, Title: 'Mr', First_Name: 'Guest', Last_Name: 'User',
+      Gender: 0, Age: null, DOB: null, Passport_Number: null,
+      Passport_Issuing_Country: null, Passport_Expiry: null, Nationality: null,
+      FrequentFlyerDetails: null,
+    }],
   }, { method: 'Air_GetSeatMap' })
 }
 
