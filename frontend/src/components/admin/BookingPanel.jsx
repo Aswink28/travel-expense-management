@@ -10,20 +10,20 @@ import TicketCard from "../booking/TicketCard";
 
 /* ─── Color tokens ─── */
 const C = {
-  bg: "#0B0B14",
-  card: "#12121E",
-  cardBorder: "#1E1E30",
-  cardHover: "#171728",
-  accent: "#7C6FFF",
-  accentGlow: "rgba(124,111,255,0.18)",
-  accentSoft: "rgba(124,111,255,0.08)",
-  green: "#30D158",
-  amber: "#FF9F0A",
-  red: "#FF453A",
-  text: "#F0F0F6",
-  sub: "#9090A8",
-  muted: "#454560",
-  divider: "#1C1C2E",
+  bg:          "var(--bg-app, #0B0B14)",
+  card:        "var(--bg-card, #12121E)",
+  cardBorder:  "var(--border, #1E1E30)",
+  cardHover:   "var(--bg-row-hover, #171728)",
+  accent:      "var(--accent, #7C6FFF)",
+  accentGlow:  "var(--accent-glow, rgba(124,111,255,0.18))",
+  accentSoft:  "rgba(124,111,255,0.08)",
+  green:       "var(--success, #30D158)",
+  amber:       "var(--warning, #FF9F0A)",
+  red:         "var(--danger, #FF453A)",
+  text:        "var(--text-primary, #F0F0F6)",
+  sub:         "var(--text-muted, #9090A8)",
+  muted:       "var(--text-dim, #454560)",
+  divider:     "var(--border-soft, #1C1C2E)",
 };
 
 const MODES = [
@@ -223,7 +223,8 @@ export default function BookingPanel() {
   // SSR selection (API 6)
   const [ssrData, setSsrData] = useState(null); // { ssrs[], flight, fare }
   const [ssrLoading, setSsrLoading] = useState(null); // null or flightId being loaded
-  const [selectedSSRs, setSelectedSSRs] = useState([]); // [ssrKey, ...]
+  const [selectedSSRs, setSelectedSSRs] = useState([]); // [ssrKey, ...] — during popup selection
+  const [confirmedSSRs, setConfirmedSSRs] = useState([]); // [{ ssrKey, typeDesc, typeName, price, code, flightId }] — after confirm
 
   // Seat map (API 7)
   const [seatMapData, setSeatMapData] = useState(null); // { seatMap[], flight }
@@ -584,11 +585,33 @@ export default function BookingPanel() {
   }
 
   /* ─── SSR Selection (API 6) ─── */
+  /* ─── Helper: Reprice to get valid keys for SSR/SeatMap ─── */
+  const getRepricedKeys = async (flight, fare) => {
+    const rp = await flightsAPI.reprice({
+      searchKey: flight.searchKey,
+      flights: [{ flightKey: flight.flightKey, fareId: fare.fareId }],
+    })
+    // Real reprice response: AirRepriceResponses[0].Flight.Flight_Key
+    const raw = rp.data?.raw || {}
+    const reprFlight = raw.AirRepriceResponses?.[0]?.Flight
+    const reprFlightKey = reprFlight?.Flight_Key
+    // Also check normalized paths as fallback
+    const normalizedKey = rp.data?.flights?.[0]?.flightKey || rp.data?.flights?.[0]?.Flight_Key
+    return {
+      searchKey: raw.Search_Key || flight.searchKey,
+      flightKey: reprFlightKey || normalizedKey || flight.flightKey,
+    }
+  }
+
   const fetchSSR = async (flight, fare) => {
     if (!flight.searchKey || !flight.flightKey) return showToast('SSR not available for this flight.', 'warn')
     setSsrLoading(flight.flightId); setSsrData(null); setSelectedSSRs([])
     try {
-      const r = await flightsAPI.getSSR({ searchKey: flight.searchKey, flightKeys: [flight.flightKey] })
+      // Step 1: Reprice to get valid Flight_Key (required by SSR API)
+      const keys = await getRepricedKeys(flight, fare)
+
+      // Step 2: Call SSR with repriced keys
+      const r = await flightsAPI.getSSR({ searchKey: keys.searchKey, flightKeys: [keys.flightKey] })
       const ssrs = r.data?.ssrs || []
       if (ssrs.length === 0) {
         showToast('No meals or baggage options available for this flight from the airline.', 'warn')
@@ -599,6 +622,8 @@ export default function BookingPanel() {
       const msg = e.message || 'Failed to load SSR'
       if (msg.includes('Not Available') || msg.includes('failed with an error')) {
         showToast('Meals & baggage add-ons are not available for this flight. The airline does not offer ancillary services on this route/fare.', 'warn')
+      } else if (msg.includes('reprice') || msg.includes('non-availability')) {
+        showToast('This fare is no longer available. Please search again.', 'warn')
       } else {
         showToast('Failed to load add-ons: ' + msg, 'error')
       }
@@ -611,11 +636,15 @@ export default function BookingPanel() {
   }
 
   /* ─── Seat Map (API 7) ─── */
-  const fetchSeatMap = async (flight) => {
+  const fetchSeatMap = async (flight, fare) => {
     if (!flight.searchKey || !flight.flightKey) return showToast('Seat map not available for this flight.', 'warn')
     setSeatMapLoading(flight.flightId); setSeatMapData(null); setSelectedSeat(null)
     try {
-      const r = await flightsAPI.getSeatMap({ searchKey: flight.searchKey, flightKeys: [flight.flightKey] })
+      // Step 1: Reprice to get valid Flight_Key (required by SeatMap API)
+      const keys = await getRepricedKeys(flight, fare)
+
+      // Step 2: Call SeatMap with repriced keys
+      const r = await flightsAPI.getSeatMap({ searchKey: keys.searchKey, flightKeys: [keys.flightKey] })
       const seatMap = r.data?.seatMap || []
       if (seatMap.length === 0 || !seatMap[0]?.rows?.length) {
         showToast('Seat selection is not available for this flight. The airline does not provide seat maps on this route/fare.', 'warn')
@@ -626,6 +655,8 @@ export default function BookingPanel() {
       const msg = e.message || 'Failed to load seat map'
       if (msg.includes('Not Available') || msg.includes('failed with an error')) {
         showToast('Seat selection is not available for this flight. The airline does not provide seat maps on this route/fare.', 'warn')
+      } else if (msg.includes('reprice') || msg.includes('non-availability')) {
+        showToast('This fare is no longer available. Please search again.', 'warn')
       } else {
         showToast('Failed to load seat map: ' + msg, 'error')
       }
@@ -644,7 +675,7 @@ export default function BookingPanel() {
         passengers,
         passengerEmail: passengers[0]?.email || 'booking@company.com',
         passengerMobile: passengers[0]?.mobile || '9999999999',
-        ssrDetails: selectedSSRs.map(k => ({ SSR_Key: k })),
+        ssrDetails: confirmedSSRs.map(s => ({ SSR_Key: s.ssrKey })),
         seatDetails: selectedSeat ? [{ Seat_Number: selectedSeat }] : [],
       })
       setAirBookingStep('done')
@@ -1139,7 +1170,12 @@ export default function BookingPanel() {
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             <button onClick={() => setSsrData(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
             {selectedSSRs.length > 0 && (
-              <button onClick={() => { setSsrData(null); showToast(`${selectedSSRs.length} add-on(s) selected`, 'success'); }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
+              <button onClick={() => {
+                const confirmed = ssrs.filter(s => selectedSSRs.includes(s.ssrKey));
+                setConfirmedSSRs(confirmed);
+                setSsrData(null);
+                showToast(`${confirmed.length} add-on(s) selected — visible in fare card`, 'success');
+              }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
             )}
           </div>
         </div>
@@ -3424,7 +3460,7 @@ export default function BookingPanel() {
                                         {isSSRThis ? '⏳ Loading...' : '🍽 Add Meals/Baggage'}
                                       </div>
                                       <div
-                                        onClick={() => !seatMapLoading && fetchSeatMap(fl)}
+                                        onClick={() => !seatMapLoading && fetchSeatMap(fl, fare)}
                                         style={{
                                           fontSize: 11, color: C.green, fontWeight: 600,
                                           cursor: isSeatThis ? 'wait' : 'pointer',
@@ -3437,6 +3473,42 @@ export default function BookingPanel() {
                                   </>
                                 );
                               })()}
+                              {/* Confirmed SSR add-ons display */}
+                              {confirmedSSRs.length > 0 && (
+                                <div style={{
+                                  marginTop: 8, padding: '8px 12px', borderRadius: 8,
+                                  background: `${C.green}10`, border: `1px solid ${C.green}25`,
+                                }}>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: C.green, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    ✓ Selected Add-ons ({confirmedSSRs.length})
+                                  </div>
+                                  {confirmedSSRs.map(s => (
+                                    <div key={s.ssrKey} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.sub, marginBottom: 2 }}>
+                                      <span>{s.typeDesc || s.code}</span>
+                                      <span style={{ color: s.price > 0 ? C.green : C.muted }}>{s.price > 0 ? `₹${s.price.toLocaleString('en-IN')}` : 'Free'}</span>
+                                    </div>
+                                  ))}
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: C.green, marginTop: 4, paddingTop: 4, borderTop: `1px solid ${C.green}20` }}>
+                                    <span>Total Add-ons</span>
+                                    <span>₹{confirmedSSRs.reduce((sum, s) => sum + s.price, 0).toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div
+                                    onClick={() => { setConfirmedSSRs([]); setSelectedSSRs([]); showToast('Add-ons removed', 'info'); }}
+                                    style={{ fontSize: 10, color: C.red, cursor: 'pointer', marginTop: 4, textAlign: 'center' }}
+                                  >✕ Remove all</div>
+                                </div>
+                              )}
+                              {/* Selected seat display */}
+                              {selectedSeat && (
+                                <div style={{
+                                  marginTop: 6, padding: '6px 12px', borderRadius: 8,
+                                  background: `${C.accent}10`, border: `1px solid ${C.accent}25`,
+                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11,
+                                }}>
+                                  <span style={{ color: C.text }}>💺 Seat: <strong>{selectedSeat}</strong></span>
+                                  <span onClick={() => { setSelectedSeat(null); showToast('Seat removed', 'info'); }} style={{ color: C.red, cursor: 'pointer', fontSize: 10 }}>✕</span>
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => {

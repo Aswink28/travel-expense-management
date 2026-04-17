@@ -149,13 +149,54 @@ function normalizeSearch (raw) {
 
 function normalizeReprice (raw) {
   if (!raw) return null
-  // Reprice response uses the same TripDetails shape
-  const flights = normalizeSearch(raw)
+  // Real reprice response: AirRepriceResponses[0].Flight (not TripDetails)
+  const repriceResp = raw.AirRepriceResponses || []
+  const reprFlight = repriceResp[0]?.Flight
+  const flights = reprFlight
+    ? [normalizeRepriceFlightObj(reprFlight, raw)]
+    : normalizeSearch(raw)  // fallback for alternative response shapes
+
   return {
-    repriced:    Boolean(raw.Repriced ?? true),
-    fareChanged: Boolean(raw.IsFareChange),
+    repriced:    Boolean(reprFlight?.Repriced ?? raw.Repriced ?? true),
+    fareChanged: Boolean(reprFlight?.IsFareChange ?? raw.IsFareChange),
     flights,
     raw,
+  }
+}
+
+/** Normalize a single repriced flight object (from AirRepriceResponses[0].Flight) */
+function normalizeRepriceFlightObj (f, raw) {
+  if (!f) return null
+  const segs = f.Segments || []
+  const first = segs[0] || {}
+  const last = segs[segs.length - 1] || first
+  const fares = f.Fares || []
+  const primaryDetail = fares[0]?.FareDetails?.[0]
+
+  return {
+    flightId:     safeStr(f.Flight_Id),
+    flightKey:    safeStr(f.Flight_Key),
+    searchKey:    safeStr(raw.Search_Key),
+    airline:      safeStr(first.Airline_Name),
+    airlineCode:  safeStr(f.Airline_Code || first.Airline_Code),
+    flightNumber: `${safeStr(f.Airline_Code)}-${safeStr(first.Flight_Number)}`,
+    origin:       safeStr(f.Origin || first.Origin),
+    destination:  safeStr(f.Destination || first.Destination),
+    departureTime: fmtTime(first.Departure_DateTime),
+    arrivalTime:   fmtTime(last.Arrival_DateTime),
+    duration:      fmtDuration(first.Duration),
+    stops:         Math.max(0, segs.length - 1),
+    price:         safeNum(primaryDetail?.Total_Amount),
+    refundable:    Boolean(fares[0]?.Refundable),
+    fareOptions:   fares.map(fare => {
+      const det = fare.FareDetails?.[0]
+      return {
+        fareId:    safeStr(fare.Fare_Id),
+        type:      safeStr(fare.ProductClass),
+        price:     safeNum(det?.Total_Amount),
+        refundable: Boolean(fare.Refundable),
+      }
+    }),
   }
 }
 
