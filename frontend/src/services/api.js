@@ -34,6 +34,7 @@ const api = {
   get:    p      => request(p, { method:'GET' }),
   post:   (p,b)  => request(p, { method:'POST',  body:JSON.stringify(b) }),
   put:    (p,b)  => request(p, { method:'PUT',   body:JSON.stringify(b) }),
+  patch:  (p,b)  => request(p, { method:'PATCH', body:JSON.stringify(b) }),
   delete: p      => request(p, { method:'DELETE' }),
 }
 
@@ -84,9 +85,17 @@ export const flightsAPI = {
   getPostSSR:       body => api.post('/flights/air/post-ssr', body),
   initiatePostSSR:  body => api.post('/flights/air/post-ssr/initiate', body),
   confirmPostSSR:   body => api.post('/flights/air/post-ssr/confirm', body),
-  getBalance:       refNo => api.get(`/flights/air/balance?refNo=${refNo}`),
+  getBalance:       ()    => api.get('/flights/air/balance'),
   addPayment:       body => api.post('/flights/air/payment', body),
   bookFull:         body => api.post('/flights/air/book', body),
+}
+
+export const heldFlightsAPI = {
+  list:     ()        => api.get('/held-flights'),
+  create:   body      => api.post('/held-flights', body),
+  update:   (refNo, body) => api.patch(`/held-flights/${refNo}`, body),
+  delete:   refNo     => api.delete(`/held-flights/${refNo}`),
+  clearAll: ()        => api.delete('/held-flights'),
 }
 
 export const bookingsAPI = {

@@ -215,11 +215,14 @@ function normalizeBooking (raw) {
 
 function normalizeBalance (raw) {
   if (!raw) return null
+  // Real supplier response: CreditBalance, EffectiveBalance, LienBalance, ODAmount
   return {
-    balance:    safeNum(raw.Balance || raw.AvailableBalance),
-    cashLimit:  safeNum(raw.CashLimit),
-    creditUsed: safeNum(raw.CreditUsed),
-    currency:   safeStr(raw.Currency, 'INR'),
+    balance:          safeNum(raw.EffectiveBalance ?? raw.Balance ?? raw.AvailableBalance),
+    creditBalance:    safeNum(raw.CreditBalance),
+    effectiveBalance: safeNum(raw.EffectiveBalance),
+    lienBalance:      safeNum(raw.LienBalance),
+    odAmount:         safeNum(raw.ODAmount),
+    currency:         safeStr(raw.Currency, 'INR'),
     raw,
   }
 }

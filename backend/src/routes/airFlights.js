@@ -192,9 +192,7 @@ router.post('/post-ssr/confirm',  (req, res) => send(res, async () => {
 // ── Trade / wallet ────────────────────────────────────────────
 
 router.get('/balance', (req, res) => send(res, () => {
-  const refNo = req.query.refNo || ''
-  if (!refNo) { const e = new Error('refNo query param is required'); e.status = 400; throw e }
-  return airApi.getBalance({ refNo })
+  return airApi.getBalance()
 }))
 
 router.post('/payment', (req, res) => send(res, () => {

@@ -4,6 +4,7 @@ import {
   flightsAPI,
   adminBookingsAPI,
   hotelsAPI,
+  heldFlightsAPI,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import TicketCard from "../booking/TicketCard";
@@ -250,7 +251,7 @@ export default function BookingPanel() {
   // Hold & Pay Later
   const [holdLoading, setHoldLoading] = useState(null); // null or 'flightId:fareId' of the card being held
   const [holdResult, setHoldResult] = useState(null); // { bookingRefNo, airlinePnr, blockedExpiry, totalAmount, flight, fare }
-  const [heldFlights, setHeldFlights] = useState([]); // list of held PNRs
+  const [heldFlights, setHeldFlights] = useState([]); // list of held PNRs — persisted in DB
   const [payingHeld, setPayingHeld] = useState(null); // bookingRefNo being ticketed
 
   // Active panel for post-booking management
@@ -342,6 +343,13 @@ export default function BookingPanel() {
   useEffect(() => {
     load();
   }, [load]);
+
+  /* ─── Load held flights from DB on mount ─── */
+  useEffect(() => {
+    heldFlightsAPI.list()
+      .then(r => setHeldFlights(r.data || []))
+      .catch(e => console.error('Failed to load held flights:', e.message))
+  }, []);
 
   /* ─── Apply filters to raw results ─── */
   const results = useMemo(() => {
@@ -753,11 +761,14 @@ export default function BookingPanel() {
 
   /* ─── Agency Balance (API 17) ─── */
   const [agencyBalance, setAgencyBalance] = useState(null)
-  const fetchAgencyBalance = async (refNo) => {
+  const [agencyBalLoading, setAgencyBalLoading] = useState(false)
+  const fetchAgencyBalance = async () => {
+    setAgencyBalLoading(true); setErr('')
     try {
-      const r = await flightsAPI.getBalance(refNo)
+      const r = await flightsAPI.getBalance()
       setAgencyBalance(r.data)
-    } catch (e) { setErr(e.message || 'Balance check failed') }
+    } catch (e) { showToast('Balance check failed: ' + (e.message || 'Unknown error'), 'error') }
+    finally { setAgencyBalLoading(false) }
   }
 
   /* ─── Hold Flight: TempBooking without payment/ticketing ─── */
@@ -769,7 +780,7 @@ export default function BookingPanel() {
     const holdKey = `${flight.flightId}:${fare.fareId}`
     setHoldLoading(holdKey); setHoldResult(null); setErr('')
     try {
-      // Step 1: Reprice to validate fare
+      // Step 1: Reprice to validate fare AND get repriced Flight_Key
       const rp = await flightsAPI.reprice({
         searchKey: flight.searchKey,
         flights: [{ flightKey: flight.flightKey, fareId: fare.fareId }],
@@ -779,11 +790,13 @@ export default function BookingPanel() {
         setHoldLoading(null)
         return
       }
+      // Extract repriced Flight_Key (required for TempBooking)
+      const reprFlightKey = rp.data?.raw?.AirRepriceResponses?.[0]?.Flight?.Flight_Key || flight.flightKey
 
       // Step 2: TempBooking — creates PNR hold without payment
       const r = await flightsAPI.tempBooking({
         searchKey: flight.searchKey,
-        flightKey: flight.flightKey,
+        flightKey: reprFlightKey,
         passengerEmail: req.user_email || 'booking@company.com',
         passengerMobile: req.user_mobile || '9999999999',
         passengers: [{
@@ -799,7 +812,7 @@ export default function BookingPanel() {
         airlinePnr:   r.data?.airlinePnr || '',
         blockedExpiry: r.data?.blockedExpiry || '',
         totalAmount:   r.data?.totalAmount || fare.price,
-        status:        r.data?.status || 'Held',
+        status:        'Held',  // always set to 'Held' on successful temp booking
         flight: { airline: flight.airline, flightNumber: flight.flightNumber, departureTime: flight.departureTime, arrivalTime: flight.arrivalTime, duration: flight.duration, origin: flight.origin || form.origin, destination: flight.destination || form.destination },
         fare: { type: fare.type, price: fare.price },
         heldAt: new Date().toISOString(),
@@ -808,7 +821,14 @@ export default function BookingPanel() {
       }
 
       setHoldResult(held)
-      setHeldFlights(prev => [held, ...prev])
+      // Persist to DB
+      try {
+        const saved = await heldFlightsAPI.create(held)
+        setHeldFlights(prev => [saved.data, ...prev.filter(p => p.bookingRefNo !== held.bookingRefNo)])
+      } catch (dbErr) {
+        console.error('Failed to save held flight to DB:', dbErr.message)
+        setHeldFlights(prev => [held, ...prev])  // fallback: still show in UI
+      }
       showToast(`Flight held! PNR: ${held.bookingRefNo || held.airlinePnr || 'pending'}`, 'success')
     } catch (e) {
       showToast('Hold failed: ' + (e.message || 'Unknown error'), 'error')
@@ -826,10 +846,13 @@ export default function BookingPanel() {
         bookingRefNo: held.bookingRefNo,
         ticketingType: 1,
       })
-      showToast(`Ticket issued! PNR: ${r.data?.ticket?.airlinePnr || held.bookingRefNo}`, 'success')
-      // Update held list — mark as ticketed
+      const airlinePnr = r.data?.ticket?.airlinePnr || held.airlinePnr
+      showToast(`Ticket issued! PNR: ${airlinePnr || held.bookingRefNo}`, 'success')
+      // Update in DB
+      await heldFlightsAPI.update(held.bookingRefNo, { status: 'Ticketed', ticketResult: r.data, airlinePnr })
+      // Update local state
       setHeldFlights(prev => prev.map(h =>
-        h.bookingRefNo === held.bookingRefNo ? { ...h, status: 'Ticketed', ticketResult: r.data } : h
+        h.bookingRefNo === held.bookingRefNo ? { ...h, status: 'Ticketed', ticketResult: r.data, airlinePnr } : h
       ))
     } catch (e) {
       showToast('Ticketing failed: ' + (e.message || 'Unknown error'), 'error')
@@ -844,6 +867,7 @@ export default function BookingPanel() {
     try {
       await flightsAPI.releasePnr({ bookingRefNo: held.bookingRefNo, airlinePnr: held.airlinePnr })
       showToast('PNR released successfully', 'success')
+      await heldFlightsAPI.update(held.bookingRefNo, { status: 'Released' })
       setHeldFlights(prev => prev.map(h =>
         h.bookingRefNo === held.bookingRefNo ? { ...h, status: 'Released' } : h
       ))
@@ -857,11 +881,34 @@ export default function BookingPanel() {
     try {
       const r = await flightsAPI.reprint({ bookingRefNo: held.bookingRefNo, airlinePnr: held.airlinePnr })
       setHeldFlights(prev => prev.map(h =>
-        h.bookingRefNo === held.bookingRefNo ? { ...h, status: r.data?.status || h.status, latestReprint: r.data } : h
+        h.bookingRefNo === held.bookingRefNo ? { ...h, latestReprint: r.data } : h
       ))
       showToast(`Status: ${r.data?.status || 'Unknown'}`, 'info')
     } catch (e) {
       showToast('Status check failed: ' + (e.message || 'Unknown error'), 'error')
+    }
+  }
+
+  /* ─── Remove a held flight from DB ─── */
+  const removeHeldFlight = async (refNo) => {
+    try {
+      await heldFlightsAPI.delete(refNo)
+      setHeldFlights(prev => prev.filter(h => h.bookingRefNo !== refNo))
+      showToast('Removed from Held Flights', 'info')
+    } catch (e) {
+      showToast('Failed to remove: ' + e.message, 'error')
+    }
+  }
+
+  /* ─── Clear all held flights from DB ─── */
+  const clearAllHeldFlights = async () => {
+    if (!confirm('Clear all held flights? This does NOT release PNRs at the supplier.')) return
+    try {
+      await heldFlightsAPI.clearAll()
+      setHeldFlights([])
+      showToast('All held flights cleared', 'info')
+    } catch (e) {
+      showToast('Failed to clear: ' + e.message, 'error')
     }
   }
 
@@ -1316,7 +1363,15 @@ export default function BookingPanel() {
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setHoldResult(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
-            <button onClick={() => { setHoldResult(null); setMgmtPanel('held'); }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, #FFB84D)`, color: '#0B0B14', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
+            <button onClick={() => {
+              setHoldResult(null);
+              setRawResults(null);           // back to form view where Booking Management exists
+              setExpanded(null);
+              setMgmtPanel('held');
+              setTimeout(() => {
+                document.getElementById('booking-management')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 200);
+            }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, #FFB84D)`, color: '#0B0B14', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
           </div>
         </div>
       </div>
@@ -3027,12 +3082,13 @@ export default function BookingPanel() {
                 </button>
               </GlassCard>
             ) : (
-              (results || []).map((fl) => {
+              (results || []).map((fl, flIdx) => {
                 const meta = getAirlineMeta(fl.airline, fl.airlineCode);
-                const isOpen = expanded === fl.flightId;
+                const uniqueKey = fl.flightKey || `${fl.flightId}-${flIdx}`;
+                const isOpen = expanded === uniqueKey;
                 return (
                   <GlassCard
-                    key={fl.flightId}
+                    key={uniqueKey}
                     style={{
                       overflow: "hidden",
                       transition: "border-color .2s",
@@ -3248,7 +3304,7 @@ export default function BookingPanel() {
                         </div>
                         <button
                           onClick={() =>
-                            setExpanded(isOpen ? null : fl.flightId)
+                            setExpanded(isOpen ? null : uniqueKey)
                           }
                           style={{
                             background: isOpen
@@ -3308,7 +3364,7 @@ export default function BookingPanel() {
                       >
                         {fl.fareOptions.map((fare, fi) => (
                           <div
-                            key={fare.type}
+                            key={fare.fareId || `${fare.type}-${fi}`}
                             style={{
                               borderRadius: 14,
                               padding: 20,
@@ -4503,7 +4559,7 @@ export default function BookingPanel() {
 
       {/* ── Booking Management Section (APIs 10-16, 17) ── */}
       {modeTab === 'Flight' && (
-        <GlassCard style={{ marginTop: 28, overflow: 'hidden' }}>
+        <GlassCard id="booking-management" style={{ marginTop: 28, overflow: 'hidden', scrollMarginTop: 20 }}>
           <div style={{ padding: '16px 24px', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>✈ Booking Management</div>
@@ -4534,136 +4590,507 @@ export default function BookingPanel() {
           {/* Panel content */}
           <div style={{ padding: 24 }}>
             {/* Held Flights — Hold & Pay Later */}
-            {mgmtPanel === 'held' && (
-              <div>
-                {heldFlights.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 30 }}>
-                    No held flights. Use the <strong>"🔒 Hold & Pay Later"</strong> button on a fare card to hold a flight.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {heldFlights.map((h, i) => {
-                      const isActive = h.status === 'Held';
-                      const isTicketed = h.status === 'Ticketed';
-                      const isReleased = h.status === 'Released';
-                      const statusColor = isTicketed ? C.green : isReleased ? C.red : C.amber;
-                      return (
-                        <div key={i} style={{
-                          background: C.bg, borderRadius: 12, padding: 16,
-                          border: `1px solid ${isActive ? C.amber + '40' : C.divider}`,
-                          opacity: isActive ? 1 : 0.6,
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                            <div>
-                              <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
-                                {h.flight.airline} · {h.flight.flightNumber}
-                              </div>
-                              <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>
-                                {h.flight.origin} → {h.flight.destination} · {h.flight.departureTime} → {h.flight.arrivalTime}
-                              </div>
-                              <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>
-                                For: {h.employeeName} · {h.fare.type} · ₹{h.totalAmount?.toLocaleString('en-IN')}
-                              </div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                {h.status}
-                              </div>
-                              <div style={{ fontSize: 15, fontWeight: 900, color: C.amber, marginTop: 4 }}>
-                                {h.bookingRefNo || '—'}
-                              </div>
-                              {h.airlinePnr && (
-                                <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>PNR: {h.airlinePnr}</div>
-                              )}
-                            </div>
-                          </div>
-                          {h.blockedExpiry && isActive && (
-                            <div style={{ fontSize: 11, color: C.red, fontWeight: 600, marginBottom: 10 }}>
-                              ⏳ Hold expires: {h.blockedExpiry}
-                            </div>
-                          )}
-                          {isActive && (
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button
-                                onClick={() => payAndTicketHeld(h)}
-                                disabled={payingHeld === h.bookingRefNo}
-                                style={{
-                                  flex: 1, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: '#0B0B14',
-                                  border: 'none', padding: '10px 0', borderRadius: 8, fontWeight: 700,
-                                  cursor: payingHeld ? 'wait' : 'pointer', fontSize: 12,
-                                  opacity: payingHeld === h.bookingRefNo ? 0.6 : 1,
-                                }}
-                              >
-                                {payingHeld === h.bookingRefNo ? '⏳ Processing...' : '💳 Pay & Issue Ticket'}
-                              </button>
-                              <button
-                                onClick={() => checkHeldStatus(h)}
-                                style={{
-                                  background: C.bg, color: C.accent, border: `1px solid ${C.accent}40`,
-                                  padding: '10px 14px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11,
-                                }}
-                              >
-                                🔍 Status
-                              </button>
-                              <button
-                                onClick={() => releaseHeld(h)}
-                                style={{
-                                  background: `${C.red}15`, color: C.red, border: `1px solid ${C.red}40`,
-                                  padding: '10px 14px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11,
-                                }}
-                              >
-                                ✕ Release
-                              </button>
-                            </div>
-                          )}
-                          {isTicketed && h.ticketResult && (
-                            <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 8 }}>
-                              ✅ Ticketed — PNR: {h.ticketResult.ticket?.airlinePnr || h.airlinePnr}
-                            </div>
-                          )}
+            {mgmtPanel === 'held' && (() => {
+              const activeCount = heldFlights.filter(h => h.status === 'Held').length;
+              const ticketedCount = heldFlights.filter(h => h.status === 'Ticketed').length;
+              const releasedCount = heldFlights.filter(h => h.status === 'Released').length;
+              return (
+                <div>
+                  {heldFlights.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 50 }}>
+                      <div style={{ fontSize: 44, marginBottom: 12 }}>🔒</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>No Held Flights</div>
+                      <div style={{ fontSize: 12, color: C.sub, maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
+                        Hold a flight without paying first by clicking <strong style={{ color: C.amber }}>"🔒 Hold & Pay Later"</strong> on any fare card. The PNR will appear here for later ticketing.
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      {/* Summary stats */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                        <div style={{ background: `${C.amber}10`, border: `1px solid ${C.amber}30`, borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ fontSize: 10, color: C.amber, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Holds</div>
+                          <div style={{ fontSize: 24, fontWeight: 900, color: C.amber, marginTop: 4 }}>{activeCount}</div>
+                          <div style={{ fontSize: 10, color: C.sub, marginTop: 2 }}>Awaiting payment</div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+                        <div style={{ background: `${C.green}10`, border: `1px solid ${C.green}30`, borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ fontSize: 10, color: C.green, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ticketed</div>
+                          <div style={{ fontSize: 24, fontWeight: 900, color: C.green, marginTop: 4 }}>{ticketedCount}</div>
+                          <div style={{ fontSize: 10, color: C.sub, marginTop: 2 }}>Confirmed & issued</div>
+                        </div>
+                        <div style={{ background: `${C.red}10`, border: `1px solid ${C.red}30`, borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ fontSize: 10, color: C.red, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Released</div>
+                          <div style={{ fontSize: 24, fontWeight: 900, color: C.red, marginTop: 4 }}>{releasedCount}</div>
+                          <div style={{ fontSize: 10, color: C.sub, marginTop: 2 }}>Cancelled holds</div>
+                        </div>
+                      </div>
+
+                      {/* Clear all bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 8, borderBottom: `1px solid ${C.divider}` }}>
+                        <div style={{ fontSize: 12, color: C.sub }}>
+                          {heldFlights.length} total · saved in database
+                        </div>
+                        <button
+                          onClick={clearAllHeldFlights}
+                          style={{ background: 'none', border: `1px solid ${C.red}30`, color: C.red, padding: '5px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          ✕ Clear All History
+                        </button>
+                      </div>
+
+                      {/* Flight cards */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {heldFlights.map((h, i) => {
+                          const isActive = h.status === 'Held';
+                          const isTicketed = h.status === 'Ticketed';
+                          const isReleased = h.status === 'Released';
+                          const statusColor = isTicketed ? C.green : isReleased ? C.red : C.amber;
+                          const statusBg = isTicketed ? C.green : isReleased ? C.red : C.amber;
+                          const statusIcon = isTicketed ? '✅' : isReleased ? '❌' : '🔒';
+
+                          return (
+                            <div key={h.bookingRefNo || i} style={{
+                              background: C.bg,
+                              borderRadius: 12,
+                              border: `1px solid ${isActive ? statusBg + '40' : C.divider}`,
+                              overflow: 'hidden',
+                              transition: 'all .2s',
+                            }}>
+                              {/* Header strip with status */}
+                              <div style={{
+                                background: `${statusBg}12`,
+                                borderBottom: `1px solid ${statusBg}25`,
+                                padding: '10px 16px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 14 }}>{statusIcon}</span>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    {h.status}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 10, color: C.sub }}>Held at</span>
+                                  <span style={{ fontSize: 11, color: C.text, fontWeight: 600 }}>
+                                    {h.heldAt ? new Date(h.heldAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Main content */}
+                              <div style={{ padding: 16 }}>
+                                {/* Top row: Airline + PNR */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                                    {(() => {
+                                      const meta = getAirlineMeta(h.flight.airline, h.flight.airlineCode);
+                                      return (
+                                        <div style={{
+                                          width: 40, height: 40, borderRadius: 10,
+                                          background: `linear-gradient(135deg, ${meta.grad[0]}, ${meta.grad[1]})`,
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                          fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0,
+                                        }}>{meta.abbr}</div>
+                                      );
+                                    })()}
+                                    <div style={{ minWidth: 0 }}>
+                                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {h.flight.airline} · {h.flight.flightNumber}
+                                      </div>
+                                      <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>
+                                        {h.flight.origin} → {h.flight.destination} · {h.flight.duration}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Booking Ref</div>
+                                    <div style={{ fontSize: 14, fontWeight: 900, color: C.amber, fontFamily: 'monospace', marginTop: 2 }}>
+                                      {h.bookingRefNo || '—'}
+                                    </div>
+                                    {h.airlinePnr && (
+                                      <div style={{ fontSize: 10, color: C.green, marginTop: 3, fontFamily: 'monospace' }}>
+                                        PNR: {h.airlinePnr}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Details grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, paddingTop: 12, borderTop: `1px solid ${C.divider}`, marginBottom: h.blockedExpiry && isActive ? 12 : isActive ? 14 : 0 }}>
+                                  <div>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Departure</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 3 }}>{h.flight.departureTime}</div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Arrival</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 3 }}>{h.flight.arrivalTime}</div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fare</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 3 }}>{h.fare.type}</div>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amount</div>
+                                    <div style={{ fontSize: 13, fontWeight: 900, color: C.green, marginTop: 3 }}>₹{Number(h.totalAmount || h.fare?.price || 0).toLocaleString('en-IN')}</div>
+                                  </div>
+                                </div>
+
+                                {/* Employee info */}
+                                <div style={{ fontSize: 11, color: C.sub, paddingTop: isActive || isTicketed ? 0 : 0 }}>
+                                  <span style={{ color: C.muted }}>For:</span> <strong style={{ color: C.text }}>{h.employeeName}</strong>
+                                  {h.requestId && <span style={{ color: C.muted }}> · Request #{h.requestId}</span>}
+                                </div>
+
+                                {/* Hold expiry warning */}
+                                {h.blockedExpiry && isActive && (
+                                  <div style={{
+                                    marginTop: 10, padding: '8px 12px', borderRadius: 8,
+                                    background: `${C.red}10`, border: `1px solid ${C.red}30`,
+                                    fontSize: 11, color: C.red, fontWeight: 600,
+                                  }}>
+                                    ⏳ Hold expires: {h.blockedExpiry}
+                                  </div>
+                                )}
+
+                                {/* Ticketed confirmation */}
+                                {isTicketed && (
+                                  <div style={{
+                                    marginTop: 10, padding: '10px 14px', borderRadius: 8,
+                                    background: `${C.green}10`, border: `1px solid ${C.green}30`,
+                                    fontSize: 12, color: C.green, fontWeight: 600,
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                  }}>
+                                    <span>✅</span>
+                                    <span>Ticket issued successfully</span>
+                                    {h.airlinePnr && <span style={{ marginLeft: 'auto', fontFamily: 'monospace' }}>{h.airlinePnr}</span>}
+                                  </div>
+                                )}
+
+                                {/* Released notice */}
+                                {isReleased && (
+                                  <div style={{
+                                    marginTop: 10, padding: '10px 14px', borderRadius: 8,
+                                    background: `${C.red}10`, border: `1px solid ${C.red}30`,
+                                    fontSize: 12, color: C.red, fontWeight: 600,
+                                  }}>
+                                    ❌ PNR released — no longer valid
+                                  </div>
+                                )}
+
+                                {/* Action buttons */}
+                                {isActive ? (
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                                    <button
+                                      onClick={() => payAndTicketHeld(h)}
+                                      disabled={payingHeld === h.bookingRefNo}
+                                      style={{
+                                        flex: 2, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: '#0B0B14',
+                                        border: 'none', padding: '11px 0', borderRadius: 8, fontWeight: 700,
+                                        cursor: payingHeld ? 'wait' : 'pointer', fontSize: 12,
+                                        opacity: payingHeld === h.bookingRefNo ? 0.6 : 1,
+                                      }}
+                                    >
+                                      {payingHeld === h.bookingRefNo ? '⏳ Processing...' : '💳 Pay & Issue Ticket'}
+                                    </button>
+                                    <button
+                                      onClick={() => checkHeldStatus(h)}
+                                      title="Check latest status from supplier"
+                                      style={{
+                                        background: C.bg, color: C.accent, border: `1px solid ${C.accent}40`,
+                                        padding: '11px 14px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11,
+                                      }}
+                                    >
+                                      🔍 Status
+                                    </button>
+                                    <button
+                                      onClick={() => releaseHeld(h)}
+                                      title="Release this PNR at the supplier"
+                                      style={{
+                                        background: `${C.red}15`, color: C.red, border: `1px solid ${C.red}40`,
+                                        padding: '11px 14px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11,
+                                      }}
+                                    >
+                                      ✕ Release
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                                    <button
+                                      onClick={() => removeHeldFlight(h.bookingRefNo)}
+                                      style={{
+                                        background: 'none', color: C.muted, border: `1px solid ${C.divider}`,
+                                        padding: '6px 12px', borderRadius: 6, fontWeight: 500, cursor: 'pointer', fontSize: 10,
+                                      }}
+                                    >
+                                      🗑 Remove from list
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Reprint (API 10) + Release (API 13) */}
             {mgmtPanel === 'reprint' && (() => {
               const RefInput = () => {
                 const [refNo, setRefNo] = useState('');
                 const [pnr, setPnr] = useState('');
+
+                const raw = reprintData?.raw || {};
+                const pnrDetail = raw.AirPNRDetails?.[0] || {};
+                const customer = raw.CustomerDetail || {};
+                const payment = raw.BookingPaymentDetail || {};
+                const flights = pnrDetail.Flights || [];
+                const paxTickets = pnrDetail.PAXTicketDetails || [];
+                const ticketStatus = pnrDetail.Ticket_Status_Desc || 'Unknown';
+                const statusId = pnrDetail.Ticket_Status_Id;
+                const grossAmount = pnrDetail.Gross_Amount || 0;
+                const statusColor = statusId === 11 ? C.green : statusId === 22 ? C.red : C.amber;
+
                 return (
                   <div>
+                    {/* Search bar */}
                     <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
+                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No (e.g. FBB6WM7R)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
                       <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR (optional)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
-                      <button onClick={() => fetchReprint(refNo, pnr)} disabled={reprintLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
-                        {reprintLoading ? '⏳' : '🔍 Fetch'}
+                      <button onClick={() => fetchReprint(refNo, pnr)} disabled={reprintLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                        {reprintLoading ? '⏳ Fetching...' : '🔍 Fetch'}
                       </button>
                     </div>
+
                     {reprintData && (
-                      <div style={{ background: C.bg, borderRadius: 12, padding: 16, border: `1px solid ${C.divider}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                          <div>
-                            <div style={{ fontSize: 12, color: C.sub }}>Booking Ref</div>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{reprintData.bookingRefNo || '—'}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* Header card — PNR, Status, Airline */}
+                        <div style={{ background: C.bg, borderRadius: 12, padding: 20, border: `1px solid ${statusColor}30` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div>
+                              <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '1px' }}>Booking Reference</div>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: C.amber, fontFamily: 'monospace', marginTop: 4 }}>
+                                {reprintData.bookingRefNo || '—'}
+                              </div>
+                              <div style={{ marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                                <div>
+                                  <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Airline PNR</div>
+                                  <div style={{ fontSize: 14, fontWeight: 700, color: C.green, fontFamily: 'monospace', marginTop: 2 }}>
+                                    {pnrDetail.Airline_PNR || reprintData.airlinePnr || '—'}
+                                  </div>
+                                </div>
+                                {pnrDetail.Record_Locator && (
+                                  <div>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Record Locator</div>
+                                    <div style={{ fontSize: 13, color: C.text, fontFamily: 'monospace', marginTop: 2 }}>
+                                      {pnrDetail.Record_Locator}
+                                    </div>
+                                  </div>
+                                )}
+                                {pnrDetail.Supplier_RefNo && (
+                                  <div>
+                                    <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Supplier Ref</div>
+                                    <div style={{ fontSize: 13, color: C.text, marginTop: 2 }}>
+                                      {pnrDetail.Supplier_RefNo}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{
+                                display: 'inline-block', padding: '6px 14px', borderRadius: 20,
+                                background: `${statusColor}15`, border: `1px solid ${statusColor}40`,
+                                color: statusColor, fontSize: 11, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
+                              }}>
+                                {ticketStatus}
+                              </span>
+                              <div style={{ fontSize: 10, color: C.muted, marginTop: 8 }}>
+                                Booked: {raw.Booking_DateTime ? new Date(raw.Booking_DateTime).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                              </div>
+                              {pnrDetail.TicketingDate && (
+                                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                                  Ticketed: {new Date(pnrDetail.TicketingDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </div>
+                              )}
+                              {pnrDetail.BlockedExpiryDate && (
+                                <div style={{ fontSize: 10, color: C.red, marginTop: 2, fontWeight: 600 }}>
+                                  ⏳ Expires: {pnrDetail.BlockedExpiryDate}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 12, color: C.sub }}>Airline PNR</div>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: C.green }}>{reprintData.airlinePnr || '—'}</div>
+
+                          {/* Airline row */}
+                          {pnrDetail.Airline_Code && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: `1px solid ${C.divider}` }}>
+                              {(() => {
+                                const meta = getAirlineMeta(pnrDetail.Airline_Name, pnrDetail.Airline_Code);
+                                return (
+                                  <div style={{
+                                    width: 36, height: 36, borderRadius: 8,
+                                    background: `linear-gradient(135deg, ${meta.grad[0]}, ${meta.grad[1]})`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 10, fontWeight: 900, color: '#fff',
+                                  }}>{meta.abbr}</div>
+                                );
+                              })()}
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{pnrDetail.Airline_Name || pnrDetail.Airline_Code}</div>
+                                <div style={{ fontSize: 11, color: C.sub }}>CRS: {pnrDetail.CRS_Code || '—'} · CRS PNR: {pnrDetail.CRS_PNR || '—'}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Summary grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                          <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                            <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gross Amount</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: C.green, marginTop: 4 }}>₹{Number(grossAmount).toLocaleString('en-IN')}</div>
+                          </div>
+                          <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                            <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Passengers</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 4 }}>
+                              {raw.Adult_Count || 0}A {raw.Child_Count ? `· ${raw.Child_Count}C ` : ''}{raw.Infant_Count ? `· ${raw.Infant_Count}I` : ''}
+                            </div>
+                          </div>
+                          <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                            <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Class</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 4 }}>
+                              {raw.Class_of_Travel === 0 ? 'Economy' : raw.Class_of_Travel === 1 ? 'Premium Eco' : raw.Class_of_Travel === 2 ? 'Business' : 'First'}
+                            </div>
+                          </div>
+                          <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                            <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trip Type</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 4 }}>
+                              {raw.Travel_Type === 0 ? 'One Way' : raw.Travel_Type === 1 ? 'Round Trip' : 'Multi City'}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 12, fontSize: 12, color: C.sub, marginBottom: 12 }}>
-                          <span>Status: <strong style={{ color: C.text }}>{reprintData.status}</strong></span>
-                          <span>Amount: <strong style={{ color: C.text }}>₹{reprintData.totalAmount?.toLocaleString('en-IN') || '—'}</strong></span>
-                          {reprintData.blockedExpiry && <span>Expiry: <strong style={{ color: C.amber }}>{reprintData.blockedExpiry}</strong></span>}
+
+                        {/* Flights */}
+                        {flights.length > 0 && (
+                          <div style={{ background: C.bg, borderRadius: 12, border: `1px solid ${C.divider}`, overflow: 'hidden' }}>
+                            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.divider}`, fontSize: 12, fontWeight: 700, color: C.text }}>
+                              ✈ Flight Segments ({flights.length})
+                            </div>
+                            {flights.map((f, fi) => {
+                              const seg = f.Segments?.[0] || {};
+                              return (
+                                <div key={fi} style={{ padding: '12px 16px', borderBottom: fi < flights.length - 1 ? `1px solid ${C.divider}` : 'none' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                                        {f.Airline_Code}-{seg.Flight_Number || f.Flight_Numbers?.split('-')?.[0] || '—'}
+                                      </div>
+                                      <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>
+                                        {f.Origin} → {f.Destination} · {f.TravelDate || '—'}
+                                      </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                                        {seg.Departure_DateTime ? seg.Departure_DateTime.split(' ')[1] : '—'}
+                                        {' → '}
+                                        {seg.Arrival_DateTime ? seg.Arrival_DateTime.split(' ')[1] : '—'}
+                                      </div>
+                                      <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                                        {seg.Duration || '—'} · Terminal {seg.Origin_Terminal || '—'} → {seg.Destination_Terminal || '—'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Passengers / Tickets */}
+                        {paxTickets.length > 0 && (
+                          <div style={{ background: C.bg, borderRadius: 12, border: `1px solid ${C.divider}`, overflow: 'hidden' }}>
+                            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.divider}`, fontSize: 12, fontWeight: 700, color: C.text }}>
+                              👤 Passenger Tickets ({paxTickets.length})
+                            </div>
+                            {paxTickets.map((pax, pi) => (
+                              <div key={pi} style={{ padding: '12px 16px', borderBottom: pi < paxTickets.length - 1 ? `1px solid ${C.divider}` : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                                    {pax.Title} {pax.First_Name} {pax.Last_Name}
+                                  </div>
+                                  <div style={{ fontSize: 10, color: C.sub, marginTop: 2 }}>
+                                    {pax.PAX_Type === 0 ? 'Adult' : pax.PAX_Type === 1 ? 'Child' : 'Infant'}
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  {pax.TicketNumber && (
+                                    <div style={{ fontSize: 11, color: C.green, fontFamily: 'monospace' }}>{pax.TicketNumber}</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Contact */}
+                        {(raw.PAX_EmailId || raw.PAX_Mobile || customer.CustomerName) && (
+                          <div style={{ background: C.bg, borderRadius: 12, border: `1px solid ${C.divider}`, padding: 16 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 10 }}>📞 Contact & Customer</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, fontSize: 11 }}>
+                              {customer.CustomerName && (
+                                <div>
+                                  <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase' }}>Customer</div>
+                                  <div style={{ color: C.text, fontWeight: 600, marginTop: 2 }}>{customer.CustomerName}</div>
+                                </div>
+                              )}
+                              {raw.PAX_EmailId && (
+                                <div>
+                                  <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase' }}>Email</div>
+                                  <div style={{ color: C.text, marginTop: 2, wordBreak: 'break-all' }}>{raw.PAX_EmailId}</div>
+                                </div>
+                              )}
+                              {raw.PAX_Mobile && (
+                                <div>
+                                  <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase' }}>Mobile</div>
+                                  <div style={{ color: C.text, marginTop: 2 }}>{raw.PAX_Mobile}</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Failure remark if any */}
+                        {pnrDetail.FailureRemark && (
+                          <div style={{ background: `${C.red}10`, border: `1px solid ${C.red}30`, borderRadius: 10, padding: 12, fontSize: 11, color: C.red }}>
+                            ⚠️ <strong>Failure:</strong> {pnrDetail.FailureRemark}
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          {statusId !== 22 && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Release PNR ${reprintData.bookingRefNo}? This will cancel the hold at the supplier.`)) {
+                                  executeReleasePnr(reprintData.bookingRefNo, reprintData.airlinePnr || pnrDetail.Airline_PNR);
+                                }
+                              }}
+                              style={{ background: `${C.red}15`, color: C.red, border: `1px solid ${C.red}40`, padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 12 }}
+                            >
+                              ✕ Release PNR
+                            </button>
+                          )}
+                          <details style={{ marginLeft: 'auto' }}>
+                            <summary style={{ fontSize: 10, color: C.muted, cursor: 'pointer', listStyle: 'none', padding: '9px 14px', border: `1px solid ${C.divider}`, borderRadius: 8 }}>
+                              📋 View Raw JSON
+                            </summary>
+                            <pre style={{ marginTop: 8, fontSize: 10, color: C.muted, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto', background: C.bg, padding: 12, borderRadius: 8, border: `1px solid ${C.divider}` }}>
+                              {JSON.stringify(reprintData.raw, null, 2)}
+                            </pre>
+                          </details>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => executeReleasePnr(reprintData.bookingRefNo, reprintData.airlinePnr)} style={{ background: `${C.red}20`, color: C.red, border: `1px solid ${C.red}40`, padding: '8px 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 11 }}>Release PNR</button>
-                        </div>
-                        <pre style={{ marginTop: 12, fontSize: 10, color: C.muted, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>{JSON.stringify(reprintData.raw, null, 2)}</pre>
                       </div>
                     )}
                   </div>
@@ -4781,29 +5208,49 @@ export default function BookingPanel() {
             })()}
 
             {/* Agency Balance (API 17) */}
-            {mgmtPanel === 'balance' && (() => {
-              const BalPanel = () => {
-                const [refNo, setRefNo] = useState('');
-                return (
+            {mgmtPanel === 'balance' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div>
-                    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                      <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
-                      <button onClick={() => fetchAgencyBalance(refNo)} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
-                        💰 Check Balance
-                      </button>
-                    </div>
-                    {agencyBalance && (
-                      <div style={{ background: C.bg, borderRadius: 12, padding: 20, border: `1px solid ${C.green}30`, textAlign: 'center' }}>
-                        <div style={{ fontSize: 12, color: C.sub, marginBottom: 4 }}>Agency Wallet Balance</div>
-                        <div style={{ fontSize: 28, fontWeight: 900, color: C.green }}>₹{agencyBalance.balance?.toLocaleString('en-IN') || '0'}</div>
-                        <div style={{ fontSize: 11, color: C.sub, marginTop: 8 }}>{agencyBalance.currency || 'INR'}</div>
-                      </div>
-                    )}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Agency Wallet Balance</div>
+                    <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>Live balance from the supplier</div>
                   </div>
-                );
-              };
-              return <BalPanel />;
-            })()}
+                  <button onClick={fetchAgencyBalance} disabled={agencyBalLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: agencyBalLoading ? 'wait' : 'pointer', fontSize: 12, opacity: agencyBalLoading ? 0.6 : 1 }}>
+                    {agencyBalLoading ? '⏳ Checking...' : '💰 Check Balance'}
+                  </button>
+                </div>
+                {agencyBalance && (
+                  <div>
+                    {/* Main balance */}
+                    <div style={{ background: C.bg, borderRadius: 12, padding: 24, border: `1px solid ${C.green}30`, textAlign: 'center', marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: C.sub, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6 }}>Effective Balance</div>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: C.green }}>₹{agencyBalance.effectiveBalance?.toLocaleString('en-IN') || '0'}</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{agencyBalance.currency || 'INR'}</div>
+                    </div>
+                    {/* Breakdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                      <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                        <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Credit Balance</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 4 }}>₹{agencyBalance.creditBalance?.toLocaleString('en-IN') || '0'}</div>
+                      </div>
+                      <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                        <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Lien Balance</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: C.amber, marginTop: 4 }}>₹{agencyBalance.lienBalance?.toLocaleString('en-IN') || '0'}</div>
+                      </div>
+                      <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.divider}` }}>
+                        <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>OD Amount</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: C.red, marginTop: 4 }}>₹{agencyBalance.odAmount?.toLocaleString('en-IN') || '0'}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!agencyBalance && !agencyBalLoading && (
+                  <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 20 }}>
+                    Click "Check Balance" to fetch the agency wallet balance from the supplier.
+                  </div>
+                )}
+              </div>
+            )}
 
             {!mgmtPanel && (
               <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: 20 }}>

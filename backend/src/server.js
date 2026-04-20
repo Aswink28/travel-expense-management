@@ -50,6 +50,7 @@ app.use('/api/employees/bulk', require('./routes/bulkEmployees'))
 app.use('/api/employees',    require('./routes/employees'))
 app.use('/api/roles',        require('./routes/roles'))
 app.use('/api/flights/air',  require('./routes/airFlights'))
+app.use('/api/held-flights', require('./routes/heldFlights'))
 app.use('/api/flights',      require('./routes/flights'))
 app.use('/api/hotels',       require('./routes/hotels'))
 
