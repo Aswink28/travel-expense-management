@@ -518,6 +518,18 @@ export default function BookingPanel() {
       return setErr("Fill Origin, Destination and Date.");
     if (modeTab !== "Flight")
       return setErr(`${modeTab} search coming soon — try Flights!`);
+
+    // Validate travel date — cannot be before today (supplier rejects past dates)
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const travel = new Date(form.date); travel.setHours(0, 0, 0, 0);
+    if (isNaN(travel.getTime())) {
+      return setErr('Please enter a valid travel date.');
+    }
+    if (travel < today) {
+      const todayStr = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      return setErr(`Travel date cannot be in the past. Please select ${todayStr} or later.`);
+    }
+
     setErr("");
     setSearching(true);
     setRawResults(null);
@@ -537,12 +549,21 @@ export default function BookingPanel() {
         passengers: parseInt(form.pax) || 1,
         travelClass: form.cls,
       });
+      if (!Array.isArray(r.data) || r.data.length === 0) {
+        setErr('No flights found for the selected route and date.');
+        setRawResults(null);
+        return;
+      }
       setRawResults(r.data);
       // init price slider to max
-      if (r.data?.length)
-        setFilterMaxPrice(Math.max(...r.data.map((f) => f.price)));
+      setFilterMaxPrice(Math.max(...r.data.map((f) => f.price)));
     } catch (e) {
-      setErr(e.message);
+      const msg = e.message || 'Search failed';
+      if (msg.includes('Travel Date') || msg.includes('Invalid request data')) {
+        setErr('Invalid travel date. Please select a future date.');
+      } else {
+        setErr(msg);
+      }
     } finally {
       setSearching(false);
     }
@@ -4221,6 +4242,7 @@ export default function BookingPanel() {
                 <input
                   type="date"
                   value={form.date}
+                  min={new Date().toISOString().slice(0, 10)}
                   onChange={(e) =>
                     setForm((v) => ({ ...v, date: e.target.value }))
                   }
@@ -4233,6 +4255,7 @@ export default function BookingPanel() {
                   <input
                     type="date"
                     value={form.returnDate}
+                    min={form.date || new Date().toISOString().slice(0, 10)}
                     onChange={(e) =>
                       setForm((v) => ({ ...v, returnDate: e.target.value }))
                     }
@@ -5082,14 +5105,6 @@ export default function BookingPanel() {
                               ✕ Release PNR
                             </button>
                           )}
-                          <details style={{ marginLeft: 'auto' }}>
-                            <summary style={{ fontSize: 10, color: C.muted, cursor: 'pointer', listStyle: 'none', padding: '9px 14px', border: `1px solid ${C.divider}`, borderRadius: 8 }}>
-                              📋 View Raw JSON
-                            </summary>
-                            <pre style={{ marginTop: 8, fontSize: 10, color: C.muted, whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto', background: C.bg, padding: 12, borderRadius: 8, border: `1px solid ${C.divider}` }}>
-                              {JSON.stringify(reprintData.raw, null, 2)}
-                            </pre>
-                          </details>
                         </div>
                       </div>
                     )}
