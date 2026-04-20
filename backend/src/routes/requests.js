@@ -70,11 +70,30 @@ router.get('/queue', async (req, res, next) => {
   try {
     const { role, id:uid } = req.user
     if (['Employee','Booking Admin'].includes(role)) return res.json({ success:true, count:0, data:[] })
+
     let where = '', params = [uid]
-    if (role === 'Super Admin')   where = `WHERE tr.status='pending' AND tr.user_id!=$1`
-    else if (role === 'Finance')  where = `WHERE tr.status IN ('pending','pending_finance') AND tr.finance_approved=FALSE AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
-    else if (role === 'Tech Lead') where = `WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE AND tr.user_role='Employee' AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
-    else if (role === 'Manager')  where = `WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE AND tr.user_role IN ('Employee','Tech Lead') AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
+
+    if (role === 'Super Admin') {
+      where = `WHERE tr.status='pending' AND tr.user_id!=$1`
+    } else if (role === 'Finance') {
+      where = `WHERE tr.status IN ('pending','pending_finance') AND tr.finance_approved=FALSE AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
+    } else {
+      // Dynamic: fetch all roles that this current role can approve from role_approvers table
+      // role_approvers.role_name     = the role being approved (e.g. 'Employee')
+      // role_approvers.approver_role_name = the role that can approve it (current user's role)
+      const { rows: approvableRoles } = await pool.query(
+        'SELECT role_name FROM role_approvers WHERE approver_role_name = $1',
+        [role]
+      )
+      const allowedRoles = approvableRoles.map(r => r.role_name)
+      if (!allowedRoles.length) {
+        // This role isn't configured as approver for any role → empty queue
+        return res.json({ success: true, count: 0, data: [] })
+      }
+      params.push(allowedRoles)
+      where = `WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE AND tr.user_role = ANY($2) AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
+    }
+
     const { rows } = await pool.query(`
       SELECT tr.*, COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
       FROM travel_requests tr ${where}
@@ -200,9 +219,20 @@ router.post('/:id/action', async (req, res, next) => {
       // Update approval flags
       if (u.role==='Super Admin') {
         await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW(),finance_approved=TRUE,finance_approved_by=$1,finance_approved_at=NOW() WHERE id=$2`,[u.name,id])
-      } else if (['Tech Lead','Manager'].includes(u.role)) {
-        await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW() WHERE id=$2`,[u.name,id])
       } else if (u.role==='Finance') {
+        // Finance is treated separately (see below)
+      } else {
+        // Dynamic: check if current user's role is configured as approver for requester's role
+        const { rows: canApprove } = await client.query(
+          'SELECT 1 FROM role_approvers WHERE role_name = $1 AND approver_role_name = $2',
+          [tr.user_role, u.role]
+        )
+        if (!canApprove.length) {
+          return res.status(403).json({ success: false, message: `Your role (${u.role}) is not configured to approve requests from ${tr.user_role}` })
+        }
+        await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW() WHERE id=$2`,[u.name,id])
+      }
+      if (u.role==='Finance') {
         const appTravel = approved_travel_cost || tr.estimated_travel_cost
         const appHotel  = approved_hotel_cost  || tr.estimated_hotel_cost
         const days      = tr.total_days || 1

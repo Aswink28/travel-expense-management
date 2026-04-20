@@ -30,18 +30,20 @@ router.get('/pages', async (req, res) => {
   res.json({ success: true, data: ALL_PAGES })
 })
 
-// ── GET /api/roles — list all roles with their pages ─────────
+// ── GET /api/roles — list all roles with their pages and approvers ─
 router.get('/', async (req, res, next) => {
   try {
-    const { rows: roles } = await pool.query('SELECT * FROM roles ORDER BY id')
-    const { rows: pages } = await pool.query('SELECT * FROM role_pages ORDER BY role_name, sort_order')
+    const { rows: roles }     = await pool.query('SELECT * FROM roles ORDER BY id')
+    const { rows: pages }     = await pool.query('SELECT * FROM role_pages ORDER BY role_name, sort_order')
+    const { rows: approvers } = await pool.query('SELECT * FROM role_approvers ORDER BY role_name, sort_order')
 
-    const rolesWithPages = roles.map(r => ({
+    const rolesWithRel = roles.map(r => ({
       ...r,
       pages: pages.filter(p => p.role_name === r.name),
+      approvers: approvers.filter(a => a.role_name === r.name).map(a => a.approver_role_name),
     }))
 
-    res.json({ success: true, data: rolesWithPages })
+    res.json({ success: true, data: rolesWithRel })
   } catch (e) { next(e) }
 })
 
@@ -49,7 +51,7 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   const client = await pool.connect()
   try {
-    const { name, description, color, pages } = req.body
+    const { name, description, color, pages, approvers } = req.body
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Role name is required' })
@@ -96,6 +98,16 @@ router.post('/', async (req, res, next) => {
       }
     }
 
+    // Insert approver-role assignments
+    if (approvers && approvers.length) {
+      for (let i = 0; i < approvers.length; i++) {
+        await client.query(
+          'INSERT INTO role_approvers (role_name, approver_role_name, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+          [roleName, approvers[i], i + 1]
+        )
+      }
+    }
+
     // Also create a tier_config entry for the new role
     await client.query(
       `INSERT INTO tier_config (role, allowed_modes, max_trip_budget, daily_allowance, max_hotel_per_night, cab_daily_limit, food_daily_limit, color)
@@ -106,9 +118,11 @@ router.post('/', async (req, res, next) => {
 
     await client.query('COMMIT')
 
-    // Fetch the role with pages
-    const { rows: rolePages } = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [roleName])
+    // Fetch the role with pages and approvers
+    const { rows: rolePages }     = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [roleName])
+    const { rows: roleApprovers } = await pool.query('SELECT approver_role_name FROM role_approvers WHERE role_name = $1 ORDER BY sort_order', [roleName])
     role.pages = rolePages
+    role.approvers = roleApprovers.map(a => a.approver_role_name)
 
     res.status(201).json({ success: true, message: 'Role created successfully', data: role })
   } catch (e) {
@@ -125,7 +139,7 @@ router.put('/:id', async (req, res, next) => {
   const client = await pool.connect()
   try {
     const { id } = req.params
-    const { description, color, pages } = req.body
+    const { description, color, pages, approvers } = req.body
 
     const { rows: [role] } = await pool.query('SELECT * FROM roles WHERE id = $1', [id])
     if (!role) return res.status(404).json({ success: false, message: 'Role not found' })
@@ -157,12 +171,25 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
+    // Replace approver assignments
+    if (approvers !== undefined) {
+      await client.query('DELETE FROM role_approvers WHERE role_name = $1', [role.name])
+      for (let i = 0; i < approvers.length; i++) {
+        await client.query(
+          'INSERT INTO role_approvers (role_name, approver_role_name, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+          [role.name, approvers[i], i + 1]
+        )
+      }
+    }
+
     await client.query('COMMIT')
 
-    // Return updated role with pages
+    // Return updated role with pages and approvers
     const { rows: [updated] } = await pool.query('SELECT * FROM roles WHERE id = $1', [id])
-    const { rows: rolePages } = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [updated.name])
+    const { rows: rolePages }   = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [updated.name])
+    const { rows: roleApprovers } = await pool.query('SELECT approver_role_name FROM role_approvers WHERE role_name = $1 ORDER BY sort_order', [updated.name])
     updated.pages = rolePages
+    updated.approvers = roleApprovers.map(a => a.approver_role_name)
 
     res.json({ success: true, message: 'Role updated', data: updated })
   } catch (e) {

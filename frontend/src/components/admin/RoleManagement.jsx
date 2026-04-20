@@ -14,6 +14,7 @@ export default function RoleManagement() {
   const [editRole, setEditRole]     = useState(null)
   const [form, setForm]             = useState({ name: '', description: '', color: '#0A84FF' })
   const [selectedPages, setSelectedPages] = useState([])
+  const [selectedApprovers, setSelectedApprovers] = useState([])
   const [formError, setFormError]   = useState('')
   const [saving, setSaving]         = useState(false)
   const [expandedRole, setExpandedRole] = useState(null)
@@ -37,6 +38,7 @@ export default function RoleManagement() {
     setEditRole(null)
     setForm({ name: '', description: '', color: '#0A84FF' })
     setSelectedPages([])
+    setSelectedApprovers([])
     setFormError('')
     setShowModal(true)
   }
@@ -45,6 +47,7 @@ export default function RoleManagement() {
     setEditRole(role)
     setForm({ name: role.name, description: role.description || '', color: role.color || '#888' })
     setSelectedPages(role.pages.map(p => p.page_id))
+    setSelectedApprovers(role.approvers || [])
     setFormError('')
     setShowModal(true)
   }
@@ -52,6 +55,12 @@ export default function RoleManagement() {
   function togglePage(pageId) {
     setSelectedPages(prev =>
       prev.includes(pageId) ? prev.filter(p => p !== pageId) : [...prev, pageId]
+    )
+  }
+
+  function toggleApprover(roleName) {
+    setSelectedApprovers(prev =>
+      prev.includes(roleName) ? prev.filter(r => r !== roleName) : [...prev, roleName]
     )
   }
 
@@ -85,10 +94,10 @@ export default function RoleManagement() {
       })
 
       if (editRole) {
-        await rolesAPI.update(editRole.id, { description: form.description, color: form.color, pages })
+        await rolesAPI.update(editRole.id, { description: form.description, color: form.color, pages, approvers: selectedApprovers })
         setSuccess(`Role "${editRole.name}" updated`)
       } else {
-        await rolesAPI.create({ name: form.name.trim(), description: form.description, color: form.color, pages })
+        await rolesAPI.create({ name: form.name.trim(), description: form.description, color: form.color, pages, approvers: selectedApprovers })
         setSuccess(`Role "${form.name.trim()}" created`)
       }
       setShowModal(false)
@@ -191,9 +200,30 @@ export default function RoleManagement() {
                     )}
                   </div>
 
+                  {/* Approvers list */}
+                  <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Can Be Approved By</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                    {role.approvers?.length ? role.approvers.map(approverName => {
+                      const approverRole = roles.find(r => r.name === approverName)
+                      const color = approverRole?.color || '#888'
+                      return (
+                        <span key={approverName} style={{
+                          fontSize: 11, padding: '4px 12px', borderRadius: 8,
+                          background: color + '14', color: color, fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          border: `1px solid ${color}30`,
+                        }}>
+                          ✓ {approverName}
+                        </span>
+                      )
+                    }) : (
+                      <span style={{ fontSize: 12, color: '#FF9F0A' }}>⚠️ No approvers configured — Super Admin only</span>
+                    )}
+                  </div>
+
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(role)}>Edit Pages</Button>
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(role)}>Edit Role</Button>
                     {!role.is_system && (
                       <Button size="sm" variant="danger" onClick={() => handleDelete(role)}>Delete</Button>
                     )}
@@ -298,6 +328,63 @@ export default function RoleManagement() {
                   </div>
                 )
               })}
+            </div>
+
+            {/* Approval Roles selection */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 6 }}>
+                Who Can Approve Requests for this Role? ({selectedApprovers.length} selected)
+              </label>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 10 }}>
+                Select roles whose users can approve travel requests submitted by users with this role.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+                {roles
+                  .filter(r => !editRole || r.name !== editRole.name)
+                  .filter(r => !form.name || r.name !== form.name.trim())
+                  .map(r => {
+                    const checked = selectedApprovers.includes(r.name)
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => toggleApprover(r.name)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                          background: checked ? r.color + '18' : 'transparent',
+                          border: `1px solid ${checked ? r.color + '40' : '#1E1E2A'}`,
+                          transition: 'all .15s',
+                        }}
+                      >
+                        <div style={{
+                          width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                          border: `2px solid ${checked ? r.color : '#3A3A4A'}`,
+                          background: checked ? r.color : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, color: '#fff', fontWeight: 700,
+                        }}>
+                          {checked ? '✓' : ''}
+                        </div>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          background: r.color + '22', border: `1.5px solid ${r.color}55`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, fontWeight: 700, color: r.color, flexShrink: 0,
+                        }}>
+                          {r.name.charAt(0)}
+                        </div>
+                        <span style={{ fontSize: 12, color: checked ? '#E2E2E8' : '#888', fontWeight: checked ? 600 : 400 }}>
+                          {r.name}
+                        </span>
+                      </div>
+                    )
+                  })}
+              </div>
+              {selectedApprovers.length === 0 && (
+                <div style={{ fontSize: 11, color: '#FF9F0A', marginTop: 8 }}>
+                  ⚠️ No approvers selected — requests from this role will need to be approved by Super Admin only.
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>

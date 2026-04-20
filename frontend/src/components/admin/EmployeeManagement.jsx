@@ -441,6 +441,70 @@ export default function EmployeeManagement({ setTab }) {
               <Input label="Reporting To" value={form.reporting_to} onChange={e => f('reporting_to', e.target.value)} placeholder="e.g. Manager name" />
             </div>
 
+            {/* Approval Flow — auto-populated from Role Manager */}
+            {(() => {
+              const selectedRole = roles.find(r => r.name === form.role)
+              const approvers = selectedRole?.approvers || []
+              return (
+                <div style={{
+                  background:'#14141E', border:'1px solid #2A2A35', borderRadius:10,
+                  padding:'12px 14px', marginBottom:14,
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontSize:14 }}>🔀</span>
+                      <div>
+                        <div style={{ fontSize:11, color:'#E2E2E8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px' }}>
+                          Approval Flow
+                        </div>
+                        <div style={{ fontSize:10, color:'#666', marginTop:2 }}>
+                          Auto-configured from Role Manager · Read-only
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize:10, color:'#888', fontWeight:600 }}>
+                      {approvers.length} approver{approvers.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {approvers.length > 0 ? (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {approvers.map((approverName, i) => {
+                        const approverRole = roles.find(r => r.name === approverName)
+                        const color = approverRole?.color || '#888'
+                        return (
+                          <div key={approverName} style={{
+                            display:'flex', alignItems:'center', gap:6,
+                            padding:'5px 10px', borderRadius:6,
+                            background: color + '18', border: `1px solid ${color}40`,
+                          }}>
+                            <span style={{
+                              fontSize:9, fontWeight:700, color:'#666',
+                              background:'#000', padding:'1px 5px', borderRadius:3,
+                            }}>{i + 1}</span>
+                            <div style={{
+                              width:16, height:16, borderRadius:'50%',
+                              background: color + '30', border: `1.5px solid ${color}60`,
+                              display:'flex', alignItems:'center', justifyContent:'center',
+                              fontSize:9, fontWeight:700, color: color,
+                            }}>
+                              {approverName.charAt(0)}
+                            </div>
+                            <span style={{ fontSize:11, fontWeight:600, color: color }}>
+                              {approverName}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:11, color:'#FF9F0A', padding:'4px 0' }}>
+                      ⚠️ No approvers configured — requests from this role will need Super Admin approval only. Configure in <strong>Role Manager</strong>.
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:8 }}>
               <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
               <Button type="submit" disabled={saving}>
