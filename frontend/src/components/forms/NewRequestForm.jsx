@@ -11,13 +11,19 @@ export default function NewRequestForm({ onSuccess }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Approval configuration is sourced entirely from the employee profile (Employee Creation).
+  // Approvals run strictly in order from lowest-authority to highest.
+  const ROLE_RANK = {
+    'Super Admin': 1, 'Booking Admin': 2, 'Manager': 3, 'Finance': 3, 'Tech Lead': 4, 'Employee': 5,
+  }
+  const approverRoles = (Array.isArray(user?.approver_roles) ? user.approver_roles : [])
+    .slice()
+    .sort((a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99))
+
   // ----- Form State -----
   const [form, setForm] = useState({
     trip_name: '',
     trip_type: 'Domestic',
-    approver_1: '',
-    approver_2: '',
-    approver_3: '',
     project_name: 'Not Applicable',
     remarks: '',
     contact_name: user?.name || '',
@@ -68,7 +74,6 @@ export default function NewRequestForm({ onSuccess }) {
 
     // Trip info
     if (!form.trip_name.trim())       errs.push('Trip Name is required')
-    if (!form.approver_1)             errs.push('Approver 1 is required')
     if (!form.contact_name.trim())    errs.push('Contact Name is required')
     if (!form.contact_mobile.trim())  errs.push('Contact Mobile is required')
     if (!form.contact_email.trim())   errs.push('Contact Email is required')
@@ -168,9 +173,6 @@ export default function NewRequestForm({ onSuccess }) {
     setForm({
       trip_name:      'Q3 Client Summit — Mumbai',
       trip_type:      'Domestic',
-      approver_1:     'CHAN BASHA SHAIK',
-      approver_2:     '',
-      approver_3:     '',
       project_name:   'Project Alpha',
       remarks:        'Business visit for Q3 client review and product demo',
       contact_name:   user?.name || 'Arjun Sharma',
@@ -299,27 +301,52 @@ export default function NewRequestForm({ onSuccess }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-            <div>
-              <label style={labelStyle}>Approver 1 *</label>
-              <select style={req(form.approver_1)} value={form.approver_1} onChange={e => set('approver_1', e.target.value)}>
-                <option value="">Select Approver</option>
-                <option value="CHAN BASHA SHAIK">CHAN BASHA SHAIK</option>
-                <option value="JOHN DOE">JOHN DOE</option>
-              </select>
+          {/* Approval flow — read-only, sequential, sourced from Employee Creation */}
+          <div style={{
+            marginBottom: 20, padding: '12px 14px', borderRadius: 8,
+            background: 'var(--bg-input, #13131A)', border: '1px solid var(--border, #2A2A35)',
+          }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: approverRoles.length ? 10 : 0, gap: 10, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', alignItems:'center', gap: 8 }}>
+                <span style={{ fontSize: 14 }}>🔀</span>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform:'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary, #F0F0F8)' }}>
+                  Sequential Approval Flow
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--text-muted, #9090A8)' }}>
+                  · lowest → highest authority
+                </span>
+              </div>
+              {approverRoles.length > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+                  color: accent, background: `${accent}18`, border: `1px solid ${accent}40`,
+                  padding: '3px 8px', borderRadius: 999,
+                }}>{approverRoles.length}-step flow</span>
+              )}
             </div>
-            <div>
-              <label style={labelStyle}>Approver 2</label>
-              <select style={inputStyle} value={form.approver_2} onChange={e => set('approver_2', e.target.value)}>
-                <option value="">(Optional)</option>
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Approver 3</label>
-              <select style={inputStyle} value={form.approver_3} onChange={e => set('approver_3', e.target.value)}>
-                <option value="">(Optional)</option>
-              </select>
-            </div>
+            {approverRoles.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                {approverRoles.map((name, i) => (
+                  <span key={name} style={{ display:'inline-flex', alignItems:'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600, color: 'var(--text-primary, #F0F0F8)',
+                      background: 'var(--bg-card, #1A1A22)', border: '1px solid var(--border, #2A2A35)',
+                      padding: '4px 10px', borderRadius: 999, display:'inline-flex', alignItems:'center', gap: 6,
+                    }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: accent, background: `${accent}18`, padding:'1px 5px', borderRadius: 3 }}>
+                        {i + 1}
+                      </span>
+                      {name}
+                    </span>
+                    {i < approverRoles.length - 1 && <span style={{ color: 'var(--text-muted, #9090A8)', fontWeight: 700 }}>→</span>}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: '#FF9F0A' }}>
+                ⚠️ No approvers configured on your profile — contact your administrator.
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>

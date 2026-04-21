@@ -1158,16 +1158,23 @@ table tbody td {
    PREMIUM COSMIC LOGIN — Corporate Expense Management
    ============================================================ */
 
-/* Animated cosmic background */
+/* Animated cosmic background — theme-aware */
 .login-cosmic {
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(120, 60, 220, 0.35) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(60, 120, 255, 0.30) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(255, 80, 200, 0.15) 0%, transparent 60%),
-    linear-gradient(135deg, #0A0420 0%, #150830 50%, #08051F 100%);
+  background: var(--bg-app-grad, linear-gradient(135deg, #0A0420 0%, #150830 50%, #08051F 100%));
   z-index: 0;
+}
+
+.login-cosmic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, color-mix(in srgb, var(--accent, #0A84FF) 25%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, color-mix(in srgb, var(--accent-2, #BF5AF2) 22%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent, #0A84FF) 12%, transparent) 0%, transparent 60%);
+  pointer-events: none;
 }
 
 /* Star particles via radial-gradient layers */
@@ -1275,24 +1282,24 @@ table tbody td {
   gap: 8px;
   padding: 6px 14px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(184, 104, 255, 0.18), rgba(91, 174, 255, 0.12));
-  border: 1px solid rgba(184, 104, 255, 0.35);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   font-size: 11px;
   font-weight: 600;
-  color: #D8B8FF;
+  color: var(--accent);
   letter-spacing: 0.04em;
   margin-bottom: 22px;
-  box-shadow: 0 0 20px rgba(184, 104, 255, 0.2);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .login-hero-badge-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #B868FF;
-  box-shadow: 0 0 8px #B868FF;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
@@ -1307,13 +1314,13 @@ table tbody td {
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  color: #FFFFFF;
+  color: var(--text-primary, #FFFFFF);
   margin-bottom: 18px;
-  text-shadow: 0 0 40px rgba(180, 100, 255, 0.3);
+  text-shadow: 0 0 40px color-mix(in srgb, var(--accent, #BF5AF2) 30%, transparent);
 }
 
 .login-hero-title .gradient-word {
-  background: linear-gradient(135deg, #B868FF 0%, #5BAEFF 50%, #FF6BD6 100%);
+  background: var(--accent-grad, linear-gradient(135deg, #B868FF 0%, #5BAEFF 50%, #FF6BD6 100%));
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -1324,7 +1331,7 @@ table tbody td {
 .login-hero-subtitle {
   font-size: 15px;
   line-height: 1.6;
-  color: rgba(220, 200, 255, 0.65);
+  color: var(--text-muted, rgba(220, 200, 255, 0.65));
   max-width: 460px;
   margin-bottom: 32px;
 }
@@ -1342,8 +1349,8 @@ table tbody td {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: rgba(30, 18, 60, 0.5);
-  border: 1px solid rgba(180, 130, 255, 0.2);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 14px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -1356,7 +1363,7 @@ table tbody td {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(184, 104, 255, 0.15), transparent 50%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent 50%);
   opacity: 0;
   transition: opacity .35s ease;
   pointer-events: none;
@@ -1364,8 +1371,8 @@ table tbody td {
 
 .login-feature:hover {
   transform: translateY(-3px);
-  border-color: rgba(184, 104, 255, 0.5);
-  box-shadow: 0 12px 32px rgba(184, 104, 255, 0.2);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .login-feature:hover::before { opacity: 1; }
@@ -1379,9 +1386,9 @@ table tbody td {
   justify-content: center;
   flex-shrink: 0;
   font-size: 18px;
-  background: linear-gradient(135deg, rgba(184, 104, 255, 0.3), rgba(91, 174, 255, 0.2));
-  border: 1px solid rgba(180, 140, 255, 0.4);
-  box-shadow: 0 0 16px rgba(184, 104, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--accent-grad);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 25%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .login-feature-text {
@@ -1394,12 +1401,12 @@ table tbody td {
 .login-feature-name {
   font-size: 13px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--text-primary);
 }
 
 .login-feature-desc {
   font-size: 11px;
-  color: rgba(180, 160, 220, 0.65);
+  color: var(--text-muted);
 }
 
 /* Stats row */
@@ -1407,8 +1414,8 @@ table tbody td {
   display: flex;
   gap: 32px;
   padding: 20px 24px;
-  background: rgba(20, 10, 40, 0.5);
-  border: 1px solid rgba(180, 130, 255, 0.2);
+  background: var(--bg-card-deep);
+  border: 1px solid var(--border);
   border-radius: 16px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -1425,7 +1432,7 @@ table tbody td {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 800;
-  background: linear-gradient(135deg, #B868FF, #5BAEFF);
+  background: var(--accent-grad);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1435,7 +1442,7 @@ table tbody td {
 
 .login-stat-label {
   font-size: 10px;
-  color: rgba(180, 160, 220, 0.6);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -1455,19 +1462,19 @@ table tbody td {
   align-items: center;
   justify-content: center;
   font-size: 26px;
-  background: linear-gradient(135deg, rgba(120, 80, 220, 0.3), rgba(60, 120, 255, 0.18));
-  border: 1px solid rgba(180, 140, 255, 0.4);
+  background: var(--accent-grad);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px rgba(120, 60, 220, 0.25), 0 0 18px rgba(180, 100, 255, 0.18) inset;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 25%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 18%, transparent) inset;
   transition: all .35s ease;
   cursor: default;
 }
 
 .login-icon-pill:hover {
   transform: translateY(-4px) scale(1.05);
-  border-color: rgba(184, 104, 255, 0.7);
-  box-shadow: 0 12px 32px rgba(184, 104, 255, 0.4), 0 0 24px rgba(180, 100, 255, 0.3) inset;
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 30%, transparent) inset;
 }
 
 .login-icon-pill:nth-child(1) { animation: float-icon 5s ease-in-out infinite; }
@@ -1485,11 +1492,11 @@ table tbody td {
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  background: linear-gradient(135deg, rgba(120, 80, 220, 0.3), rgba(60, 120, 255, 0.2));
-  border: 1px solid rgba(180, 140, 255, 0.4);
+  background: var(--accent-grad);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px rgba(120, 60, 220, 0.3), 0 0 20px rgba(180, 100, 255, 0.2) inset;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 20px color-mix(in srgb, var(--accent) 20%, transparent) inset;
   z-index: 2;
 }
 
@@ -1506,15 +1513,15 @@ table tbody td {
 /* ── Glassmorphism login card ────────────────────────────── */
 .login-glass-card {
   position: relative;
-  background: rgba(30, 18, 60, 0.45);
+  background: var(--bg-card-deep, rgba(30, 18, 60, 0.45));
   border-radius: 24px;
   padding: 44px 40px;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(180, 130, 255, 0.3);
+  border: 1px solid var(--border, rgba(180, 130, 255, 0.3));
   box-shadow:
-    0 30px 80px rgba(20, 5, 60, 0.55),
-    0 0 60px rgba(180, 100, 255, 0.18),
+    0 30px 80px rgba(0, 0, 0, 0.4),
+    0 0 60px color-mix(in srgb, var(--accent, #0A84FF) 15%, transparent),
     0 1px 0 rgba(255, 255, 255, 0.08) inset;
   animation: scale-in .6s cubic-bezier(.16, 1, .3, 1) both;
 }
@@ -1525,7 +1532,7 @@ table tbody td {
   inset: -2px;
   border-radius: 26px;
   padding: 2px;
-  background: linear-gradient(135deg, #B868FF, #5BAEFF, #FF6BD6, #B868FF);
+  background: var(--accent-grad, linear-gradient(135deg, #B868FF, #5BAEFF, #FF6BD6, #B868FF));
   background-size: 300% 300%;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -1546,7 +1553,7 @@ table tbody td {
   position: absolute;
   inset: -20px;
   border-radius: 32px;
-  background: radial-gradient(ellipse at center, rgba(180, 100, 255, 0.18), transparent 70%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent, #BF5AF2) 18%, transparent), transparent 70%);
   z-index: -1;
   animation: card-glow-pulse 4s ease-in-out infinite;
   pointer-events: none;
@@ -1561,16 +1568,16 @@ table tbody td {
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 800;
-  color: #FFFFFF;
+  color: var(--text-primary, #FFFFFF);
   letter-spacing: -0.02em;
   line-height: 1.15;
   margin-bottom: 8px;
-  text-shadow: 0 0 30px rgba(180, 100, 255, 0.4);
+  text-shadow: 0 0 30px color-mix(in srgb, var(--accent, #BF5AF2) 40%, transparent);
 }
 
 .login-card-subtitle {
   font-size: 14px;
-  color: rgba(220, 200, 255, 0.7);
+  color: var(--text-muted, rgba(220, 200, 255, 0.7));
   margin-bottom: 28px;
 }
 
@@ -1585,7 +1592,8 @@ table tbody td {
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(180, 140, 255, 0.7);
+  color: var(--accent, rgba(180, 140, 255, 0.7));
+  opacity: 0.7;
   pointer-events: none;
   display: flex;
   align-items: center;
@@ -1594,10 +1602,10 @@ table tbody td {
 
 .login-cosmic-input {
   width: 100%;
-  background: rgba(20, 10, 40, 0.55);
-  border: 1px solid rgba(180, 130, 255, 0.3);
+  background: var(--bg-input, rgba(20, 10, 40, 0.55));
+  border: 1px solid var(--border, rgba(180, 130, 255, 0.3));
   border-radius: 12px;
-  color: #FFFFFF;
+  color: var(--text-primary, #FFFFFF);
   font-family: var(--font-sans);
   font-size: 14px;
   padding: 14px 16px 14px 46px;
@@ -1607,14 +1615,14 @@ table tbody td {
   transition: all .3s ease;
 }
 
-.login-cosmic-input::placeholder { color: rgba(180, 160, 220, 0.5); }
+.login-cosmic-input::placeholder { color: var(--text-muted, rgba(180, 160, 220, 0.5)); opacity: 0.6; }
 
 .login-cosmic-input:focus {
-  border-color: rgba(180, 130, 255, 0.7);
+  border-color: var(--accent, rgba(180, 130, 255, 0.7));
   box-shadow:
-    0 0 0 3px rgba(180, 100, 255, 0.18),
-    0 0 30px rgba(180, 100, 255, 0.25);
-  background: rgba(30, 15, 60, 0.65);
+    0 0 0 3px color-mix(in srgb, var(--accent, #BF5AF2) 18%, transparent),
+    0 0 30px color-mix(in srgb, var(--accent, #BF5AF2) 25%, transparent);
+  background: var(--bg-card, rgba(30, 15, 60, 0.65));
 }
 
 .login-pwd-toggle {
@@ -1624,7 +1632,7 @@ table tbody td {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: rgba(180, 140, 255, 0.7);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
   padding: 4px;
@@ -1632,7 +1640,7 @@ table tbody td {
   align-items: center;
   transition: color .2s;
 }
-.login-pwd-toggle:hover { color: #FFFFFF; }
+.login-pwd-toggle:hover { color: var(--text-primary); }
 
 /* Remember me + forgot password */
 .login-options-row {
@@ -1647,7 +1655,7 @@ table tbody td {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(220, 200, 255, 0.75);
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
@@ -1656,18 +1664,18 @@ table tbody td {
   appearance: none;
   width: 16px;
   height: 16px;
-  border: 1.5px solid rgba(180, 130, 255, 0.5);
+  border: 1.5px solid var(--border);
   border-radius: 4px;
-  background: rgba(20, 10, 40, 0.5);
+  background: var(--bg-input);
   cursor: pointer;
   position: relative;
   transition: all .2s ease;
 }
 
 .login-checkbox:checked {
-  background: linear-gradient(135deg, #B868FF, #5BAEFF);
+  background: var(--accent-grad);
   border-color: transparent;
-  box-shadow: 0 0 12px rgba(180, 100, 255, 0.5);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 .login-checkbox:checked::after {
@@ -1683,19 +1691,19 @@ table tbody td {
 }
 
 .login-forgot {
-  color: rgba(180, 140, 255, 0.85);
+  color: var(--accent);
   background: none;
   border: none;
   cursor: pointer;
   font-size: 12px;
   transition: color .2s;
 }
-.login-forgot:hover { color: #FFFFFF; text-shadow: 0 0 12px rgba(180, 100, 255, 0.6); }
+.login-forgot:hover { color: var(--text-primary); text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent); }
 
 /* Sign In button */
 .login-cosmic-submit {
   width: 100%;
-  background: linear-gradient(135deg, #B868FF 0%, #5BAEFF 50%, #FF6BD6 100%);
+  background: var(--accent-grad, linear-gradient(135deg, #B868FF 0%, #5BAEFF 50%, #FF6BD6 100%));
   background-size: 200% 200%;
   color: #FFFFFF;
   border: none;
@@ -1712,7 +1720,7 @@ table tbody td {
   position: relative;
   overflow: hidden;
   box-shadow:
-    0 12px 40px rgba(180, 100, 255, 0.5),
+    0 12px 40px color-mix(in srgb, var(--accent, #BF5AF2) 50%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.18) inset,
     0 1px 0 rgba(255, 255, 255, 0.4) inset;
   transition: all .3s ease;
@@ -1738,8 +1746,8 @@ table tbody td {
 .login-cosmic-submit:not(:disabled):hover {
   transform: translateY(-2px) scale(1.01);
   box-shadow:
-    0 16px 50px rgba(180, 100, 255, 0.65),
-    0 0 60px rgba(120, 200, 255, 0.4),
+    0 16px 50px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 0 60px color-mix(in srgb, var(--accent-2) 40%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
@@ -1751,14 +1759,14 @@ table tbody td {
   text-align: center;
   margin-top: 18px;
   font-size: 12px;
-  color: rgba(180, 160, 220, 0.6);
+  color: var(--text-muted);
 }
 
 .login-support a {
-  color: rgba(180, 140, 255, 0.85);
+  color: var(--accent);
   cursor: pointer;
 }
-.login-support a:hover { color: #FFFFFF; }
+.login-support a:hover { color: var(--text-primary); }
 
 .login-cosmic-error {
   background: rgba(255, 90, 120, 0.12);
@@ -1766,7 +1774,7 @@ table tbody td {
   border-radius: 10px;
   padding: 10px 14px;
   font-size: 12px;
-  color: #FF8FA8;
+  color: var(--danger, #FF8FA8);
   margin-bottom: 16px;
   box-shadow: 0 0 24px rgba(255, 90, 120, 0.18);
 }
@@ -1777,15 +1785,15 @@ table tbody td {
   gap: 6px;
   margin-top: 18px;
   padding: 12px;
-  background: rgba(20, 10, 40, 0.4);
-  border: 1px solid rgba(180, 130, 255, 0.18);
+  background: var(--bg-card-deep);
+  border: 1px solid var(--border);
   border-radius: 10px;
 }
 
 .login-demo-label {
   width: 100%;
   font-size: 10px;
-  color: rgba(180, 160, 220, 0.55);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin-bottom: 4px;
@@ -1795,7 +1803,7 @@ table tbody td {
   padding: 5px 11px;
   border-radius: 999px;
   border: 1px solid;
-  background: rgba(20, 10, 40, 0.55);
+  background: var(--bg-input);
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;

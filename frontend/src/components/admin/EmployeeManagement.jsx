@@ -1,14 +1,26 @@
 import { useState, useEffect } from 'react'
-import { employeesAPI, rolesAPI } from '../../services/api'
+import { employeesAPI, rolesAPI, tiersAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, Button, Input, Select, Alert, Spinner, Modal, PageTitle } from '../shared/UI'
 import { Eye, EyeOff } from 'lucide-react'
 
 const PRODUCT_ID = 'cbad7cad-5bef-4289-9150-15d613fcb89b'
 
+// Authority ranks used to order the approval sequence (lowest authority first).
+const ROLE_RANK = {
+  'Super Admin':   1,
+  'Booking Admin': 2,
+  'Manager':       3,
+  'Finance':       3,
+  'Tech Lead':     4,
+  'Employee':      5,
+}
+
 const INITIAL_FORM = {
   name:'', email:'', password:'', role:'Employee', department:'', reporting_to:'',
   mobile_number:'', date_of_birth:'', gender:'', pan_number:'', aadhaar_number:'',
+  approver_roles: [], approval_type: 'ALL',
+  designation: '', tier_id: null,
 }
 
 function MLabel({ text, required }) {
@@ -19,6 +31,9 @@ export default function EmployeeManagement({ setTab }) {
   const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [roles, setRoles]         = useState([])
+  const [tiers, setTiers]           = useState([])
+  const [designations, setDesignations] = useState([])
+  const [tierPreview, setTierPreview]   = useState(null)
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -45,32 +60,109 @@ export default function EmployeeManagement({ setTab }) {
   async function load() {
     try {
       setLoading(true)
-      const [empRes, rolesRes] = await Promise.all([employeesAPI.list(), rolesAPI.list()])
+      const [empRes, rolesRes, tiersRes] = await Promise.all([
+        employeesAPI.list(),
+        rolesAPI.list(),
+        tiersAPI.list().catch(() => ({ data: { tiers: [], designations: [] } })),
+      ])
       setEmployees(empRes.data)
       setRoles(rolesRes.data)
+      setTiers(tiersRes.data?.tiers || [])
+      setDesignations(tiersRes.data?.designations || [])
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }
 
+  async function applyDesignation(designation) {
+    setForm(prev => ({ ...prev, designation }))
+    setTierPreview(null)
+    if (!designation) { setForm(prev => ({ ...prev, tier_id: null })); return }
+    try {
+      const res = await tiersAPI.preview(designation)
+      const t = res?.data
+      if (!t) { setForm(prev => ({ ...prev, tier_id: null })); return }
+      setTierPreview(t)
+      const approvers = Array.isArray(t.approver_roles) ? t.approver_roles : []
+      setForm(prev => ({
+        ...prev,
+        tier_id: t.id,
+        approver_roles: approvers.length ? approvers : prev.approver_roles,
+        approval_type:  t.approval_type || prev.approval_type,
+      }))
+      setFieldErrors(prev => { const n = { ...prev }; delete n.approver_roles; return n })
+    } catch (_) { /* preview failed — leave form untouched */ }
+  }
+
+  function defaultApproversForRole(roleName, rolesList = roles) {
+    const r = rolesList.find(r => r.name === roleName)
+    return Array.isArray(r?.approvers) ? [...r.approvers] : []
+  }
+
   function openCreate() {
     setEditId(null)
-    setForm(INITIAL_FORM)
+    const defaults = defaultApproversForRole('Employee')
+    setForm({ ...INITIAL_FORM, approver_roles: defaults, approval_type: 'ALL' })
     setFieldErrors({})
+    setTierPreview(null)
     setShowPw(false)
     setShowModal(true)
   }
 
-  function openEdit(emp) {
-    setEditId(emp.id)
+  function toDateInput(val) {
+    if (!val) return ''
+    if (typeof val === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val
+      if (val.length >= 10 && val[4] === '-' && val[7] === '-') return val.slice(0, 10)
+    }
+    const d = new Date(val)
+    if (Number.isNaN(d.getTime())) return ''
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  function populateForm(emp) {
+    const allowed = defaultApproversForRole(emp.role)
+    const stored = Array.isArray(emp.approver_roles) ? emp.approver_roles : []
+    const filtered = stored.filter(r => allowed.includes(r))
+    const approverRoles = filtered.length ? filtered : allowed
     setForm({
-      name: emp.name, email: emp.email, password: '', role: emp.role,
-      department: emp.department || '', reporting_to: emp.reporting_to || '',
-      mobile_number: emp.mobile_number || '', date_of_birth: emp.date_of_birth?.slice(0, 10) || '',
-      gender: emp.gender || '', pan_number: emp.pan_number || '', aadhaar_number: emp.aadhaar_number || '',
+      name:           emp.name || '',
+      email:          emp.email || '',
+      password:       '',
+      role:           emp.role || 'Employee',
+      department:     emp.department || '',
+      reporting_to:   emp.reporting_to || '',
+      mobile_number:  emp.mobile_number || '',
+      date_of_birth:  toDateInput(emp.date_of_birth),
+      gender:         emp.gender || '',
+      pan_number:     emp.pan_number || '',
+      aadhaar_number: emp.aadhaar_number || '',
+      approver_roles: approverRoles,
+      approval_type:  emp.approval_type || 'ALL',
+      designation:    emp.designation || '',
+      tier_id:        emp.tier_id || null,
     })
     setFieldErrors({})
+    // Refresh tier preview if the employee has a designation
+    if (emp.designation) {
+      tiersAPI.preview(emp.designation).then(r => setTierPreview(r?.data || null)).catch(() => setTierPreview(null))
+    } else {
+      setTierPreview(null)
+    }
+  }
+
+  async function openEdit(emp) {
+    setEditId(emp.id)
+    setFieldErrors({})
     setShowPw(false)
+    populateForm(emp)      // immediate fill from row data so the modal opens populated
     setShowModal(true)
+    try {
+      const fresh = await employeesAPI.get(emp.id)
+      if (fresh?.data) populateForm(fresh.data)
+    } catch (_) { /* fall back to row data — already populated */ }
   }
 
   function validate() {
@@ -90,6 +182,11 @@ export default function EmployeeManagement({ setTab }) {
     else if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(v.pan_number)) e.pan_number = 'Invalid format (e.g. ABCDE1234F)'
     if (!v.aadhaar_number)        e.aadhaar_number = 'Aadhaar number is required'
     else if (!/^\d{12}$/.test(v.aadhaar_number)) e.aadhaar_number = 'Must be 12 digits'
+
+    const selected = Array.isArray(v.approver_roles) ? v.approver_roles : []
+    if (selected.length === 0) e.approver_roles = 'Select at least one approver'
+    if (!['ANY_ONE','ALL'].includes(v.approval_type)) e.approval_type = 'Select an approval rule'
+
     setFieldErrors(e)
     return Object.keys(e).length === 0
   }
@@ -100,7 +197,15 @@ export default function EmployeeManagement({ setTab }) {
 
     setSaving(true)
     try {
-      const payload = { ...form, productId: PRODUCT_ID }
+      const selected = Array.isArray(form.approver_roles) ? form.approver_roles : []
+      const payload = {
+        ...form,
+        productId: PRODUCT_ID,
+        approver_roles: selected,
+        approval_type: form.approval_type,
+        designation: form.designation || null,
+        tier_id: form.tier_id || null,
+      }
       if (editId && !payload.password) delete payload.password
       if (!payload.department) delete payload.department
       if (!payload.reporting_to) delete payload.reporting_to
@@ -174,8 +279,31 @@ export default function EmployeeManagement({ setTab }) {
   }
 
   function f(field, value) {
-    setForm(prev => ({ ...prev, [field]: value }))
+    setForm(prev => {
+      const next = { ...prev, [field]: value }
+      if (field === 'role' && value !== prev.role) {
+        next.approver_roles = defaultApproversForRole(value)
+        next.approval_type = 'ALL'
+      }
+      return next
+    })
     if (fieldErrors[field]) setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n })
+    if (field === 'role') {
+      setFieldErrors(prev => { const n = { ...prev }; delete n.approver_roles; return n })
+    }
+  }
+
+  function toggleApprover(roleName) {
+    setForm(prev => {
+      const list = Array.isArray(prev.approver_roles) ? prev.approver_roles : []
+      const next = list.includes(roleName) ? list.filter(x => x !== roleName) : [...list, roleName]
+      return { ...prev, approver_roles: next }
+    })
+    setFieldErrors(prev => { const n = { ...prev }; delete n.approver_roles; return n })
+  }
+
+  function setApprovalType(type) {
+    setForm(prev => ({ ...prev, approval_type: type }))
   }
 
   function demoFill() {
@@ -192,11 +320,12 @@ export default function EmployeeManagement({ setTab }) {
     const year = 1980 + Math.floor(Math.random() * 25)
     const month = String(1 + Math.floor(Math.random() * 12)).padStart(2, '0')
     const day = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0')
+    const demoRole = pick(ROLE_NAMES.length ? ROLE_NAMES : ['Employee'])
     setForm({
       name: `${first} ${last}`,
       email: `${first.toLowerCase()}.${last.toLowerCase()}.${uid}@company.in`,
       password: 'pass123',
-      role: pick(ROLE_NAMES.length ? ROLE_NAMES : ['Employee']),
+      role: demoRole,
       department: pick(depts),
       reporting_to: pick(managers),
       mobile_number: `9${rDigits(9)}`,
@@ -204,6 +333,8 @@ export default function EmployeeManagement({ setTab }) {
       gender: pick(['Male', 'Female']),
       pan_number: Array.from({ length: 5 }, () => pick([...panLetters])).join('') + rDigits(4) + pick([...panLetters]),
       aadhaar_number: rDigits(12),
+      approver_roles: defaultApproversForRole(demoRole),
+      approval_type: 'ALL',
     })
     setFieldErrors({})
   }
@@ -441,65 +572,170 @@ export default function EmployeeManagement({ setTab }) {
               <Input label="Reporting To" value={form.reporting_to} onChange={e => f('reporting_to', e.target.value)} placeholder="e.g. Manager name" />
             </div>
 
-            {/* Approval Flow — auto-populated from Role Manager */}
+            {/* Designation → auto-assigns tier */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px' }}>
+              <div>
+                <label style={{ fontSize: 11, color:'var(--text-muted)', marginBottom: 6, display:'block', fontWeight: 600, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                  Designation
+                </label>
+                <input list="emp-designation-options"
+                  value={form.designation}
+                  onChange={e => applyDesignation(e.target.value)}
+                  placeholder="e.g. Software Engineer"
+                  style={{
+                    width:'100%', padding:'10px 12px', borderRadius: 8, border:'1px solid var(--border)',
+                    background:'var(--bg-input)', outline:'none', fontSize: 13, color:'var(--text-primary)',
+                  }} />
+                <datalist id="emp-designation-options">
+                  {designations.map(d => <option key={d.id} value={d.designation}>{d.tier_name}</option>)}
+                </datalist>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color:'var(--text-muted)', marginBottom: 6, display:'block', fontWeight: 600, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                  Tier
+                </label>
+                <select value={form.tier_id || ''}
+                  onChange={e => f('tier_id', e.target.value ? Number(e.target.value) : null)}
+                  style={{
+                    width:'100%', padding:'10px 12px', borderRadius: 8, border:'1px solid var(--border)',
+                    background:'var(--bg-input)', outline:'none', fontSize: 13, color:'var(--text-primary)', cursor:'pointer',
+                  }}>
+                  <option value="">Auto (from designation)</option>
+                  {tiers.map(t => <option key={t.id} value={t.id}>{t.name} · rank {t.rank}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {tierPreview && (
+              <div style={{
+                marginTop: 6, marginBottom: 14, padding:'10px 12px', borderRadius: 8,
+                background:'color-mix(in srgb, var(--accent) 10%, transparent)',
+                border:'1px solid color-mix(in srgb, var(--accent) 35%, transparent)',
+              }}>
+                <div style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 6, flexWrap:'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--accent)' }}>
+                    Tier Policy · {tierPreview.name} (rank {tierPreview.rank})
+                  </span>
+                  <span style={{ fontSize: 10, color:'var(--text-muted)' }}>
+                    Auto-applied from designation · Approval flow below is editable
+                  </span>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 8 }}>
+                  <PreviewCell label="Flight" value={(tierPreview.flight_classes || []).join(', ') || '—'} />
+                  <PreviewCell label="Train"  value={(tierPreview.train_classes  || []).join(', ') || '—'} />
+                  <PreviewCell label="Bus"    value={(tierPreview.bus_types      || []).join(', ') || '—'} />
+                  <PreviewCell label="Hotel"  value={(tierPreview.hotel_types    || []).join(', ') || '—'} />
+                  <PreviewCell label="Budget"
+                    value={`₹${Number(tierPreview.budget_limit || 0).toLocaleString('en-IN')} / ${tierPreview.budget_period === 'day' ? 'day' : 'trip'}`} />
+                  <PreviewCell label="Approvers" value={(tierPreview.approver_roles || []).join(', ') || '—'} />
+                  <PreviewCell label="Rule"   value={tierPreview.approval_type === 'ANY_ONE' ? 'Any One' : 'All Must'} />
+                  <PreviewCell label="Intl+"  value={tierPreview.intl_flight_class_upgrade ? 'Upgrade' : 'Standard'} />
+                </div>
+              </div>
+            )}
+
+            {/* Approval Flow — restricted to Role Manager approvers */}
             {(() => {
               const selectedRole = roles.find(r => r.name === form.role)
-              const approvers = selectedRole?.approvers || []
+              // Approvers come from the tier (via designation) if available; otherwise fall back to Role Manager.
+              const tierApprovers = Array.isArray(tierPreview?.approver_roles) ? tierPreview.approver_roles : null
+              const options = tierApprovers && tierApprovers.length
+                ? tierApprovers
+                : (Array.isArray(selectedRole?.approvers) ? selectedRole.approvers : [])
+              const selected = Array.isArray(form.approver_roles) ? form.approver_roles : []
+              const orderedSelected = [...selected].sort((a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99))
+              const orderedOptions  = [...options].sort((a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99))
+
               return (
                 <div style={{
-                  background:'#14141E', border:'1px solid #2A2A35', borderRadius:10,
-                  padding:'12px 14px', marginBottom:14,
+                  background:'var(--bg-card-deep)', border:'1px solid var(--border)', borderRadius:10,
+                  padding:'14px 16px', marginBottom:14,
                 }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:10, flexWrap:'wrap' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <span style={{ fontSize:14 }}>🔀</span>
                       <div>
-                        <div style={{ fontSize:11, color:'#E2E2E8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px' }}>
-                          Approval Flow
+                        <div style={{ fontSize:11, color:'var(--text-primary)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px' }}>
+                          Sequential Approval Flow
                         </div>
-                        <div style={{ fontSize:10, color:'#666', marginTop:2 }}>
-                          Auto-configured from Role Manager · Read-only
+                        <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:2 }}>
+                          {tierApprovers ? 'Auto-loaded from tier · ' : ''}Approvals run lowest → highest authority, in order.
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize:10, color:'#888', fontWeight:600 }}>
-                      {approvers.length} approver{approvers.length !== 1 ? 's' : ''}
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+                      color:'var(--accent)', background:'color-mix(in srgb, var(--accent) 16%, transparent)',
+                      padding:'3px 8px', borderRadius: 999,
+                    }}>
+                      {orderedSelected.length ? `${orderedSelected.length}-step sequence` : 'No approvers'}
                     </span>
                   </div>
-                  {approvers.length > 0 ? (
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                      {approvers.map((approverName, i) => {
-                        const approverRole = roles.find(r => r.name === approverName)
-                        const color = approverRole?.color || '#888'
-                        return (
-                          <div key={approverName} style={{
-                            display:'flex', alignItems:'center', gap:6,
-                            padding:'5px 10px', borderRadius:6,
-                            background: color + '18', border: `1px solid ${color}40`,
-                          }}>
-                            <span style={{
-                              fontSize:9, fontWeight:700, color:'#666',
-                              background:'#000', padding:'1px 5px', borderRadius:3,
-                            }}>{i + 1}</span>
-                            <div style={{
-                              width:16, height:16, borderRadius:'50%',
-                              background: color + '30', border: `1.5px solid ${color}60`,
-                              display:'flex', alignItems:'center', justifyContent:'center',
-                              fontSize:9, fontWeight:700, color: color,
-                            }}>
-                              {approverName.charAt(0)}
-                            </div>
-                            <span style={{ fontSize:11, fontWeight:600, color: color }}>
-                              {approverName}
-                            </span>
-                          </div>
-                        )
-                      })}
+
+                  {options.length === 0 ? (
+                    <div style={{ fontSize:11, color:'#FF9F0A', padding:'4px 0' }}>
+                      ⚠️ No approvers available for this designation/role. Configure the tier or Role Manager first.
                     </div>
                   ) : (
-                    <div style={{ fontSize:11, color:'#FF9F0A', padding:'4px 0' }}>
-                      ⚠️ No approvers configured — requests from this role will need Super Admin approval only. Configure in <strong>Role Manager</strong>.
-                    </div>
+                    <>
+                      <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>
+                        Approvers (toggle to include)
+                      </div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
+                        {orderedOptions.map(name => {
+                          const r = roles.find(x => x.name === name)
+                          const color = r?.color || '#888'
+                          const isSelected = selected.includes(name)
+                          return (
+                            <label key={name} style={{
+                              display:'flex', alignItems:'center', gap:8,
+                              padding:'6px 12px', borderRadius:8, cursor:'pointer',
+                              background: isSelected ? color + '22' : 'var(--bg-input)',
+                              border: `1px solid ${isSelected ? color + '80' : 'var(--border)'}`,
+                              transition: 'all .15s ease',
+                              userSelect:'none',
+                            }}>
+                              <input type="checkbox" checked={isSelected} onChange={() => toggleApprover(name)}
+                                style={{ width:14, height:14, accentColor: color, cursor:'pointer' }} />
+                              <div style={{
+                                width:18, height:18, borderRadius:'50%',
+                                background: color + '30', border:`1.5px solid ${color}60`,
+                                display:'flex', alignItems:'center', justifyContent:'center',
+                                fontSize:10, fontWeight:700, color,
+                              }}>{name.charAt(0)}</div>
+                              <span style={{ fontSize:12, fontWeight:600, color: isSelected ? color : 'var(--text-primary)' }}>
+                                {name}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                      {fieldErrors.approver_roles && (
+                        <div style={{ fontSize:11, color:'#FF453A', marginBottom:10 }}>{fieldErrors.approver_roles}</div>
+                      )}
+
+                      {orderedSelected.length > 0 && (
+                        <>
+                          <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>
+                            Execution Order
+                          </div>
+                          <div style={{
+                            padding:'8px 12px', borderRadius: 8,
+                            background:'color-mix(in srgb, var(--accent) 10%, transparent)',
+                            border:'1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                            fontSize: 12, fontWeight: 700, color:'var(--accent)',
+                          }}>
+                            {orderedSelected.map((name, i) => (
+                              <span key={name}>
+                                <span style={{ opacity: 0.6, marginRight: 4 }}>{i + 1}.</span>
+                                {name}
+                                {i < orderedSelected.length - 1 && <span style={{ margin:'0 8px', opacity: 0.6 }}>→</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               )
@@ -632,6 +868,15 @@ export default function EmployeeManagement({ setTab }) {
           </div>
         </Modal>
       )}
+    </div>
+  )
+}
+
+function PreviewCell({ label, value }) {
+  return (
+    <div style={{ background:'var(--bg-card-deep)', borderRadius: 6, padding: '6px 8px' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color:'var(--text-muted)', letterSpacing:'0.05em', textTransform:'uppercase', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color:'var(--text-primary)', lineHeight: 1.3 }}>{value}</div>
     </div>
   )
 }

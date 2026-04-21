@@ -6,6 +6,82 @@ const router  = express.Router()
 
 router.use(authenticate)
 
+// ── Sequential approval engine ───────────────────────────────
+// Tier hierarchy (1 = highest authority). Lower authority approves first.
+const ROLE_RANK = {
+  'Super Admin':   1,
+  'Booking Admin': 2,
+  'Manager':       3,
+  'Finance':       3,
+  'Tech Lead':     4,
+  'Employee':      5,
+}
+function roleRank(role) { return ROLE_RANK[role] ?? 99 }
+
+// Sort roles so the lowest-authority approver comes first (highest rank number first).
+// Super Admin is filtered (handled via override lane) and Booking Admin is filtered
+// (they manage post-approval bookings, not the approval flow itself).
+function computeApprovalSequence(approverRoles) {
+  if (!Array.isArray(approverRoles) || !approverRoles.length) return []
+  const BLOCKED = new Set(['Super Admin', 'Booking Admin'])
+  const uniq = [...new Set(approverRoles.filter(r => r && !BLOCKED.has(r)))]
+  return uniq.sort((a, b) => roleRank(b) - roleRank(a))
+}
+
+// Returns the role expected to act next on the request, or null when every step is done.
+async function nextPendingStep(client, requestId, sequence) {
+  if (!sequence.length) return null
+  const { rows } = await client.query(
+    `SELECT DISTINCT approver_role FROM approvals WHERE request_id=$1 AND action='approved'`,
+    [requestId]
+  )
+  const approved = new Set(rows.map(r => r.approver_role))
+  return sequence.find(r => !approved.has(r)) || null
+}
+
+// Resolve the effective approver_roles sequence for a given request.
+// Tier Config is the single source of truth; legacy paths remain as safety nets.
+async function approverSequenceForRequest(client, tr) {
+  // 1. Per-employee override (users.approver_roles)
+  const { rows: userRows } = await client.query(
+    'SELECT approver_roles FROM users WHERE id = $1',
+    [tr.user_id]
+  )
+  const perUser = userRows[0]?.approver_roles
+  if (Array.isArray(perUser) && perUser.length) return computeApprovalSequence(perUser)
+
+  // 2. Tier defaults (via tier mapped to user's designation, or directly via tier_id)
+  const { rows: tierRows } = await client.query(`
+    SELECT t.approver_roles
+    FROM users u
+    LEFT JOIN tiers t ON t.id = u.tier_id
+    WHERE u.id = $1
+  `, [tr.user_id])
+  const tierRoles = tierRows[0]?.approver_roles
+  if (Array.isArray(tierRoles) && tierRoles.length) return computeApprovalSequence(tierRoles)
+
+  // 3. Role-name designation fallback — look up designation_tiers using the user's role
+  //    as the designation key. This lets existing employees (who have no designation
+  //    set yet) still pick up the tier for their role.
+  const { rows: roleTier } = await client.query(`
+    SELECT t.approver_roles
+    FROM designation_tiers dt
+    JOIN tiers t ON t.id = dt.tier_id
+    WHERE LOWER(dt.designation) = LOWER($1)
+    LIMIT 1
+  `, [tr.user_role])
+  if (Array.isArray(roleTier[0]?.approver_roles) && roleTier[0].approver_roles.length) {
+    return computeApprovalSequence(roleTier[0].approver_roles)
+  }
+
+  // 4. Legacy fallback (role_approvers table) — still honoured for backward compat
+  const { rows: legacyRows } = await client.query(
+    'SELECT approver_role_name FROM role_approvers WHERE role_name = $1',
+    [tr.user_role]
+  )
+  return computeApprovalSequence(legacyRows.map(r => r.approver_role_name))
+}
+
 // ── Distance/mode lookup helper ───────────────────────────────
 async function getDistanceInfo(from, to) {
   const { rows } = await pool.query(
@@ -68,39 +144,53 @@ router.get('/', async (req, res, next) => {
 // ── GET /api/requests/queue ───────────────────────────────────
 router.get('/queue', async (req, res, next) => {
   try {
-    const { role, id:uid } = req.user
-    if (['Employee','Booking Admin'].includes(role)) return res.json({ success:true, count:0, data:[] })
+    const { role, id: uid } = req.user
+    // Employees submit requests but never approve them.
+    // Booking Admin handles post-approval bookings only — they're not part of the approval flow.
+    if (['Employee', 'Booking Admin'].includes(role)) return res.json({ success: true, count: 0, data: [] })
 
-    let where = '', params = [uid]
-
+    // Super Admin: sees all pending (override lane).
     if (role === 'Super Admin') {
-      where = `WHERE tr.status='pending' AND tr.user_id!=$1`
-    } else if (role === 'Finance') {
-      where = `WHERE tr.status IN ('pending','pending_finance') AND tr.finance_approved=FALSE AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
-    } else {
-      // Dynamic: fetch all roles that this current role can approve from role_approvers table
-      // role_approvers.role_name     = the role being approved (e.g. 'Employee')
-      // role_approvers.approver_role_name = the role that can approve it (current user's role)
-      const { rows: approvableRoles } = await pool.query(
-        'SELECT role_name FROM role_approvers WHERE approver_role_name = $1',
-        [role]
-      )
-      const allowedRoles = approvableRoles.map(r => r.role_name)
-      if (!allowedRoles.length) {
-        // This role isn't configured as approver for any role → empty queue
-        return res.json({ success: true, count: 0, data: [] })
-      }
-      params.push(allowedRoles)
-      where = `WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE AND tr.user_role = ANY($2) AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
+      const { rows } = await pool.query(`
+        SELECT tr.*, COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
+        FROM travel_requests tr
+        WHERE tr.status='pending' AND tr.user_id != $1
+        ORDER BY tr.submitted_at ASC
+      `, [uid])
+      return res.json({ success: true, count: rows.length, data: rows })
     }
 
-    const { rows } = await pool.query(`
-      SELECT tr.*, COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
-      FROM travel_requests tr ${where}
+    // Every other role (including Finance): show only requests whose NEXT pending
+    // step matches this role. If Finance is NOT part of the sequence (legacy budget
+    // lane) we fall back to the old behaviour of surfacing it for the amount set-up.
+    const isFinance = role === 'Finance'
+    const { rows: candidates } = await pool.query(`
+      SELECT tr.*,
+             COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
+      FROM travel_requests tr
+      WHERE tr.status IN ('pending','pending_finance')
+        AND (
+          (tr.status = 'pending' AND tr.hierarchy_approved = FALSE)
+          OR ($2 = TRUE AND tr.finance_approved = FALSE)
+        )
+        AND tr.user_id != $1
+        AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)
       ORDER BY tr.submitted_at ASC
-    `, params)
-    res.json({ success:true, count:rows.length, data:rows })
-  } catch(e) { next(e) }
+    `, [uid, isFinance])
+
+    const filtered = []
+    for (const tr of candidates) {
+      const sequence = await approverSequenceForRequest(pool, tr)
+      if (isFinance && !sequence.includes('Finance')) {
+        // Parallel budget lane — Finance handles amounts independently.
+        filtered.push(tr)
+        continue
+      }
+      const step = await nextPendingStep(pool, tr.id, sequence)
+      if (step === role) filtered.push(tr)
+    }
+    res.json({ success: true, count: filtered.length, data: filtered })
+  } catch (e) { next(e) }
 })
 
 // ── GET /api/requests/:id ─────────────────────────────────────
@@ -129,9 +219,9 @@ router.post('/', async (req, res, next) => {
   try {
     await client.query('BEGIN')
     const u = req.user
-    const { 
+    const {
       from_location, to_location, travel_mode, booking_type, start_date, end_date, purpose, notes, estimated_travel_cost, estimated_hotel_cost,
-      trip_name, trip_type, approver_1, approver_2, approver_3, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers
+      trip_name, trip_type, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers
     } = req.body
 
     if (!from_location||!to_location||!travel_mode||!booking_type||!start_date||!end_date||!purpose)
@@ -164,18 +254,17 @@ router.post('/', async (req, res, next) => {
 
     const id = 'TR-' + Date.now().toString().slice(-7)
     
-    // Inject the rich JSON payload into the new columns
     await client.query(`
       INSERT INTO travel_requests (
         id,user_id,user_name,user_role,department,from_location,to_location,distance_type,required_mode,travel_mode,booking_type,start_date,end_date,purpose,notes,
         estimated_travel_cost,estimated_hotel_cost,estimated_total,status,
-        trip_name, trip_type, approver_1, approver_2, approver_3, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers
+        trip_name, trip_type, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'pending', $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'pending', $19,$20,$21,$22,$23,$24,$25,$26)
     `, [
       id,u.id,u.name,u.role,u.department,from_location,to_location,distInfo.dist_type,distInfo.required_mode||null,travel_mode,booking_type,start_date,end_date,purpose,notes||null,
       travelCost,hotelCost,total,
-      trip_name||"Default Trip", trip_type||"Domestic", approver_1||null, approver_2||null, approver_3||null, project_name||null, contact_name||u.name, contact_mobile||null, contact_email||null,
+      trip_name||"Default Trip", trip_type||"Domestic", project_name||null, contact_name||u.name, contact_mobile||null, contact_email||null,
       itinerary ? JSON.stringify(itinerary) : '{}',
       passengers ? JSON.stringify(passengers) : '[]'
     ])
@@ -195,18 +284,54 @@ router.post('/:id/action', async (req, res, next) => {
     const { action, note, approved_travel_cost, approved_hotel_cost, approved_allowance } = req.body
     const u = req.user
 
-    if (!['approved','rejected'].includes(action)) return res.status(400).json({ success:false, message:'action must be approved or rejected' })
-    if (action==='rejected' && !note?.trim()) return res.status(400).json({ success:false, message:'Rejection note required' })
+    if (!['approved','rejected'].includes(action)) { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:'action must be approved or rejected' }) }
+    if (action==='rejected' && !note?.trim())      { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:'Rejection note required' }) }
+    if (u.role === 'Booking Admin')                { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Booking Admin is not part of the approval flow' }) }
 
     const { rows: reqRows } = await client.query('SELECT * FROM travel_requests WHERE id=$1 FOR UPDATE',[id])
-    if (!reqRows.length) return res.status(404).json({ success:false, message:'Not found' })
+    if (!reqRows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success:false, message:'Not found' }) }
     const tr = reqRows[0]
 
-    if (!['pending','pending_finance'].includes(tr.status)) return res.status(400).json({ success:false, message:`Request is already ${tr.status}` })
-    if (tr.user_id === u.id) return res.status(403).json({ success:false, message:'Cannot approve own request' })
+    if (!['pending','pending_finance'].includes(tr.status)) { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:`Request is already ${tr.status}` }) }
+    if (tr.user_id === u.id)                                { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Cannot approve own request' }) }
 
     const { rows:acted } = await client.query('SELECT 1 FROM approvals WHERE request_id=$1 AND approver_id=$2',[id,u.id])
-    if (acted.length) return res.status(409).json({ success:false, message:'Already acted on this request' })
+    if (acted.length) { await client.query('ROLLBACK'); return res.status(409).json({ success:false, message:'Already acted on this request' }) }
+
+    // Pre-validate the approval sequence BEFORE inserting the approval row so we don't
+    // leave a stale row behind when early-returning with 403.
+    let sequence = []
+    let inSequence = false
+    if (action === 'approved' && u.role !== 'Super Admin') {
+      sequence   = await approverSequenceForRequest(client, tr)
+      inSequence = sequence.includes(u.role)
+      const isFinance = u.role === 'Finance'
+
+      if (!inSequence && !isFinance) {
+        await client.query('ROLLBACK')
+        return res.status(403).json({ success: false, message: `Your role (${u.role}) is not configured to approve requests from ${tr.user_name}` })
+      }
+
+      if (inSequence) {
+        if (!sequence.length) {
+          await client.query('ROLLBACK')
+          return res.status(403).json({ success: false, message: 'No approval flow is configured for this employee' })
+        }
+        const step = await nextPendingStep(client, id, sequence)
+        if (step === null) {
+          await client.query('ROLLBACK')
+          return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
+        }
+        if (step !== u.role) {
+          const order = sequence.map((r, i) => `${i + 1}. ${r}`).join(' → ')
+          await client.query('ROLLBACK')
+          return res.status(403).json({
+            success: false,
+            message: `Out of order. The next approver must be ${step}. Sequence: ${order}`,
+          })
+        }
+      }
+    }
 
     await client.query('INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note,approved_travel_cost,approved_hotel_cost,approved_allowance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
       [id,u.id,u.name,u.role,action,note||null,approved_travel_cost||null,approved_hotel_cost||null,approved_allowance||null])
@@ -217,21 +342,16 @@ router.post('/:id/action', async (req, res, next) => {
       await client.query("UPDATE travel_requests SET status='rejected',rejected_by=$1,rejection_reason=$2 WHERE id=$3",[u.name,note,id])
     } else {
       // Update approval flags
-      if (u.role==='Super Admin') {
-        await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW(),finance_approved=TRUE,finance_approved_by=$1,finance_approved_at=NOW() WHERE id=$2`,[u.name,id])
-      } else if (u.role==='Finance') {
-        // Finance is treated separately (see below)
-      } else {
-        // Dynamic: check if current user's role is configured as approver for requester's role
-        const { rows: canApprove } = await client.query(
-          'SELECT 1 FROM role_approvers WHERE role_name = $1 AND approver_role_name = $2',
-          [tr.user_role, u.role]
-        )
-        if (!canApprove.length) {
-          return res.status(403).json({ success: false, message: `Your role (${u.role}) is not configured to approve requests from ${tr.user_role}` })
+      if (u.role === 'Super Admin') {
+        await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW(),finance_approved=TRUE,finance_approved_by=$1,finance_approved_at=NOW() WHERE id=$2`, [u.name, id])
+      } else if (inSequence) {
+        // Recompute: is the sequence now complete (including this approval)?
+        const remaining = await nextPendingStep(client, id, sequence)
+        if (remaining === null) {
+          await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW() WHERE id=$2`, [u.name, id])
         }
-        await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW() WHERE id=$2`,[u.name,id])
       }
+      // Finance always sets finance_approved + amounts — whether in-sequence or parallel.
       if (u.role==='Finance') {
         const appTravel = approved_travel_cost || tr.estimated_travel_cost
         const appHotel  = approved_hotel_cost  || tr.estimated_hotel_cost

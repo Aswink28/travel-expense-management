@@ -158,9 +158,6 @@ CREATE TABLE travel_requests (
   -- Extended trip fields
   trip_name             VARCHAR(200),
   trip_type             VARCHAR(50)         DEFAULT 'Domestic',
-  approver_1            VARCHAR(150),
-  approver_2            VARCHAR(150),
-  approver_3            VARCHAR(150),
   project_name          VARCHAR(200),
   contact_name          VARCHAR(150),
   contact_mobile        VARCHAR(20),

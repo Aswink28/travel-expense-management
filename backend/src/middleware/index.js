@@ -11,7 +11,7 @@ const authenticate = async (req, res, next) => {
     if (!h?.startsWith('Bearer ')) return res.status(401).json({ success:false, message:'No token' })
     const decoded = jwt.verify(h.split(' ')[1], process.env.JWT_SECRET)
     const { rows } = await pool.query(
-      'SELECT id,emp_id,name,email,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id FROM users WHERE id=$1',
+      'SELECT id,emp_id,name,email,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,designation,tier_id FROM users WHERE id=$1',
       [decoded.userId]
     )
     if (!rows.length || !rows[0].is_active) return res.status(401).json({ success:false, message:'User not found' })

@@ -3,6 +3,16 @@ import { rolesAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, Button, Input, Alert, Spinner, Modal, PageTitle } from '../shared/UI'
 
+// Authority ranks used to order the approval sequence (lowest authority first).
+const ROLE_RANK = {
+  'Super Admin':   1,
+  'Booking Admin': 2,
+  'Manager':       3,
+  'Finance':       3,
+  'Tech Lead':     4,
+  'Employee':      5,
+}
+
 export default function RoleManagement() {
   const { user } = useAuth()
   const [roles, setRoles]           = useState([])
@@ -14,7 +24,6 @@ export default function RoleManagement() {
   const [editRole, setEditRole]     = useState(null)
   const [form, setForm]             = useState({ name: '', description: '', color: '#0A84FF' })
   const [selectedPages, setSelectedPages] = useState([])
-  const [selectedApprovers, setSelectedApprovers] = useState([])
   const [formError, setFormError]   = useState('')
   const [saving, setSaving]         = useState(false)
   const [expandedRole, setExpandedRole] = useState(null)
@@ -38,7 +47,6 @@ export default function RoleManagement() {
     setEditRole(null)
     setForm({ name: '', description: '', color: '#0A84FF' })
     setSelectedPages([])
-    setSelectedApprovers([])
     setFormError('')
     setShowModal(true)
   }
@@ -47,7 +55,6 @@ export default function RoleManagement() {
     setEditRole(role)
     setForm({ name: role.name, description: role.description || '', color: role.color || '#888' })
     setSelectedPages(role.pages.map(p => p.page_id))
-    setSelectedApprovers(role.approvers || [])
     setFormError('')
     setShowModal(true)
   }
@@ -55,12 +62,6 @@ export default function RoleManagement() {
   function togglePage(pageId) {
     setSelectedPages(prev =>
       prev.includes(pageId) ? prev.filter(p => p !== pageId) : [...prev, pageId]
-    )
-  }
-
-  function toggleApprover(roleName) {
-    setSelectedApprovers(prev =>
-      prev.includes(roleName) ? prev.filter(r => r !== roleName) : [...prev, roleName]
     )
   }
 
@@ -94,10 +95,10 @@ export default function RoleManagement() {
       })
 
       if (editRole) {
-        await rolesAPI.update(editRole.id, { description: form.description, color: form.color, pages, approvers: selectedApprovers })
+        await rolesAPI.update(editRole.id, { description: form.description, color: form.color, pages })
         setSuccess(`Role "${editRole.name}" updated`)
       } else {
-        await rolesAPI.create({ name: form.name.trim(), description: form.description, color: form.color, pages, approvers: selectedApprovers })
+        await rolesAPI.create({ name: form.name.trim(), description: form.description, color: form.color, pages })
         setSuccess(`Role "${form.name.trim()}" created`)
       }
       setShowModal(false)
@@ -200,24 +201,46 @@ export default function RoleManagement() {
                     )}
                   </div>
 
-                  {/* Approvers list */}
-                  <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Can Be Approved By</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-                    {role.approvers?.length ? role.approvers.map(approverName => {
-                      const approverRole = roles.find(r => r.name === approverName)
-                      const color = approverRole?.color || '#888'
-                      return (
-                        <span key={approverName} style={{
-                          fontSize: 11, padding: '4px 12px', borderRadius: 8,
-                          background: color + '14', color: color, fontWeight: 600,
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          border: `1px solid ${color}30`,
-                        }}>
-                          ✓ {approverName}
-                        </span>
-                      )
-                    }) : (
-                      <span style={{ fontSize: 12, color: '#FF9F0A' }}>⚠️ No approvers configured — Super Admin only</span>
+                  {/* Approval flow — auto-derived from Tier Config */}
+                  <div style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 10, flexWrap:'wrap' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                      Approval Flow
+                    </div>
+                    {role.approval_tier && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing:'.06em', textTransform: 'uppercase',
+                        color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 16%, transparent)',
+                        padding:'2px 8px', borderRadius: 999,
+                      }}>
+                        {role.approval_tier.name} · rank {role.approval_tier.rank}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 10, color:'var(--text-muted)' }}>(from Tier Config)</span>
+                  </div>
+                  <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap: 6, marginBottom: 16 }}>
+                    {role.approvers?.length ? (() => {
+                      const ordered = [...role.approvers].sort((a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99))
+                      return ordered.map((approverName, i) => {
+                        const approverRole = roles.find(r => r.name === approverName)
+                        const color = approverRole?.color || 'var(--accent)'
+                        return (
+                          <span key={approverName} style={{ display:'inline-flex', alignItems:'center', gap: 6 }}>
+                            <span style={{
+                              fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                              background: color + '18', color, fontWeight: 600,
+                              border: `1px solid ${color}40`, display:'inline-flex', alignItems:'center', gap: 6,
+                            }}>
+                              <span style={{ fontSize: 9, fontWeight: 800, color, opacity: 0.7 }}>{i + 1}</span>
+                              {approverName}
+                            </span>
+                            {i < ordered.length - 1 && <span style={{ color:'var(--text-muted)', fontWeight: 700 }}>→</span>}
+                          </span>
+                        )
+                      })
+                    })() : (
+                      <span style={{ fontSize: 12, color: '#FF9F0A' }}>
+                        ⚠️ No approval flow — map a designation for <strong>{role.name}</strong> in Tier Config.
+                      </span>
                     )}
                   </div>
 
@@ -330,62 +353,74 @@ export default function RoleManagement() {
               })}
             </div>
 
-            {/* Approval Roles selection */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 6 }}>
-                Who Can Approve Requests for this Role? ({selectedApprovers.length} selected)
-              </label>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 10 }}>
-                Select roles whose users can approve travel requests submitted by users with this role.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
-                {roles
-                  .filter(r => !editRole || r.name !== editRole.name)
-                  .filter(r => !form.name || r.name !== form.name.trim())
-                  .map(r => {
-                    const checked = selectedApprovers.includes(r.name)
-                    return (
-                      <div
-                        key={r.id}
-                        onClick={() => toggleApprover(r.name)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-                          background: checked ? r.color + '18' : 'transparent',
-                          border: `1px solid ${checked ? r.color + '40' : '#1E1E2A'}`,
-                          transition: 'all .15s',
-                        }}
-                      >
-                        <div style={{
-                          width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                          border: `2px solid ${checked ? r.color : '#3A3A4A'}`,
-                          background: checked ? r.color : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, color: '#fff', fontWeight: 700,
-                        }}>
-                          {checked ? '✓' : ''}
-                        </div>
-                        <div style={{
-                          width: 22, height: 22, borderRadius: '50%',
-                          background: r.color + '22', border: `1.5px solid ${r.color}55`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 10, fontWeight: 700, color: r.color, flexShrink: 0,
-                        }}>
-                          {r.name.charAt(0)}
-                        </div>
-                        <span style={{ fontSize: 12, color: checked ? '#E2E2E8' : '#888', fontWeight: checked ? 600 : 400 }}>
-                          {r.name}
-                        </span>
+            {/* Approval Flow — read-only, sourced from Tier Config */}
+            {editRole && (() => {
+              const approvers = Array.isArray(editRole.approvers) ? editRole.approvers : []
+              const ordered = [...approvers].sort((a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99))
+              const tier = editRole.approval_tier
+              return (
+                <div style={{
+                  marginBottom: 16, padding: '12px 14px', borderRadius: 10,
+                  background: 'var(--bg-card-deep)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap: 10, flexWrap:'wrap', marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color:'var(--text-primary)', fontWeight: 700, textTransform:'uppercase', letterSpacing:'.05em' }}>
+                        Approval Flow
                       </div>
-                    )
-                  })}
-              </div>
-              {selectedApprovers.length === 0 && (
-                <div style={{ fontSize: 11, color: '#FF9F0A', marginTop: 8 }}>
-                  ⚠️ No approvers selected — requests from this role will need to be approved by Super Admin only.
+                      <div style={{ fontSize: 10, color:'var(--text-muted)', marginTop: 2 }}>
+                        Auto-synced from Tier Config · not editable here
+                      </div>
+                    </div>
+                    {tier && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, letterSpacing:'.06em', textTransform:'uppercase',
+                        color:'var(--accent)', background:'color-mix(in srgb, var(--accent) 16%, transparent)',
+                        padding:'3px 8px', borderRadius: 999,
+                      }}>
+                        {tier.name} · rank {tier.rank}
+                      </span>
+                    )}
+                  </div>
+                  {ordered.length > 0 ? (
+                    <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap: 6 }}>
+                      {ordered.map((name, i) => {
+                        const r = roles.find(x => x.name === name)
+                        const color = r?.color || 'var(--accent)'
+                        return (
+                          <span key={name} style={{ display:'inline-flex', alignItems:'center', gap: 6 }}>
+                            <span style={{
+                              fontSize: 12, padding:'4px 10px', borderRadius: 999, fontWeight: 600,
+                              background: color + '18', color, border: `1px solid ${color}40`,
+                              display:'inline-flex', alignItems:'center', gap: 6,
+                            }}>
+                              <span style={{ fontSize: 9, fontWeight: 800, color, opacity: 0.7 }}>{i + 1}</span>
+                              {name}
+                            </span>
+                            {i < ordered.length - 1 && <span style={{ color:'var(--text-muted)', fontWeight: 700 }}>→</span>}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11, color:'#FF9F0A' }}>
+                      ⚠️ No approval flow configured. Open <strong>Tier Config</strong> and map a designation named <strong>{editRole.name}</strong> to a tier.
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              )
+            })()}
+            {!editRole && (
+              <div style={{
+                marginBottom: 16, padding:'10px 14px', borderRadius: 8,
+                background:'color-mix(in srgb, var(--accent) 8%, transparent)',
+                border:'1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+                fontSize: 12, color:'var(--text-muted)',
+              }}>
+                💡 Approval flow for this role is configured in <strong>Tier Config</strong>.
+                After creating the role, add a designation named <strong>{form.name.trim() || '<role name>'}</strong> and map it to a tier.
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>

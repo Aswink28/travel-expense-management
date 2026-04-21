@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 // ── Card ──────────────────────────────────────────────────────
 export function Card({ children, style = {}, className = '', onClick }) {
@@ -99,8 +100,23 @@ export function Textarea({ label, error, className = '', style = {}, ...props })
 }
 
 // ── Modal ─────────────────────────────────────────────────────
+// Rendered via a portal so it escapes any transformed ancestor (e.g. `.fade-up`
+// page wrappers) that would otherwise become the containing block for the
+// backdrop's `position: fixed` and anchor the modal to a scrolled page offset.
 export function Modal({ children, onClose, title, width = 520 }) {
-  return (
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKey(e) { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <div className="modal-backdrop fade-in" onClick={onClose}>
       <div className="modal-content fade-up" onClick={e => e.stopPropagation()} style={{ width }}>
         {title && (
@@ -111,7 +127,8 @@ export function Modal({ children, onClose, title, width = 520 }) {
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

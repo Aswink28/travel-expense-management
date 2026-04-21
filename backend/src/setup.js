@@ -68,6 +68,18 @@ async function run() {
   await pool.query(bulkSql)
   console.log('   ✓ Bulk onboarding tables and sequence created')
 
+  // 2d. Run employee approval config migration (safe — uses IF NOT EXISTS)
+  console.log('\n2d. Running employee approval config migration...')
+  const approvalSql = fs.readFileSync(path.join(__dirname,'..','sql','employee_approval_config_migration.sql'),'utf8')
+  await pool.query(approvalSql)
+  console.log('   ✓ Per-employee approval config columns added')
+
+  // 2e. Run tier system migration (safe — uses IF NOT EXISTS)
+  console.log('\n2e. Running tier system migration...')
+  const tierSql = fs.readFileSync(path.join(__dirname,'..','sql','tier_system_migration.sql'),'utf8')
+  await pool.query(tierSql)
+  console.log('   ✓ Tiers and designation mappings created')
+
   // 3. Create uploads directory
   const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })

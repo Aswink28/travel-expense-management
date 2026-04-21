@@ -30,18 +30,31 @@ router.get('/pages', async (req, res) => {
   res.json({ success: true, data: ALL_PAGES })
 })
 
-// ── GET /api/roles — list all roles with their pages and approvers ─
+// ── GET /api/roles — list all roles with their pages and approval flow ──
+// The approval flow is NOT configured here anymore; it is derived from Tier Config
+// by looking up designation_tiers where designation = role.name.
 router.get('/', async (req, res, next) => {
   try {
-    const { rows: roles }     = await pool.query('SELECT * FROM roles ORDER BY id')
-    const { rows: pages }     = await pool.query('SELECT * FROM role_pages ORDER BY role_name, sort_order')
-    const { rows: approvers } = await pool.query('SELECT * FROM role_approvers ORDER BY role_name, sort_order')
+    const { rows: roles } = await pool.query('SELECT * FROM roles ORDER BY id')
+    const { rows: pages } = await pool.query('SELECT * FROM role_pages ORDER BY role_name, sort_order')
+    // Resolve each role's tier through the matching designation (case-insensitive)
+    const { rows: tierMap } = await pool.query(`
+      SELECT dt.designation, t.id AS tier_id, t.name AS tier_name, t.rank AS tier_rank,
+             t.approver_roles AS tier_approvers
+      FROM designation_tiers dt
+      JOIN tiers t ON t.id = dt.tier_id
+    `)
+    const byDesignation = new Map(tierMap.map(t => [t.designation.toLowerCase(), t]))
 
-    const rolesWithRel = roles.map(r => ({
-      ...r,
-      pages: pages.filter(p => p.role_name === r.name),
-      approvers: approvers.filter(a => a.role_name === r.name).map(a => a.approver_role_name),
-    }))
+    const rolesWithRel = roles.map(r => {
+      const tier = byDesignation.get(r.name.toLowerCase()) || null
+      return {
+        ...r,
+        pages: pages.filter(p => p.role_name === r.name),
+        approvers:     Array.isArray(tier?.tier_approvers) ? tier.tier_approvers : [],
+        approval_tier: tier ? { id: tier.tier_id, name: tier.tier_name, rank: tier.tier_rank } : null,
+      }
+    })
 
     res.json({ success: true, data: rolesWithRel })
   } catch (e) { next(e) }
@@ -51,7 +64,8 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   const client = await pool.connect()
   try {
-    const { name, description, color, pages, approvers } = req.body
+    // `approvers` is intentionally ignored — approval flow is now sourced from Tier Config.
+    const { name, description, color, pages } = req.body
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Role name is required' })
@@ -98,15 +112,9 @@ router.post('/', async (req, res, next) => {
       }
     }
 
-    // Insert approver-role assignments
-    if (approvers && approvers.length) {
-      for (let i = 0; i < approvers.length; i++) {
-        await client.query(
-          'INSERT INTO role_approvers (role_name, approver_role_name, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-          [roleName, approvers[i], i + 1]
-        )
-      }
-    }
+    // Approval flow is NOT configured here — it comes from Tier Config via
+    // designation_tiers (designation = role.name). If the administrator wants this
+    // new role to have an approval chain, they must add a mapping in Tier Config.
 
     // Also create a tier_config entry for the new role
     await client.query(
@@ -118,11 +126,18 @@ router.post('/', async (req, res, next) => {
 
     await client.query('COMMIT')
 
-    // Fetch the role with pages and approvers
-    const { rows: rolePages }     = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [roleName])
-    const { rows: roleApprovers } = await pool.query('SELECT approver_role_name FROM role_approvers WHERE role_name = $1 ORDER BY sort_order', [roleName])
-    role.pages = rolePages
-    role.approvers = roleApprovers.map(a => a.approver_role_name)
+    // Fetch the role with pages + resolved tier-based approvers
+    const { rows: rolePages } = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [roleName])
+    const { rows: tierRow }   = await pool.query(`
+      SELECT t.id AS tier_id, t.name AS tier_name, t.rank AS tier_rank, t.approver_roles
+      FROM designation_tiers dt
+      JOIN tiers t ON t.id = dt.tier_id
+      WHERE LOWER(dt.designation) = LOWER($1)
+      LIMIT 1
+    `, [roleName])
+    role.pages         = rolePages
+    role.approvers     = Array.isArray(tierRow[0]?.approver_roles) ? tierRow[0].approver_roles : []
+    role.approval_tier = tierRow[0] ? { id: tierRow[0].tier_id, name: tierRow[0].tier_name, rank: tierRow[0].tier_rank } : null
 
     res.status(201).json({ success: true, message: 'Role created successfully', data: role })
   } catch (e) {
@@ -139,7 +154,8 @@ router.put('/:id', async (req, res, next) => {
   const client = await pool.connect()
   try {
     const { id } = req.params
-    const { description, color, pages, approvers } = req.body
+    // `approvers` is intentionally ignored — approval flow is now sourced from Tier Config.
+    const { description, color, pages } = req.body
 
     const { rows: [role] } = await pool.query('SELECT * FROM roles WHERE id = $1', [id])
     if (!role) return res.status(404).json({ success: false, message: 'Role not found' })
@@ -171,25 +187,21 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
-    // Replace approver assignments
-    if (approvers !== undefined) {
-      await client.query('DELETE FROM role_approvers WHERE role_name = $1', [role.name])
-      for (let i = 0; i < approvers.length; i++) {
-        await client.query(
-          'INSERT INTO role_approvers (role_name, approver_role_name, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-          [role.name, approvers[i], i + 1]
-        )
-      }
-    }
-
     await client.query('COMMIT')
 
-    // Return updated role with pages and approvers
+    // Return updated role with pages + resolved tier-based approvers
     const { rows: [updated] } = await pool.query('SELECT * FROM roles WHERE id = $1', [id])
-    const { rows: rolePages }   = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [updated.name])
-    const { rows: roleApprovers } = await pool.query('SELECT approver_role_name FROM role_approvers WHERE role_name = $1 ORDER BY sort_order', [updated.name])
-    updated.pages = rolePages
-    updated.approvers = roleApprovers.map(a => a.approver_role_name)
+    const { rows: rolePages } = await pool.query('SELECT * FROM role_pages WHERE role_name = $1 ORDER BY sort_order', [updated.name])
+    const { rows: tierRow }   = await pool.query(`
+      SELECT t.id AS tier_id, t.name AS tier_name, t.rank AS tier_rank, t.approver_roles
+      FROM designation_tiers dt
+      JOIN tiers t ON t.id = dt.tier_id
+      WHERE LOWER(dt.designation) = LOWER($1)
+      LIMIT 1
+    `, [updated.name])
+    updated.pages         = rolePages
+    updated.approvers     = Array.isArray(tierRow[0]?.approver_roles) ? tierRow[0].approver_roles : []
+    updated.approval_tier = tierRow[0] ? { id: tierRow[0].tier_id, name: tierRow[0].tier_name, rank: tierRow[0].tier_rank } : null
 
     res.json({ success: true, message: 'Role updated', data: updated })
   } catch (e) {

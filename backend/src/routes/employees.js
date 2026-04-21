@@ -8,31 +8,102 @@ const router   = express.Router()
 router.use(authenticate)
 router.use(authorise('Super Admin'))
 
+// ── Helper: validate + normalise per-employee approval config ──
+// Only two rules are supported: ANY_ONE and ALL. required_approval_count is derived
+// automatically: ANY_ONE → 1, ALL → number of selected approvers.
+function normaliseApprovalConfig({ approver_roles, approval_type }) {
+  if (approver_roles === undefined && approval_type === undefined) {
+    return { provided: false }
+  }
+  const list = Array.isArray(approver_roles) ? approver_roles.filter(Boolean) : []
+  const type = approval_type || 'ALL'
+  if (!['ANY_ONE','ALL'].includes(type)) {
+    return { error: 'approval_type must be ANY_ONE or ALL' }
+  }
+  if (list.length === 0) {
+    return { error: 'At least one approver role must be selected' }
+  }
+  const count = type === 'ANY_ONE' ? 1 : list.length
+  return { provided: true, approver_roles: list, approval_type: type, required_approval_count: count }
+}
+
+// ── Helper: resolve tier + default approval config from designation ──
+async function resolveTierForDesignation(client, designation) {
+  if (!designation) return null
+  const { rows } = await client.query(`
+    SELECT t.*
+    FROM designation_tiers dt
+    JOIN tiers t ON t.id = dt.tier_id
+    WHERE LOWER(dt.designation) = LOWER($1)
+    LIMIT 1
+  `, [designation])
+  return rows[0] || null
+}
+
 // ── GET /api/employees ───────────────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.emp_id, u.name, u.email, u.role, u.department,
              u.avatar, u.color, u.reporting_to, u.is_active,
-             u.mobile_number, u.date_of_birth, u.gender, u.pan_number, u.aadhaar_number,
+             u.mobile_number,
+             TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+             u.gender, u.pan_number, u.aadhaar_number,
              u.ppi_wallet_id, u.ppi_wallet_number, u.ppi_customer_id, u.ppi_wallet_status, u.ppi_kyc_status,
+             u.approver_roles, u.approval_type, u.required_approval_count,
+             u.designation, u.tier_id, t.name AS tier_name, t.rank AS tier_rank,
              u.last_login, u.created_at,
              w.balance AS wallet_balance
       FROM users u
       LEFT JOIN wallets w ON w.user_id = u.id
+      LEFT JOIN tiers t ON t.id = u.tier_id
       ORDER BY u.created_at DESC
     `)
     res.json({ success: true, data: rows })
   } catch (e) { next(e) }
 })
 
+// ── GET /api/employees/:id ───────────────────────────────────
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.emp_id, u.name, u.email, u.role, u.department,
+             u.avatar, u.color, u.reporting_to, u.is_active,
+             u.mobile_number,
+             TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+             u.gender, u.pan_number, u.aadhaar_number,
+             u.ppi_wallet_id, u.ppi_wallet_number, u.ppi_customer_id, u.ppi_wallet_status, u.ppi_kyc_status,
+             u.approver_roles, u.approval_type, u.required_approval_count,
+             u.designation, u.tier_id, t.name AS tier_name, t.rank AS tier_rank,
+             u.last_login, u.created_at,
+             w.balance AS wallet_balance
+      FROM users u
+      LEFT JOIN wallets w ON w.user_id = u.id
+      LEFT JOIN tiers t ON t.id = u.tier_id
+      WHERE u.id = $1
+    `, [req.params.id])
+    if (!rows.length) return res.status(404).json({ success: false, message: 'Employee not found' })
+    res.json({ success: true, data: rows[0] })
+  } catch (e) { next(e) }
+})
+
 // ── POST /api/employees ──────────────────────────────────────
 router.post('/', async (req, res, next) => {
   const { name, email, password, role, department, reporting_to,
-          mobile_number, date_of_birth, gender, pan_number, aadhaar_number, productId } = req.body
+          mobile_number, date_of_birth, gender, pan_number, aadhaar_number, productId,
+          approver_roles, approval_type, required_approval_count,
+          designation, tier_id: tier_id_in } = req.body
 
   if (!name || !email || !password || !role) {
     return res.status(400).json({ success: false, message: 'Name, email, password, and role are required' })
+  }
+
+  // Defer tier resolution and approval validation until after we have a DB client
+  // so resolveTierForDesignation can use the same transaction.
+  let approvalCfg = { provided: false }
+  if (approver_roles !== undefined || approval_type !== undefined) {
+    approvalCfg = normaliseApprovalConfig({ approver_roles, approval_type, required_approval_count })
+    if (approvalCfg.error) return res.status(400).json({ success: false, message: approvalCfg.error })
   }
   if (password.length < 6) {
     return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' })
@@ -92,6 +163,26 @@ router.post('/', async (req, res, next) => {
     const { rows: roleRow } = await client.query('SELECT color FROM roles WHERE name = $1', [role])
     const color = roleRow[0]?.color || '#0A84FF'
 
+    // Resolve tier from designation (if designation provided and not already explicitly mapped).
+    let tierRow = null
+    let resolvedTierId = Number.isInteger(Number(tier_id_in)) ? Number(tier_id_in) : null
+    if (designation && !resolvedTierId) {
+      tierRow = await resolveTierForDesignation(client, designation)
+      if (tierRow) resolvedTierId = tierRow.id
+    } else if (resolvedTierId) {
+      const { rows } = await client.query('SELECT * FROM tiers WHERE id = $1', [resolvedTierId])
+      tierRow = rows[0] || null
+    }
+
+    // If caller didn't supply an approval config, inherit from the resolved tier.
+    if (!approvalCfg.provided && tierRow) {
+      const roles = Array.isArray(tierRow.approver_roles) ? tierRow.approver_roles : []
+      if (roles.length) {
+        const type  = tierRow.approval_type === 'ANY_ONE' ? 'ANY_ONE' : 'ALL'
+        approvalCfg = { provided: true, approver_roles: roles, approval_type: type, required_approval_count: type === 'ANY_ONE' ? 1 : roles.length }
+      }
+    }
+
     const password_hash = await bcrypt.hash(password, 10)
 
     // ── Call PPI Wallet API before inserting ─────────────────
@@ -119,16 +210,25 @@ router.post('/', async (req, res, next) => {
     const { rows: [user] } = await client.query(
       `INSERT INTO users (emp_id, name, email, password_hash, role, department, avatar, color, reporting_to,
                           mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
-                          ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+                          ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status,
+                          approver_roles, approval_type, required_approval_count,
+                          designation, tier_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
        RETURNING id, emp_id, name, email, role, department, avatar, color, reporting_to, is_active,
                  mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
-                 ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status, created_at`,
+                 ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status,
+                 approver_roles, approval_type, required_approval_count,
+                 designation, tier_id, created_at`,
       [emp_id, name.trim(), email.trim().toLowerCase(), password_hash, role, department || 'Engineering',
        avatar, color, reporting_to || null, mobile_number, date_of_birth, gender,
        pan_number.toUpperCase(), aadhaar_number,
        ppiWallet.walletId, ppiWallet.walletNumber, ppiWallet.customerId,
-       ppiWallet.walletStatus, ppiWallet.kycStatus]
+       ppiWallet.walletStatus, ppiWallet.kycStatus,
+       approvalCfg.provided ? approvalCfg.approver_roles : null,
+       approvalCfg.provided ? approvalCfg.approval_type : null,
+       approvalCfg.provided ? approvalCfg.required_approval_count : null,
+       designation || null,
+       resolvedTierId || null]
     )
 
     // Create internal wallet for the new employee
@@ -158,8 +258,24 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { name, email, role, department, reporting_to, password,
-            mobile_number, date_of_birth, gender, pan_number, aadhaar_number } = req.body
+            mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
+            approver_roles, approval_type, required_approval_count,
+            designation, tier_id: tier_id_in } = req.body
     const { id } = req.params
+
+    let approvalCfg = { provided: false }
+    if (approver_roles !== undefined || approval_type !== undefined) {
+      approvalCfg = normaliseApprovalConfig({ approver_roles, approval_type, required_approval_count })
+      if (approvalCfg.error) return res.status(400).json({ success: false, message: approvalCfg.error })
+    }
+
+    // Resolve tier_id from designation when caller didn't supply one explicitly.
+    let resolvedTierId = (tier_id_in === null) ? null
+      : (Number.isInteger(Number(tier_id_in)) ? Number(tier_id_in) : undefined)
+    if (designation !== undefined && resolvedTierId === undefined) {
+      const t = await resolveTierForDesignation(pool, designation)
+      resolvedTierId = t ? t.id : null
+    }
 
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE id = $1', [id])
     if (!existing.length) return res.status(404).json({ success: false, message: 'Employee not found' })
@@ -188,6 +304,14 @@ router.put('/:id', async (req, res, next) => {
     if (pan_number !== undefined)    { sets.push(`pan_number = $${idx++}`);    vals.push(pan_number ? pan_number.toUpperCase() : null) }
     if (aadhaar_number !== undefined){ sets.push(`aadhaar_number = $${idx++}`);vals.push(aadhaar_number || null) }
 
+    if (approvalCfg.provided) {
+      sets.push(`approver_roles = $${idx++}`);          vals.push(approvalCfg.approver_roles)
+      sets.push(`approval_type = $${idx++}`);           vals.push(approvalCfg.approval_type)
+      sets.push(`required_approval_count = $${idx++}`); vals.push(approvalCfg.required_approval_count)
+    }
+    if (designation !== undefined)       { sets.push(`designation = $${idx++}`); vals.push(designation || null) }
+    if (resolvedTierId !== undefined)    { sets.push(`tier_id = $${idx++}`);     vals.push(resolvedTierId) }
+
     if (password) {
       if (password.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' })
       sets.push(`password_hash = $${idx++}`)
@@ -211,7 +335,9 @@ router.put('/:id', async (req, res, next) => {
     const { rows: [user] } = await pool.query(
       `UPDATE users SET ${sets.join(', ')} WHERE id = $${idx}
        RETURNING id, emp_id, name, email, role, department, avatar, color, reporting_to, is_active,
-                 mobile_number, date_of_birth, gender, pan_number, aadhaar_number, created_at`,
+                 mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
+                 approver_roles, approval_type, required_approval_count,
+                 designation, tier_id, created_at`,
       vals
     )
 

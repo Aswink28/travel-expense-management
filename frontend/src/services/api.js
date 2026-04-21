@@ -153,8 +153,19 @@ export const bulkEmployeesAPI = {
   template:     ()         => `${BASE}/employees/bulk/template`,
 }
 
+export const tiersAPI = {
+  list:              ()                  => api.get('/tiers'),
+  create:            body                => api.post('/tiers', body),
+  update:            (id, body)          => api.put(`/tiers/${id}`, body),
+  remove:            id                  => api.delete(`/tiers/${id}`),
+  saveDesignation:   body                => api.post('/tiers/designations', body),
+  deleteDesignation: designation         => api.delete(`/tiers/designations/${encodeURIComponent(designation)}`),
+  preview:           designation         => api.get(`/tiers/preview/${encodeURIComponent(designation)}`),
+}
+
 export const employeesAPI = {
   list:           ()           => api.get('/employees'),
+  get:            id           => api.get(`/employees/${id}`),
   create:         body         => api.post('/employees', body),
   update:         (id, body)   => api.put(`/employees/${id}`, body),
   toggleStatus:   (id, active) => request(`/employees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) }),

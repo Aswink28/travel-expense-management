@@ -51,9 +51,9 @@ const Waves = () => (
         <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
           <defs>
             <linearGradient id={`waveg${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%"   stopColor="#5BAEFF" stopOpacity="0" />
-              <stop offset="50%"  stopColor="#B868FF" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#FF6BD6" stopOpacity="0" />
+              <stop offset="0%"   style={{ stopColor: 'var(--accent)' }}   stopOpacity="0" />
+              <stop offset="50%"  style={{ stopColor: 'var(--accent-2)' }} stopOpacity="0.7" />
+              <stop offset="100%" style={{ stopColor: 'var(--accent)' }}   stopOpacity="0" />
             </linearGradient>
           </defs>
           <path
