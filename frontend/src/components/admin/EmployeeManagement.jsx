@@ -1204,7 +1204,7 @@ export default function EmployeeManagement({ setTab }) {
               }}
             >
               <Select
-                label={<MLabel text="Role" required />}
+                label={<MLabel text="Designation" required />}
                 value={form.role}
                 onChange={(e) => f("role", e.target.value)}
                 error={fieldErrors.role}
