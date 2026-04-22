@@ -76,7 +76,7 @@ router.get('/', async (req, res, next) => {
     // Pending approvals waiting for this user — use the same tier visibility scope,
     // scoped to pending hierarchy work (or finance lane for Finance).
     let pendingForMe = 0
-    if (role === 'Employee' || role === 'Booking Admin') {
+    if (role === 'Software Engineer' || role === 'Booking Admin') {
       pendingForMe = 0
     } else if (role === 'Super Admin') {
       const { rows } = await pool.query(

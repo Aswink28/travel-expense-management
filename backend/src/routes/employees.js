@@ -183,6 +183,16 @@ router.post('/', async (req, res, next) => {
       }
     }
 
+    // Every new employee must have at least one approver — either directly supplied
+    // or inherited from the tier. Reject the create if neither produces any approvers.
+    if (!approvalCfg.provided || !Array.isArray(approvalCfg.approver_roles) || approvalCfg.approver_roles.length === 0) {
+      await client.query('ROLLBACK').catch(() => {})
+      return res.status(400).json({
+        success: false,
+        message: 'At least one approver must be assigned. Select one in the Sequential Approval Flow, or map the designation to a tier with approvers in Tier Config.',
+      })
+    }
+
     const password_hash = await bcrypt.hash(password, 10)
 
     // ── Call PPI Wallet API before inserting ─────────────────

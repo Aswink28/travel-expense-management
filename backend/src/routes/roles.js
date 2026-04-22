@@ -10,7 +10,6 @@ router.use(authorise('Super Admin'))
 const ALL_PAGES = [
   { id: 'dashboard',          label: 'Dashboard',       icon: '▦',  group: 'General' },
   { id: 'my-requests',        label: 'My Requests',     icon: '◈',  group: 'Requests' },
-  { id: 'requests',           label: 'All Requests',    icon: '◈',  group: 'Requests' },
   { id: 'new-request',        label: 'New Request',     icon: '+',  group: 'Requests' },
   { id: 'approvals',          label: 'Approvals',       icon: '◎',  group: 'Approvals' },
   { id: 'my-wallet',          label: 'My Wallet',       icon: '◉',  group: 'Wallet' },
@@ -18,8 +17,6 @@ const ALL_PAGES = [
   { id: 'my-tickets',         label: 'My Tickets',      icon: '🎟', group: 'Booking' },
   { id: 'booking-panel',      label: 'Booking Panel',   icon: '◈',  group: 'Admin Booking' },
   { id: 'booking-history',    label: 'Booking History',  icon: '◎',  group: 'Admin Booking' },
-  { id: 'ad-hoc-booking',     label: 'Ad-Hoc Booking',  icon: '✈',  group: 'Admin Booking' },
-  { id: 'admin-bookings-view',label: 'Admin Bookings',   icon: '📋', group: 'Admin Booking' },
   { id: 'employees',          label: 'Employees',        icon: '◆',  group: 'Administration' },
   { id: 'roles',              label: 'Role Manager',     icon: '⚙',  group: 'Administration' },
   { id: 'tiers',              label: 'Tier Config',      icon: '◐',  group: 'Administration' },

@@ -16,7 +16,7 @@ const ROLE_RANK = {
   'Manager':       3,
   'Finance':       3,
   'Tech Lead':     4,
-  'Employee':      5,
+  'Software Engineer': 5,
 }
 
 const EMPTY_TIER = {

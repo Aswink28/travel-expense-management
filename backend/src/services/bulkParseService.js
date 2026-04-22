@@ -51,7 +51,7 @@ function parseFile(buffer, fileName) {
     row.pan_number = String(row.pan_number).toUpperCase()
     row.gender = String(row.gender || '').charAt(0).toUpperCase() + String(row.gender || '').slice(1).toLowerCase()
     row.email = String(row.email).toLowerCase()
-    if (!row.role) row.role = 'Employee'
+    if (!row.role) row.role = 'Software Engineer'
     if (!row.department) row.department = 'Engineering'
 
     // Idempotency key = email (globally unique)

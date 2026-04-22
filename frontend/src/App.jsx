@@ -26,7 +26,7 @@ function WelcomeBanner() {
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const msgs = {
-    'Employee':      'Submit requests, track wallet balance, and download tickets from the dashboard.',
+    'Software Engineer': 'Submit requests, track wallet balance, and download tickets from the dashboard.',
     'Tech Lead':     'Approve team requests. Both hierarchy and Finance lanes must complete before wallet loads.',
     'Manager':       'Review and approve escalated requests. Finance approves budget amounts in parallel.',
     'Finance':       'You set the final approved amounts. Wallet is credited after your approval.',
@@ -77,7 +77,6 @@ function InnerApp() {
   const pages = {
     'dashboard':      <Dashboard setTab={setTab} />,
     'my-requests':    <RequestsList onNewRequest={onNewRequest} />,
-    'requests':       <RequestsList onNewRequest={onNewRequest} />,
     'new-request':    <NewRequestForm onSuccess={afterNewReq} />,
     'approvals':      <ApprovalsQueue />,
     'my-wallet':      <WalletPage />,

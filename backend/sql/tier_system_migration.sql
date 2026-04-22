@@ -55,7 +55,7 @@ VALUES
   ('Tier 2', 2, 'Booking Admin',              ARRAY['Business','Premium Economy'], ARRAY['1AC','2AC'],             ARRAY['Volvo','Sleeper','AC Seater'], ARRAY['4-Star','5-Star'],  60000, 'trip', ARRAY['Super Admin']::TEXT[],             'ALL'),
   ('Tier 3', 3, 'Manager',                    ARRAY['Business','Premium Economy'], ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['4-Star'],           40000, 'trip', ARRAY['Super Admin']::TEXT[],             'ALL'),
   ('Tier 4', 4, 'Tech Lead',                  ARRAY['Premium Economy','Economy'],  ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['3-Star'],           25000, 'trip', ARRAY['Manager','Super Admin']::TEXT[],   'ALL'),
-  ('Tier 5', 5, 'Employee',                   ARRAY['Economy'],                    ARRAY['3AC','Sleeper'],         ARRAY['AC Seater','Non-AC Seater'],   ARRAY['Budget','3-Star'],  15000, 'trip', ARRAY['Tech Lead','Manager']::TEXT[],     'ALL')
+  ('Tier 5', 5, 'Software Engineer',          ARRAY['Economy'],                    ARRAY['3AC','Sleeper'],         ARRAY['AC Seater','Non-AC Seater'],   ARRAY['Budget','3-Star'],  15000, 'trip', ARRAY['Tech Lead','Manager']::TEXT[],     'ALL')
 ON CONFLICT (name) DO NOTHING;
 
 -- Default designation → tier mapping (only inserts if not already present).
@@ -68,7 +68,7 @@ SELECT v.designation, t.id
     ('Manager',       'Tier 3'),
     ('Finance',       'Tier 3'),
     ('Tech Lead',     'Tier 4'),
-    ('Employee',      'Tier 5')
+    ('Software Engineer', 'Tier 5')
   ) AS v(designation, tier_name)
   JOIN tiers t ON t.name = v.tier_name
 ON CONFLICT (designation) DO NOTHING;
@@ -85,3 +85,19 @@ UPDATE tiers SET approver_roles = ARRAY['Tech Lead','Manager']::TEXT[]    WHERE 
 -- Remove Booking Admin from ALL tiers (including any custom tiers admins may have added).
 UPDATE tiers SET approver_roles = array_remove(approver_roles, 'Booking Admin')
 WHERE 'Booking Admin' = ANY(approver_roles);
+
+-- Rename designation "Employee" → "Software Engineer" across existing installs.
+-- Idempotent: only fires when a row still uses the old name.
+UPDATE designation_tiers SET designation = 'Software Engineer'
+WHERE designation = 'Employee'
+  AND NOT EXISTS (SELECT 1 FROM designation_tiers WHERE designation = 'Software Engineer');
+
+-- If both rows happen to exist (fresh seed ran after a stale 'Employee' row), drop the old one.
+DELETE FROM designation_tiers WHERE designation = 'Employee';
+
+-- Refresh any users currently tagged with the old designation.
+UPDATE users SET designation = 'Software Engineer' WHERE designation = 'Employee';
+
+-- Refresh the built-in Tier 5 description if it still reads 'Employee'.
+UPDATE tiers SET description = 'Software Engineer'
+WHERE name = 'Tier 5' AND description = 'Employee';

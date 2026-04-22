@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_role_pages_role ON role_pages(role_name);
 
 -- ── Seed system roles ────────────────────────────────────────
 INSERT INTO roles (name, description, color, is_system) VALUES
-  ('Employee',      'Standard employee — submit requests, track wallet',           '#0A84FF', TRUE),
+  ('Software Engineer', 'Submit requests, track wallet',                            '#0A84FF', TRUE),
   ('Tech Lead',     'Team lead — approve team requests',                           '#BF5AF2', TRUE),
   ('Manager',       'Manager — higher-level approvals, view all requests',         '#FF9F0A', TRUE),
   ('Finance',       'Finance team — final budget approval, set amounts',           '#40C8E0', TRUE),
@@ -39,12 +39,12 @@ ON CONFLICT (name) DO NOTHING;
 -- ── Seed page access for existing roles ──────────────────────
 -- Employee
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
-  ('Employee', 'dashboard',    'Dashboard',    '▦', 1),
-  ('Employee', 'my-requests',  'My Requests',  '◈', 2),
-  ('Employee', 'new-request',  'New Request',  '+', 3),
-  ('Employee', 'my-wallet',    'My Wallet',    '◉', 4),
-  ('Employee', 'transactions', 'Transactions', '📊', 5),
-  ('Employee', 'my-tickets',   'My Tickets',   '🎟', 6)
+  ('Software Engineer', 'dashboard',    'Dashboard',    '▦', 1),
+  ('Software Engineer', 'my-requests',  'My Requests',  '◈', 2),
+  ('Software Engineer', 'new-request',  'New Request',  '+', 3),
+  ('Software Engineer', 'my-wallet',    'My Wallet',    '◉', 4),
+  ('Software Engineer', 'transactions', 'Transactions', '📊', 5),
+  ('Software Engineer', 'my-tickets',   'My Tickets',   '🎟', 6)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
 -- Tech Lead
@@ -61,7 +61,6 @@ ON CONFLICT (role_name, page_id) DO NOTHING;
 -- Manager
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Manager', 'dashboard',    'Dashboard',     '▦', 1),
-  ('Manager', 'requests',     'All Requests',  '◈', 2),
   ('Manager', 'approvals',    'Approvals',     '◎', 3),
   ('Manager', 'new-request',  'New Request',   '+', 4),
   ('Manager', 'my-wallet',    'My Wallet',     '◉', 5),
@@ -72,7 +71,6 @@ ON CONFLICT (role_name, page_id) DO NOTHING;
 -- Finance
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Finance', 'dashboard',    'Dashboard',      '▦', 1),
-  ('Finance', 'requests',     'All Requests',   '◈', 2),
   ('Finance', 'approvals',    'Finance Queue',  '◎', 3),
   ('Finance', 'new-request',  'New Request',    '+', 4),
   ('Finance', 'my-wallet',    'My Wallet',      '◉', 5),
@@ -82,17 +80,15 @@ ON CONFLICT (role_name, page_id) DO NOTHING;
 
 -- Booking Admin
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
-  ('Booking Admin', 'dashboard',          'Dashboard',      '▦', 1),
-  ('Booking Admin', 'booking-panel',      'Booking Panel',  '◈', 2),
-  ('Booking Admin', 'booking-history',    'History',        '◎', 3),
-  ('Booking Admin', 'ad-hoc-booking',     'Ad-Hoc Booking', '✈', 4),
-  ('Booking Admin', 'admin-bookings-view','Admin Bookings', '📋', 5)
+  ('Booking Admin', 'dashboard',           'Dashboard',       '▦', 1),
+  ('Booking Admin', 'booking-panel',       'Booking Panel',   '◈', 2),
+  ('Booking Admin', 'booking-history',     'History',         '◎', 3),
+  ('Booking Admin', 'admin-bookings-view', 'Booking History', '📋', 4)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
 -- Super Admin
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Super Admin', 'dashboard',          'Dashboard',      '▦',  1),
-  ('Super Admin', 'requests',           'All Requests',   '◈',  2),
   ('Super Admin', 'approvals',          'Approvals',      '◎',  3),
   ('Super Admin', 'new-request',        'New Request',    '+',  4),
   ('Super Admin', 'my-wallet',          'My Wallet',      '◉',  5),
@@ -102,3 +98,32 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Super Admin', 'roles',              'Role Manager',   '⚙',  9),
   ('Super Admin', 'tiers',              'Tier Config',    '◐', 10)
 ON CONFLICT (role_name, page_id) DO NOTHING;
+
+-- Rename the "Employee" role to "Software Engineer" across existing installs.
+-- user_role_enum first (requires PG 10+), then the roles master row, which cascades
+-- to role_pages and role_approvers via their ON UPDATE CASCADE FKs.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+             WHERE t.typname = 'user_role_enum' AND e.enumlabel = 'Employee') THEN
+    EXECUTE $rename$ALTER TYPE user_role_enum RENAME VALUE 'Employee' TO 'Software Engineer'$rename$;
+  END IF;
+END $$;
+
+UPDATE roles SET name = 'Software Engineer'
+WHERE name = 'Employee'
+  AND NOT EXISTS (SELECT 1 FROM roles WHERE name = 'Software Engineer');
+
+-- If a fresh-seed race left both rows, keep the renamed one.
+DELETE FROM roles WHERE name = 'Employee';
+
+-- Retire the legacy "All Requests" (requests) page — it's been removed.
+-- This cleans it up from any existing install on next startup.
+DELETE FROM role_pages WHERE page_id = 'requests';
+
+-- Retire the legacy "Ad-Hoc Booking" page (folded back into Booking History / Panel).
+DELETE FROM role_pages WHERE page_id = 'ad-hoc-booking';
+
+-- Rename "Admin Bookings" → "Booking History" across any existing installs.
+UPDATE role_pages SET page_label = 'Booking History'
+WHERE page_id = 'admin-bookings-view' AND page_label <> 'Booking History';

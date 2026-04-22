@@ -14,7 +14,7 @@ export default function NewRequestForm({ onSuccess }) {
   // Approval configuration is sourced entirely from the employee profile (Employee Creation).
   // Approvals run strictly in order from lowest-authority to highest.
   const ROLE_RANK = {
-    'Super Admin': 1, 'Booking Admin': 2, 'Manager': 3, 'Finance': 3, 'Tech Lead': 4, 'Employee': 5,
+    'Super Admin': 1, 'Booking Admin': 2, 'Manager': 3, 'Finance': 3, 'Tech Lead': 4, 'Software Engineer': 5,
   }
   const approverRoles = (Array.isArray(user?.approver_roles) ? user.approver_roles : [])
     .slice()

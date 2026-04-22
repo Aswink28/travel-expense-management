@@ -22,14 +22,21 @@ const ROLE_RANK = {
   Manager: 3,
   Finance: 3,
   "Tech Lead": 4,
-  Employee: 5,
+  "Software Engineer": 5,
 };
+
+// Default designation mirrors the role name. Override this map if a role ever
+// needs to map to a differently-named designation in Tier Config.
+const ROLE_DEFAULT_DESIGNATION = {};
+function designationForRole(roleName) {
+  return ROLE_DEFAULT_DESIGNATION[roleName] || roleName;
+}
 
 const INITIAL_FORM = {
   name: "",
   email: "",
   password: "",
-  role: "Employee",
+  role: "Software Engineer",
   department: "",
   reporting_to: "",
   mobile_number: "",
@@ -147,7 +154,7 @@ export default function EmployeeManagement({ setTab }) {
 
   function openCreate() {
     setEditId(null);
-    const defaults = defaultApproversForRole("Employee");
+    const defaults = defaultApproversForRole("Software Engineer");
     setForm({
       ...INITIAL_FORM,
       approver_roles: defaults,
@@ -159,7 +166,7 @@ export default function EmployeeManagement({ setTab }) {
     setShowModal(true);
     // Auto-resolve tier for the default role so the modal opens with the tier
     // policy preview already visible.
-    applyDesignation("Employee");
+    applyDesignation(designationForRole("Software Engineer"));
   }
 
   function toDateInput(val) {
@@ -406,11 +413,12 @@ export default function EmployeeManagement({ setTab }) {
       // Only fires when the user hasn't set a more specific designation already
       // (i.e. the designation was either empty or mirroring the previous role).
       const prevRole = form.role;
+      const prevAutoDesignation = designationForRole(prevRole || "");
       const currentDesignation = (form.designation || "").trim();
       const shouldAutoApply =
         !currentDesignation ||
-        currentDesignation.toLowerCase() === (prevRole || "").toLowerCase();
-      if (shouldAutoApply) applyDesignation(value);
+        currentDesignation.toLowerCase() === prevAutoDesignation.toLowerCase();
+      if (shouldAutoApply) applyDesignation(designationForRole(value));
     }
   }
 
@@ -1399,16 +1407,30 @@ export default function EmployeeManagement({ setTab }) {
                   </div>
 
                   {options.length === 0 ? (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#FF9F0A",
-                        padding: "4px 0",
-                      }}
-                    >
-                      ⚠️ No approvers available for this designation/role.
-                      Configure the tier or Role Manager first.
-                    </div>
+                    <>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#FF9F0A",
+                          padding: "4px 0",
+                        }}
+                      >
+                        ⚠️ No approvers available for this designation/role.
+                        Configure the tier or Role Manager first.
+                      </div>
+                      {fieldErrors.approver_roles && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#FF453A",
+                            marginTop: 6,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {fieldErrors.approver_roles} — at least one approver is required to create an employee.
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <>
                       <div
@@ -1570,7 +1592,20 @@ export default function EmployeeManagement({ setTab }) {
               <Button variant="ghost" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button
+                type="submit"
+                disabled={
+                  saving ||
+                  !Array.isArray(form.approver_roles) ||
+                  form.approver_roles.length === 0
+                }
+                title={
+                  !Array.isArray(form.approver_roles) ||
+                  form.approver_roles.length === 0
+                    ? "At least one approver must be assigned in the Sequential Approval Flow"
+                    : undefined
+                }
+              >
                 {saving
                   ? "Saving..."
                   : editId

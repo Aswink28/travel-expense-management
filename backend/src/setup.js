@@ -8,8 +8,8 @@ const adminPool = new Pool({ host:process.env.DB_HOST, port:process.env.DB_PORT,
 const pool      = new Pool({ host:process.env.DB_HOST, port:process.env.DB_PORT, database:process.env.DB_NAME, user:process.env.DB_USER, password:process.env.DB_PASSWORD })
 
 const USERS = [
-  { email:'arjun@company.in',  password:'pass123',  role:'Employee'      },
-  { email:'priya@company.in',  password:'pass123',  role:'Employee'      },
+  { email:'arjun@company.in',  password:'pass123',  role:'Software Engineer' },
+  { email:'priya@company.in',  password:'pass123',  role:'Software Engineer' },
   { email:'deepa@company.in',  password:'pass123',  role:'Tech Lead'     },
   { email:'ravi@company.in',   password:'pass123',  role:'Manager'       },
   { email:'anil@company.in',   password:'pass123',  role:'Finance'       },
@@ -131,7 +131,7 @@ async function run() {
         finance_approved, finance_approved_by, finance_approved_at,
         wallet_credited, wallet_credit_amount, wallet_credited_at, booking_status
       ) VALUES (
-        'TR-DEMO1', $1, 'Arjun Sharma', 'Employee', 'Engineering',
+        'TR-DEMO1', $1, 'Arjun Sharma', 'Software Engineer', 'Engineering',
         'Chennai', 'Bangalore', 'short', 'Train', 'self',
         CURRENT_DATE + 5, CURRENT_DATE + 7, 'Client Demo',
         1800, 3000, 6300,
@@ -170,7 +170,7 @@ async function run() {
         finance_approved, finance_approved_by, finance_approved_at,
         wallet_credited, wallet_credit_amount, wallet_credited_at, booking_status
       ) VALUES (
-        'TR-DEMO2', $1, 'Priya Nair', 'Employee', 'QA',
+        'TR-DEMO2', $1, 'Priya Nair', 'Software Engineer', 'QA',
         'Chennai', 'Mumbai', 'long', 'Flight', 'company',
         CURRENT_DATE + 10, CURRENT_DATE + 13, 'Sprint Review',
         8500, 12000, 24500,
@@ -203,7 +203,7 @@ async function run() {
         estimated_travel_cost, estimated_hotel_cost, estimated_total,
         status, booking_status
       ) VALUES (
-        'TR-DEMO3', $1, 'Arjun Sharma', 'Employee', 'Engineering',
+        'TR-DEMO3', $1, 'Arjun Sharma', 'Software Engineer', 'Engineering',
         'Chennai', 'Delhi', 'long', 'Flight', 'company',
         CURRENT_DATE + 20, CURRENT_DATE + 23, 'Architecture Review',
         9000, 15000, 28000,

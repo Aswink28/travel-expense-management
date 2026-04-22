@@ -19,7 +19,7 @@ const options = {
             password: {
               tokenUrl: '/api/auth/oauth/token',
               scopes: {
-                'Employee':      'Employee access',
+                'Software Engineer': 'Software Engineer access',
                 'Tech Lead':     'Tech Lead access',
                 'Manager':       'Manager access',
                 'Finance':       'Finance access',
@@ -51,7 +51,7 @@ const options = {
         },
         UserRole: {
           type: 'string',
-          enum: ['Employee', 'Tech Lead', 'Manager', 'Finance', 'Booking Admin', 'Super Admin'],
+          enum: ['Software Engineer', 'Tech Lead', 'Manager', 'Finance', 'Booking Admin', 'Super Admin'],
         },
         WalletSummary: {
           type: 'object',
@@ -309,7 +309,7 @@ const options = {
                 access_token: { type: 'string' },
                 token_type:   { type: 'string', example: 'Bearer' },
                 expires_in:   { type: 'integer', example: 28800 },
-                scope:        { type: 'string', example: 'Employee' },
+                scope:        { type: 'string', example: 'Software Engineer' },
               },
             }}}},
             401: { description: 'Invalid credentials' },

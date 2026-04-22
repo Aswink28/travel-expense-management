@@ -14,7 +14,7 @@ const ROLE_RANK = {
   'Manager':       3,
   'Finance':       3,
   'Tech Lead':     4,
-  'Employee':      5,
+  'Software Engineer': 5,
 }
 function roleRank(role) { return ROLE_RANK[role] ?? 99 }
 
@@ -116,9 +116,9 @@ router.get('/', async (req, res, next) => {
     const { role, id:uid } = req.user
     const { status } = req.query
     let where = '', params = []
-    if (role === 'Employee')      { where = 'WHERE tr.user_id=$1'; params=[uid] }
-    else if (role === 'Tech Lead') { where = `WHERE tr.user_role='Employee'` }
-    else if (role === 'Manager')   { where = `WHERE tr.user_role IN ('Employee','Tech Lead','Finance')` }
+    if (role === 'Software Engineer')      { where = 'WHERE tr.user_id=$1'; params=[uid] }
+    else if (role === 'Tech Lead') { where = `WHERE tr.user_role='Software Engineer'` }
+    else if (role === 'Manager')   { where = `WHERE tr.user_role IN ('Software Engineer','Tech Lead','Finance')` }
     else if (role === 'Finance')   { where = `WHERE tr.status IN ('pending','pending_finance') OR tr.finance_approved=FALSE` }
     else if (role === 'Booking Admin') { where = `WHERE tr.status='approved' AND tr.booking_type='company'` }
     if (status) {
@@ -147,7 +147,7 @@ router.get('/queue', async (req, res, next) => {
     const { role, id: uid } = req.user
     // Employees submit requests but never approve them.
     // Booking Admin handles post-approval bookings only — they're not part of the approval flow.
-    if (['Employee', 'Booking Admin'].includes(role)) return res.json({ success: true, count: 0, data: [] })
+    if (['Software Engineer', 'Booking Admin'].includes(role)) return res.json({ success: true, count: 0, data: [] })
 
     // Super Admin: sees all pending (override lane).
     if (role === 'Super Admin') {

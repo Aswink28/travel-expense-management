@@ -29,7 +29,7 @@ DROP TYPE IF EXISTS booking_status_enum   CASCADE;
 DROP TYPE IF EXISTS document_type_enum    CASCADE;
 
 -- ── ENUMs ─────────────────────────────────────────────────────
-CREATE TYPE user_role_enum       AS ENUM ('Employee','Tech Lead','Manager','Finance','Booking Admin','Super Admin');
+CREATE TYPE user_role_enum       AS ENUM ('Software Engineer','Tech Lead','Manager','Finance','Booking Admin','Super Admin');
 CREATE TYPE travel_mode_enum     AS ENUM ('Train','Bus','Flight','Hotel','Metro','Cab','Rapido','Auto');
 CREATE TYPE distance_type_enum   AS ENUM ('short','long','international');
 CREATE TYPE booking_type_enum    AS ENUM ('self','company');
@@ -354,7 +354,7 @@ CREATE TRIGGER trg_wallet_balance
 --  SEED: tier_config
 -- ================================================================
 INSERT INTO tier_config (role, allowed_modes, max_trip_budget, daily_allowance, max_hotel_per_night, cab_daily_limit, food_daily_limit, color) VALUES
-('Employee',      ARRAY['Train','Bus','Hotel','Metro','Cab','Rapido','Auto'],          15000,  500,  1500, 300, 200, '#0A84FF'),
+('Software Engineer', ARRAY['Train','Bus','Hotel','Metro','Cab','Rapido','Auto'],      15000,  500,  1500, 300, 200, '#0A84FF'),
 ('Tech Lead',     ARRAY['Train','Bus','Flight','Hotel','Metro','Cab','Rapido'],      30000,  800,  3000, 500, 300, '#BF5AF2'),
 ('Manager',       ARRAY['Train','Bus','Flight','Hotel','Metro','Cab','Rapido','Auto'],100000,1500, 6000, 800, 500, '#FF9F0A'),
 ('Finance',       ARRAY['Train','Bus','Flight','Hotel','Metro','Cab','Rapido'],      40000, 1000,  4000, 600, 400, '#40C8E0'),
@@ -365,8 +365,8 @@ INSERT INTO tier_config (role, allowed_modes, max_trip_budget, daily_allowance, 
 --  SEED: expense_limits
 -- ================================================================
 INSERT INTO expense_limits (role, category, daily_limit, trip_limit) VALUES
-('Employee',  'cab',     300, 1500),  ('Employee',  'food',  200, 1000), ('Employee',  'metro', 150, 600),
-('Employee',  'hotel',  1500, 9000),  ('Employee',  'travel',2000,15000),
+('Software Engineer', 'cab',  300, 1500), ('Software Engineer', 'food', 200, 1000), ('Software Engineer', 'metro',150, 600),
+('Software Engineer', 'hotel',1500, 9000),('Software Engineer', 'travel',2000,15000),
 ('Tech Lead', 'cab',     500, 2500),  ('Tech Lead', 'food',  300, 1500), ('Tech Lead', 'metro', 200, 800),
 ('Tech Lead', 'hotel',  3000,18000),  ('Tech Lead', 'travel',5000,30000),
 ('Manager',  'cab',      800, 4000),  ('Manager',  'food',   500, 2500), ('Manager',  'metro', 300, 1200),
@@ -380,8 +380,8 @@ INSERT INTO expense_limits (role, category, daily_limit, trip_limit) VALUES
 --  SEED: users  (passwords set by setup.js)
 -- ================================================================
 INSERT INTO users (emp_id, name, email, password_hash, role, department, avatar, color, reporting_to) VALUES
-('EMP-001', 'Arjun Sharma',   'arjun@company.in',  'PLACEHOLDER', 'Employee',      'Engineering', 'AS', '#0A84FF', 'Deepa (TL)'),
-('EMP-002', 'Priya Nair',     'priya@company.in',  'PLACEHOLDER', 'Employee',      'QA',          'PN', '#0A84FF', 'Deepa (TL)'),
+('EMP-001', 'Arjun Sharma',   'arjun@company.in',  'PLACEHOLDER', 'Software Engineer', 'Engineering', 'AS', '#0A84FF', 'Deepa (TL)'),
+('EMP-002', 'Priya Nair',     'priya@company.in',  'PLACEHOLDER', 'Software Engineer', 'QA',          'PN', '#0A84FF', 'Deepa (TL)'),
 ('EMP-003', 'Deepa Krishnan', 'deepa@company.in',  'PLACEHOLDER', 'Tech Lead',     'Engineering', 'DK', '#BF5AF2', 'Ravi (Mgr)'),
 ('EMP-004', 'Ravi Kumar',     'ravi@company.in',   'PLACEHOLDER', 'Manager',       'Operations',  'RK', '#FF9F0A', 'CFO'),
 ('EMP-005', 'Anil Menon',     'anil@company.in',   'PLACEHOLDER', 'Finance',       'Finance',     'AM', '#40C8E0', 'CFO'),

@@ -63,7 +63,7 @@ export default function RequestsList({ onNewRequest }) {
   const [filter,   setFilter]   = useState('all')
 
   useEffect(() => {
-    const fn = ['Employee'].includes(user.role) ? requestsAPI.list : requestsAPI.list
+    const fn = ['Software Engineer'].includes(user.role) ? requestsAPI.list : requestsAPI.list
     fn().then(d => setRequests(d.data||[])).catch(e => setError(e.message)).finally(() => setLoading(false))
   }, [])
 
@@ -88,7 +88,7 @@ export default function RequestsList({ onNewRequest }) {
   return (
     <div className="fade-up">
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:24 }}>
-        <PageTitle title={user.role === 'Employee' ? 'My Requests' : 'Travel Requests'} sub={`${filtered.length} total`} />
+        <PageTitle title={user.role === 'Software Engineer' ? 'My Requests' : 'Travel Requests'} sub={`${filtered.length} total`} />
         <div style={{ display:'flex', gap:10 }}>
           <select value={filter} onChange={e=>setFilter(e.target.value)} style={{ background:'var(--bg-card, #1A1A22)', border:'1px solid var(--border, #2A2A35)', borderRadius:8, color:'var(--text-body, #E2E2E8)', fontSize:12, padding:'7px 12px', outline:'none' }}>
             <option value="all">All status</option>
