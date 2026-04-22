@@ -28,6 +28,13 @@ function normaliseTier(body) {
   if (body.approver_roles !== undefined)            out.approver_roles = arr(body.approver_roles)
   if (body.approval_type !== undefined)             out.approval_type  = APPROVAL_TYPES.includes(body.approval_type) ? body.approval_type : 'ALL'
   if (body.intl_flight_class_upgrade !== undefined) out.intl_flight_class_upgrade = !!body.intl_flight_class_upgrade
+  // Extended policy fields
+  if (body.max_hotel_per_night !== undefined)       out.max_hotel_per_night = num(body.max_hotel_per_night)
+  if (body.meal_daily_limit !== undefined)          out.meal_daily_limit    = num(body.meal_daily_limit)
+  if (body.cab_daily_limit !== undefined)           out.cab_daily_limit     = num(body.cab_daily_limit)
+  if (body.advance_booking_days !== undefined)      out.advance_booking_days = Math.max(0, parseInt(body.advance_booking_days, 10) || 0)
+  if (body.intl_budget_limit !== undefined)         out.intl_budget_limit   = num(body.intl_budget_limit)
+  if (body.is_active !== undefined)                 out.is_active           = !!body.is_active
   return out
 }
 
@@ -49,7 +56,8 @@ router.get('/', async (req, res, next) => {
 })
 
 // ── GET /api/tiers/preview/:designation ──────────────────────
-// Any authenticated caller — used by employee form.
+// Any authenticated caller — used by employee form. Inactive tiers are excluded so
+// retired tiers can't be auto-assigned onto new or edited employees.
 router.get('/preview/:designation', async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
@@ -57,6 +65,7 @@ router.get('/preview/:designation', async (req, res, next) => {
       FROM designation_tiers dt
       JOIN tiers t ON t.id = dt.tier_id
       WHERE LOWER(dt.designation) = LOWER($1)
+        AND t.is_active = TRUE
       LIMIT 1
     `, [req.params.designation])
     if (!rows.length) return res.json({ success: true, data: null })
@@ -75,13 +84,18 @@ router.post('/', async (req, res, next) => {
     if (!Number.isInteger(t.rank) || t.rank < 1) return res.status(400).json({ success: false, message: 'Tier rank must be a positive integer' })
     const { rows } = await pool.query(
       `INSERT INTO tiers (name, rank, description, flight_classes, train_classes, bus_types, hotel_types,
-                          budget_limit, budget_period, approver_roles, approval_type, intl_flight_class_upgrade)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                          budget_limit, budget_period, approver_roles, approval_type, intl_flight_class_upgrade,
+                          max_hotel_per_night, meal_daily_limit, cab_daily_limit,
+                          advance_booking_days, intl_budget_limit, is_active)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [t.name, t.rank, t.description || null,
        t.flight_classes || [], t.train_classes || [], t.bus_types || [], t.hotel_types || [],
        t.budget_limit || 0, t.budget_period || 'trip',
-       t.approver_roles || [], t.approval_type || 'ALL', !!t.intl_flight_class_upgrade]
+       t.approver_roles || [], t.approval_type || 'ALL', !!t.intl_flight_class_upgrade,
+       t.max_hotel_per_night || 0, t.meal_daily_limit || 0, t.cab_daily_limit || 0,
+       t.advance_booking_days || 0, t.intl_budget_limit || 0,
+       t.is_active === undefined ? true : !!t.is_active]
     )
     res.status(201).json({ success: true, message: 'Tier created', data: rows[0] })
   } catch (e) {

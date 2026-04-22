@@ -13,14 +13,51 @@ router.get('/', async (req, res, next) => {
     // Wallet
     const { rows: wallet } = await pool.query('SELECT * FROM wallets WHERE user_id=$1', [uid])
 
-    // Request stats
-    let statsWhere = 'TRUE'
-    let statsParams = []
-    if (role === 'Employee') { statsWhere = 'user_id=$1'; statsParams = [uid] }
-    else if (role === 'Tech Lead') statsWhere = `user_role='Employee'`
-    else if (role === 'Manager')   statsWhere = `user_role IN ('Employee','Tech Lead')`
-    else if (role === 'Finance')   statsWhere = 'TRUE'
-    else if (role === 'Booking Admin') statsWhere = `status='approved' AND booking_type='company'`
+    // ── Tier-based visibility scope ──
+    // A caller sees their own data plus data from users whose tier sits BELOW theirs
+    // (rank number greater than theirs; lower authority). Super Admin sees everything.
+    // Finance is treated as a parallel lane with company-wide budget visibility.
+    // Booking Admin only sees approved company bookings (their operational scope).
+    // Resolve caller's tier rank with a fallback chain:
+    //   1. users.tier_id → tiers.rank
+    //   2. designation_tiers[LOWER(role.name)] → tiers.rank (covers users with no
+    //      explicit tier_id but whose role maps to a default tier)
+    const { rows: myRankRow } = await pool.query(`
+      SELECT COALESCE(
+        (SELECT t.rank FROM tiers t WHERE t.id = u.tier_id),
+        (SELECT t.rank FROM designation_tiers dt
+           JOIN tiers t ON t.id = dt.tier_id
+           WHERE LOWER(dt.designation) = LOWER(u.role::text) LIMIT 1)
+      ) AS rank
+      FROM users u WHERE u.id = $1
+    `, [uid])
+    const myRank = myRankRow[0]?.rank ?? null
+
+    let statsWhere, statsParams
+    if (role === 'Super Admin' || role === 'Finance') {
+      statsWhere  = 'TRUE'
+      statsParams = []
+    } else if (role === 'Booking Admin') {
+      statsWhere  = `status='approved' AND booking_type='company'`
+      statsParams = []
+    } else if (myRank !== null) {
+      // Own data + anyone whose effective tier rank is strictly greater than mine.
+      // Effective rank resolution mirrors the caller's chain (tier_id → designation).
+      statsWhere = `(user_id = $1 OR user_id IN (
+        SELECT u2.id FROM users u2
+        WHERE COALESCE(
+          (SELECT t.rank FROM tiers t WHERE t.id = u2.tier_id),
+          (SELECT t.rank FROM designation_tiers dt
+             JOIN tiers t ON t.id = dt.tier_id
+             WHERE LOWER(dt.designation) = LOWER(u2.role::text) LIMIT 1)
+        ) > $2
+      ))`
+      statsParams = [uid, myRank]
+    } else {
+      // No tier configured for this user → show only their own data
+      statsWhere  = 'user_id=$1'
+      statsParams = [uid]
+    }
 
     const { rows: stats } = await pool.query(`
       SELECT
@@ -36,18 +73,41 @@ router.get('/', async (req, res, next) => {
       FROM travel_requests WHERE ${statsWhere}
     `, statsParams)
 
-    // Pending approvals for this user
+    // Pending approvals waiting for this user — use the same tier visibility scope,
+    // scoped to pending hierarchy work (or finance lane for Finance).
     let pendingForMe = 0
-    if (!['Employee','Booking Admin'].includes(role)) {
-      let pWhere = '', pParams = [uid]
-      if (role === 'Finance')   pWhere = `WHERE tr.status IN ('pending','pending_finance') AND tr.finance_approved=FALSE AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
-      else if (role === 'Tech Lead') pWhere = `WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE AND tr.user_role='Employee' AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
-      else if (role === 'Manager')   pWhere = `WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE AND tr.user_role IN ('Employee','Tech Lead') AND tr.user_id!=$1 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`
-      else if (role === 'Super Admin') pWhere = `WHERE tr.status='pending' AND tr.user_id!=$1`
-      if (pWhere) {
-        const { rows: pend } = await pool.query(`SELECT COUNT(*) c FROM travel_requests tr ${pWhere}`, pParams)
-        pendingForMe = Number(pend[0].c)
-      }
+    if (role === 'Employee' || role === 'Booking Admin') {
+      pendingForMe = 0
+    } else if (role === 'Super Admin') {
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::int c FROM travel_requests WHERE status='pending' AND user_id != $1`,
+        [uid]
+      )
+      pendingForMe = rows[0].c
+    } else if (role === 'Finance') {
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::int c FROM travel_requests tr
+         WHERE tr.status IN ('pending','pending_finance')
+           AND tr.finance_approved=FALSE AND tr.user_id != $1
+           AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)`,
+        [uid]
+      )
+      pendingForMe = rows[0].c
+    } else if (myRank !== null) {
+      const { rows } = await pool.query(`
+        SELECT COUNT(*)::int c FROM travel_requests tr
+        LEFT JOIN users ru ON ru.id = tr.user_id
+        WHERE tr.status='pending' AND tr.hierarchy_approved=FALSE
+          AND tr.user_id != $1
+          AND COALESCE(
+            (SELECT t.rank FROM tiers t WHERE t.id = ru.tier_id),
+            (SELECT t.rank FROM designation_tiers dt
+               JOIN tiers t ON t.id = dt.tier_id
+               WHERE LOWER(dt.designation) = LOWER(ru.role::text) LIMIT 1)
+          ) > $2
+          AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)
+      `, [uid, myRank])
+      pendingForMe = rows[0].c
     }
 
     // Recent transactions for current user

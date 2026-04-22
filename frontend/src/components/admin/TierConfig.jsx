@@ -32,6 +32,12 @@ const EMPTY_TIER = {
   approver_roles: [],
   approval_type: 'ALL',
   intl_flight_class_upgrade: false,
+  max_hotel_per_night: 0,
+  meal_daily_limit: 0,
+  cab_daily_limit: 0,
+  advance_booking_days: 0,
+  intl_budget_limit: 0,
+  is_active: true,
 }
 
 export default function TierConfig() {
@@ -95,6 +101,12 @@ export default function TierConfig() {
         approver_roles: Array.isArray(t.approver_roles) ? t.approver_roles : [],
         approval_type:  t.approval_type || 'ALL',
         intl_flight_class_upgrade: !!t.intl_flight_class_upgrade,
+        max_hotel_per_night:  Number(t.max_hotel_per_night)  || 0,
+        meal_daily_limit:     Number(t.meal_daily_limit)     || 0,
+        cab_daily_limit:      Number(t.cab_daily_limit)      || 0,
+        advance_booking_days: Number(t.advance_booking_days) || 0,
+        intl_budget_limit:    Number(t.intl_budget_limit)    || 0,
+        is_active:            t.is_active !== false,
       },
     })
     setTierErrors({})
@@ -192,46 +204,71 @@ export default function TierConfig() {
               No tiers yet. Create one to get started.
             </div>
           )}
-          {tiers.map(t => (
-            <div key={t.id} style={{
-              background:'var(--bg-card-deep)', border:'1px solid var(--border)', borderRadius: 10, padding: 14,
-            }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap: 10, flexWrap:'wrap', marginBottom: 10 }}>
-                <div style={{ display:'flex', alignItems:'center', gap: 10 }}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 800, letterSpacing:'0.08em',
-                    color:'var(--accent)', background:'color-mix(in srgb, var(--accent) 16%, transparent)',
-                    padding:'3px 8px', borderRadius: 999,
-                  }}>RANK {t.rank}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color:'var(--text-primary)' }}>{t.name}</span>
-                  {t.description && <span style={{ fontSize: 11, color:'var(--text-muted)' }}>· {t.description}</span>}
-                </div>
-                {canEdit && (
-                  <div style={{ display:'flex', gap: 6 }}>
-                    <Button size="sm" variant="ghost" onClick={() => openEditTier(t)}>Edit</Button>
-                    <Button size="sm"
-                      style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }}
-                      onClick={() => requestDeleteTier(t)}>
-                      Delete
-                    </Button>
+          {tiers.map(t => {
+            const inactive = t.is_active === false
+            return (
+              <div key={t.id} style={{
+                background:'var(--bg-card-deep)',
+                border: inactive ? '1px dashed var(--border)' : '1px solid var(--border)',
+                borderRadius: 10, padding: 14,
+                opacity: inactive ? 0.6 : 1,
+              }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap: 10, flexWrap:'wrap', marginBottom: 10 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap: 10, flexWrap:'wrap' }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 800, letterSpacing:'0.08em',
+                      color:'var(--accent)', background:'color-mix(in srgb, var(--accent) 16%, transparent)',
+                      padding:'3px 8px', borderRadius: 999,
+                    }}>RANK {t.rank}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color:'var(--text-primary)' }}>{t.name}</span>
+                    {inactive && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing:'0.08em', textTransform:'uppercase',
+                        color:'#FF9F0A', background:'#FF9F0A18', border:'1px solid #FF9F0A40',
+                        padding:'2px 7px', borderRadius: 999,
+                      }}>Inactive</span>
+                    )}
+                    {t.description && <span style={{ fontSize: 11, color:'var(--text-muted)' }}>· {t.description}</span>}
                   </div>
-                )}
+                  {canEdit && (
+                    <div style={{ display:'flex', gap: 6 }}>
+                      <Button size="sm" variant="ghost" onClick={() => openEditTier(t)}>Edit</Button>
+                      <Button size="sm"
+                        style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }}
+                        onClick={() => requestDeleteTier(t)}>
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 10 }}>
+                  <InfoCell label="Flight"   value={(t.flight_classes || []).join(', ') || '—'} />
+                  <InfoCell label="Train"    value={(t.train_classes  || []).join(', ') || '—'} />
+                  <InfoCell label="Bus"      value={(t.bus_types      || []).join(', ') || '—'} />
+                  <InfoCell label="Hotel"    value={(t.hotel_types    || []).join(', ') || '—'} />
+                  <InfoCell label="Budget (Dom.)"
+                    value={`₹${Number(t.budget_limit || 0).toLocaleString('en-IN')} / ${t.budget_period === 'day' ? 'day' : 'trip'}`} />
+                  <InfoCell label="Budget (Intl.)"
+                    value={Number(t.intl_budget_limit || 0) > 0
+                      ? `₹${Number(t.intl_budget_limit).toLocaleString('en-IN')} / ${t.budget_period === 'day' ? 'day' : 'trip'}`
+                      : 'Same as domestic'} />
+                  <InfoCell label="Hotel/Night cap"
+                    value={Number(t.max_hotel_per_night || 0) > 0 ? `₹${Number(t.max_hotel_per_night).toLocaleString('en-IN')}` : 'No cap'} />
+                  <InfoCell label="Meals/day"
+                    value={Number(t.meal_daily_limit || 0) > 0 ? `₹${Number(t.meal_daily_limit).toLocaleString('en-IN')}` : '—'} />
+                  <InfoCell label="Cab/day"
+                    value={Number(t.cab_daily_limit || 0) > 0 ? `₹${Number(t.cab_daily_limit).toLocaleString('en-IN')}` : '—'} />
+                  <InfoCell label="Advance booking"
+                    value={Number(t.advance_booking_days || 0) > 0 ? `${t.advance_booking_days} day(s) ahead` : 'No minimum'} />
+                  <InfoCell label="Approval Sequence"
+                    value={(t.approver_roles || []).length
+                      ? [...t.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join(' → ')
+                      : 'No approval required'} />
+                  <InfoCell label="Intl flight upgrade" value={t.intl_flight_class_upgrade ? 'Enabled' : 'Off'} />
+                </div>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 10 }}>
-                <InfoCell label="Flight"  value={(t.flight_classes || []).join(', ') || '—'} />
-                <InfoCell label="Train"   value={(t.train_classes  || []).join(', ') || '—'} />
-                <InfoCell label="Bus"     value={(t.bus_types      || []).join(', ') || '—'} />
-                <InfoCell label="Hotel"   value={(t.hotel_types    || []).join(', ') || '—'} />
-                <InfoCell label="Budget"
-                  value={`₹${Number(t.budget_limit || 0).toLocaleString('en-IN')} / ${t.budget_period === 'day' ? 'day' : 'trip'}`} />
-                <InfoCell label="Approval Sequence"
-                  value={(t.approver_roles || []).length
-                    ? [...t.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join(' → ')
-                    : 'No approval required'} />
-                <InfoCell label="Intl upgrade" value={t.intl_flight_class_upgrade ? 'Enabled' : 'Off'} />
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </Card>
 
@@ -306,28 +343,6 @@ export default function TierConfig() {
         </table>
       </Card>
 
-      {/* Distance rules (unchanged) */}
-      <Card style={{ padding: 22 }}>
-        <div style={{ fontSize: 13, color:'var(--text-muted)', fontWeight: 500, marginBottom: 14 }}>Route Distance Rules</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 10 }}>
-          {[
-            ['Short Distance', 'Train / Bus / other tier-allowed modes', '#0A84FF', ['Chennai–Bangalore','Chennai–Hyderabad','Chennai–Coimbatore']],
-            ['Long Distance',  'Flight mandatory', '#FF9F0A', ['Chennai–Mumbai','Chennai–Delhi','Chennai–Kolkata','Mumbai–Delhi']],
-            ['International',  'Flight mandatory', '#FF453A', ['Chennai–Singapore','Chennai–Dubai','Chennai–London']],
-          ].map(([label, rule, color, examples]) => (
-            <div key={label} style={{ background:'var(--bg-card-deep)', borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: 11, color, fontWeight: 600, marginBottom: 6 }}>{label}</div>
-              <div style={{ fontSize: 11, color:'var(--text-muted)', marginBottom: 10 }}>{rule}</div>
-              <div style={{ display:'flex', flexDirection:'column', gap: 4 }}>
-                {examples.map(e => (
-                  <div key={e} style={{ fontSize: 10, color:'var(--text-muted)', background:'var(--bg-input)', padding:'3px 8px', borderRadius: 4 }}>{e}</div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
       {/* ── Tier modal ────────────────────────────────────────── */}
       {tierModal && (
         <Modal title={tierModal.mode === 'create' ? 'New Tier' : `Edit ${tierModal.data.name}`} onClose={() => setTierModal(null)} width={720}>
@@ -400,12 +415,36 @@ function TierForm({ data, setData, errors, activeRoleNames }) {
       <PickerBlock label="Bus Type"     options={BUS_TYPES}      selected={data.bus_types}      onToggle={v => toggleFrom('bus_types', v)} />
       <PickerBlock label="Hotel Type"   options={HOTEL_TYPES}    selected={data.hotel_types}    onToggle={v => toggleFrom('hotel_types', v)} />
 
-      <Input label="Budget Limit (₹)" type="number" min={0} value={data.budget_limit}
+      <Input label="Domestic Budget (₹)" type="number" min={0} value={data.budget_limit}
         onChange={e => field('budget_limit', Number(e.target.value) || 0)} />
       <Select label="Budget Period" value={data.budget_period} onChange={e => field('budget_period', e.target.value)}>
         <option value="trip">Per trip</option>
         <option value="day">Per day</option>
       </Select>
+
+      <Input label="International Budget (₹)" type="number" min={0} value={data.intl_budget_limit}
+        onChange={e => field('intl_budget_limit', Number(e.target.value) || 0)}
+        placeholder="0 = same as domestic" />
+      <Input label="Hotel / Night Cap (₹)" type="number" min={0} value={data.max_hotel_per_night}
+        onChange={e => field('max_hotel_per_night', Number(e.target.value) || 0)}
+        placeholder="0 = no cap" />
+
+      <Input label="Meal Allowance / Day (₹)" type="number" min={0} value={data.meal_daily_limit}
+        onChange={e => field('meal_daily_limit', Number(e.target.value) || 0)} />
+      <Input label="Cab / Local Transport / Day (₹)" type="number" min={0} value={data.cab_daily_limit}
+        onChange={e => field('cab_daily_limit', Number(e.target.value) || 0)} />
+
+      <Input label="Advance Booking (days)" type="number" min={0} value={data.advance_booking_days}
+        onChange={e => field('advance_booking_days', parseInt(e.target.value, 10) || 0)}
+        placeholder="Minimum days before travel" />
+      <div style={{ display:'flex', alignItems:'flex-end', paddingBottom: 6 }}>
+        <label style={{ display:'flex', alignItems:'center', gap: 8, fontSize: 13, color:'var(--text-primary)', cursor:'pointer' }}>
+          <input type="checkbox" checked={data.is_active !== false}
+            onChange={e => field('is_active', e.target.checked)}
+            style={{ accentColor:'var(--accent)', cursor:'pointer' }} />
+          Tier is active (uncheck to retire without deleting)
+        </label>
+      </div>
 
       <div style={{ gridColumn:'1 / -1' }}>
         <PickerBlock label="Approvers" options={activeRoleNames.length ? activeRoleNames : ['Tech Lead','Manager','Super Admin']}

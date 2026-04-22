@@ -58,13 +58,15 @@ VALUES
   ('Tier 5', 5, 'Employee',                   ARRAY['Economy'],                    ARRAY['3AC','Sleeper'],         ARRAY['AC Seater','Non-AC Seater'],   ARRAY['Budget','3-Star'],  15000, 'trip', ARRAY['Tech Lead','Manager']::TEXT[],     'ALL')
 ON CONFLICT (name) DO NOTHING;
 
--- Default designation → tier mapping (only inserts if not already present)
+-- Default designation → tier mapping (only inserts if not already present).
+-- Finance shares Tier 3 with Manager (both handle budget-tier approvals).
 INSERT INTO designation_tiers (designation, tier_id)
 SELECT v.designation, t.id
   FROM (VALUES
     ('Super Admin',   'Tier 1'),
     ('Booking Admin', 'Tier 2'),
     ('Manager',       'Tier 3'),
+    ('Finance',       'Tier 3'),
     ('Tech Lead',     'Tier 4'),
     ('Employee',      'Tier 5')
   ) AS v(designation, tier_name)

@@ -80,6 +80,12 @@ async function run() {
   await pool.query(tierSql)
   console.log('   ✓ Tiers and designation mappings created')
 
+  // 2f. Run tier system extension migration (hotel/meal/cab caps, advance-booking, is_active)
+  console.log('\n2f. Running tier system extension migration...')
+  const tierExtSql = fs.readFileSync(path.join(__dirname,'..','sql','tier_system_extended_migration.sql'),'utf8')
+  await pool.query(tierExtSql)
+  console.log('   ✓ Tier policy fields extended')
+
   // 3. Create uploads directory
   const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })
