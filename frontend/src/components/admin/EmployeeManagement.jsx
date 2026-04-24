@@ -131,11 +131,14 @@ export default function EmployeeManagement({ setTab }) {
       }
       setTierPreview(t);
       const approvers = Array.isArray(t.approver_roles) ? t.approver_roles : [];
+      const mappedRole = t.designation_role || null;
       setForm((prev) => ({
         ...prev,
         tier_id: t.id,
         approver_roles: approvers.length ? approvers : prev.approver_roles,
         approval_type: t.approval_type || prev.approval_type,
+        // If the designation declares a role, auto-apply it so Role + Tier stay aligned.
+        role: mappedRole || prev.role,
       }));
       setFieldErrors((prev) => {
         const n = { ...prev };

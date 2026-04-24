@@ -14,7 +14,8 @@ import AdHocBookingPanel from './components/admin/AdHocBookingPanel'
 import AdminBookingsView from './components/admin/AdminBookingsView'
 import SelfBookingPanel from './components/booking/SelfBookingPanel'
 import MyTicketsPage    from './components/booking/MyTicketsPage'
-import TierConfig     from './components/admin/TierConfig'
+import TierConfig             from './components/admin/TierConfig'
+import DesignationManagement from './components/admin/DesignationManagement'
 import EmployeeManagement from './components/admin/EmployeeManagement'
 import RoleManagement     from './components/admin/RoleManagement'
 import BulkEmployeeUpload from './components/admin/BulkEmployeeUpload'
@@ -88,6 +89,7 @@ function InnerApp() {
     'bulk-employees': <BulkEmployeeUpload />,
     'roles':          <RoleManagement />,
     'tiers':          <TierConfig />,
+    'designations':   <DesignationManagement />,
     'book':           <SelfBookingPanel />,
     'my-tickets':     <MyTicketsPage />,
     'transactions':   <TransactionsPage />,

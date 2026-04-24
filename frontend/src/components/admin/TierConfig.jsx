@@ -44,7 +44,6 @@ export default function TierConfig() {
   const { user }  = useAuth()
   const canEdit   = user?.role === 'Super Admin'
   const [tiers, setTiers]                = useState([])
-  const [designations, setDesignations]  = useState([])
   const [roles, setRoles]                = useState([])
   const [loading, setLoading]            = useState(true)
   const [error, setError]                = useState('')
@@ -55,9 +54,6 @@ export default function TierConfig() {
   const [tierModal, setTierModal] = useState(null)  // null | { mode:'create'|'edit', data:{...} }
   const [tierErrors, setTierErrors] = useState({})
 
-  // Designation inline form
-  const [newDesg, setNewDesg] = useState({ designation: '', tier_id: '' })
-
   useEffect(() => { load() }, [])
 
   async function load() {
@@ -65,15 +61,15 @@ export default function TierConfig() {
       setLoading(true)
       const [tres, rres] = await Promise.all([tiersAPI.list(), rolesAPI.list()])
       setTiers(tres.data?.tiers || [])
-      setDesignations(tres.data?.designations || [])
       setRoles(rres.data || [])
       setError('')
     } catch (e) { setError(e.message) }
     finally   { setLoading(false) }
   }
 
-  // Booking Admin handles post-approval bookings, not approvals — keep it out of the picker.
-  const NON_APPROVER_ROLES = new Set(['Booking Admin'])
+  // Super Admin manages users/sites; Booking Admin handles post-approval bookings —
+  // neither is part of the approval flow, so keep both out of the picker.
+  const NON_APPROVER_ROLES = new Set(['Super Admin', 'Booking Admin'])
   const activeRoleNames = roles
     .filter(r => r.is_active && !NON_APPROVER_ROLES.has(r.name))
     .map(r => r.name)
@@ -145,45 +141,11 @@ export default function TierConfig() {
     })
   }
 
-  // ── Designation CRUD ───────────────────────────────────────
-  async function addDesignation() {
-    const d = newDesg.designation.trim()
-    const tid = Number(newDesg.tier_id)
-    if (!d || !tid) { setError('Designation and tier are required'); return }
-    setSaving(true)
-    try {
-      await tiersAPI.saveDesignation({ designation: d, tier_id: tid })
-      setNewDesg({ designation: '', tier_id: '' })
-      await load()
-    } catch (e) { setError(e.message) }
-    finally   { setSaving(false) }
-  }
-  async function updateDesignationMapping(dt, tier_id) {
-    setSaving(true)
-    try {
-      await tiersAPI.saveDesignation({ designation: dt.designation, tier_id: Number(tier_id) })
-      await load()
-    } catch (e) { setError(e.message) }
-    finally   { setSaving(false) }
-  }
-  function requestDeleteDesignation(dt) {
-    setConfirmRow({
-      title: `Remove "${dt.designation}" mapping?`,
-      message: `Employees with this designation will lose their tier link. They keep their current approvers until you update them.`,
-      onConfirm: async () => {
-        setSaving(true)
-        try { await tiersAPI.deleteDesignation(dt.designation); await load() }
-        catch (e) { setError(e.message) }
-        finally   { setSaving(false); setConfirmRow(null) }
-      },
-    })
-  }
-
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={36} /></div>
 
   return (
     <div className="fade-up">
-      <PageTitle title="Tier Configuration" sub="Define tiers, map designations, and drive travel + approval policy" />
+      <PageTitle title="Tier Configuration" sub="Travel classes, budgets, caps, and approval sequence per tier. Designations live on the Designations page." />
       {error && <Alert type="error" style={{ marginBottom: 12 }}>{error}</Alert>}
 
       {/* ── Tiers ─────────────────────────────────────────────── */}
@@ -270,77 +232,6 @@ export default function TierConfig() {
             )
           })}
         </div>
-      </Card>
-
-      {/* ── Designation → Tier ────────────────────────────────── */}
-      <Card style={{ padding: 22, marginBottom: 18 }}>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color:'var(--text-primary)' }}>Designation → Tier</div>
-          <div style={{ fontSize: 11, color:'var(--text-muted)', marginTop: 2 }}>
-            Employees with a mapped designation inherit the tier's travel policy and approval flow.
-          </div>
-        </div>
-
-        {canEdit && (
-          <div style={{ display:'flex', gap: 10, alignItems:'flex-end', marginBottom: 14, flexWrap:'wrap' }}>
-            <Input
-              label="Designation" placeholder="e.g. Software Engineer"
-              value={newDesg.designation}
-              onChange={e => setNewDesg(p => ({ ...p, designation: e.target.value }))}
-              wrapStyle={{ flex: 2, minWidth: 180, marginBottom: 0 }}
-            />
-            <Select
-              label="Tier" value={newDesg.tier_id}
-              onChange={e => setNewDesg(p => ({ ...p, tier_id: e.target.value }))}
-              wrapStyle={{ flex: 1, minWidth: 160, marginBottom: 0 }}
-            >
-              <option value="">Select tier</option>
-              {tiers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </Select>
-            <Button onClick={addDesignation} disabled={saving} style={{ height: 40 }}>Add / Update</Button>
-          </div>
-        )}
-
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom:'1px solid var(--border)' }}>
-              {['Designation','Tier','Rank', canEdit ? 'Actions' : ''].map(h => (
-                <th key={h} style={{ padding:'10px 13px', textAlign:'left', fontSize: 10, color:'var(--text-muted)', fontWeight: 500, textTransform:'uppercase', letterSpacing:'.05em' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {designations.length === 0 && (
-              <tr><td colSpan={canEdit ? 4 : 3} style={{ padding: '16px 13px', fontSize: 12, color:'var(--text-muted)', textAlign:'center' }}>
-                No designation mappings yet.
-              </td></tr>
-            )}
-            {designations.map(dt => (
-              <tr key={dt.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                <td style={{ padding:'9px 13px', fontSize: 12, color:'var(--text-primary)' }}>{dt.designation}</td>
-                <td style={{ padding:'9px 13px', fontSize: 12, color:'var(--text-muted)' }}>
-                  {canEdit ? (
-                    <select value={dt.tier_id}
-                      onChange={e => updateDesignationMapping(dt, e.target.value)}
-                      style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius: 6, color:'var(--text-primary)', padding:'5px 9px', fontSize: 12, outline:'none' }}>
-                      {tiers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  ) : dt.tier_name}
-                </td>
-                <td style={{ padding:'9px 13px', fontSize: 12, color:'var(--text-muted)' }}>{dt.tier_rank ?? '—'}</td>
-                {canEdit && (
-                  <td style={{ padding:'9px 13px' }}>
-                    <Button size="sm"
-                      style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }}
-                      onClick={() => requestDeleteDesignation(dt)}>
-                      Remove
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </Card>
 
       {/* ── Tier modal ────────────────────────────────────────── */}
@@ -447,7 +338,7 @@ function TierForm({ data, setData, errors, activeRoleNames }) {
       </div>
 
       <div style={{ gridColumn:'1 / -1' }}>
-        <PickerBlock label="Approvers" options={activeRoleNames.length ? activeRoleNames : ['Tech Lead','Manager','Super Admin']}
+        <PickerBlock label="Approvers" options={activeRoleNames.length ? activeRoleNames : ['Tech Lead','Manager','Finance']}
           selected={data.approver_roles} onToggle={v => toggleFrom('approver_roles', v)} error={errors.approver_roles} />
       </div>
 

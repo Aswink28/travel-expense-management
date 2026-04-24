@@ -19,8 +19,8 @@ const ROLE_RANK = {
 function roleRank(role) { return ROLE_RANK[role] ?? 99 }
 
 // Sort roles so the lowest-authority approver comes first (highest rank number first).
-// Super Admin is filtered (handled via override lane) and Booking Admin is filtered
-// (they manage post-approval bookings, not the approval flow itself).
+// Super Admin (manages users/sites) and Booking Admin (handles post-approval bookings)
+// are intentionally excluded — they're never part of the approval sequence.
 function computeApprovalSequence(approverRoles) {
   if (!Array.isArray(approverRoles) || !approverRoles.length) return []
   const BLOCKED = new Set(['Super Admin', 'Booking Admin'])
@@ -145,19 +145,12 @@ router.get('/', async (req, res, next) => {
 router.get('/queue', async (req, res, next) => {
   try {
     const { role, id: uid } = req.user
-    // Employees submit requests but never approve them.
-    // Booking Admin handles post-approval bookings only — they're not part of the approval flow.
-    if (['Software Engineer', 'Booking Admin'].includes(role)) return res.json({ success: true, count: 0, data: [] })
-
-    // Super Admin: sees all pending (override lane).
-    if (role === 'Super Admin') {
-      const { rows } = await pool.query(`
-        SELECT tr.*, COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
-        FROM travel_requests tr
-        WHERE tr.status='pending' AND tr.user_id != $1
-        ORDER BY tr.submitted_at ASC
-      `, [uid])
-      return res.json({ success: true, count: rows.length, data: rows })
+    // Roles that never see the approval queue:
+    //   · Software Engineer → submits requests, doesn't approve
+    //   · Booking Admin     → handles post-approval bookings only
+    //   · Super Admin       → manages users/sites, doesn't approve travel requests
+    if (['Software Engineer', 'Booking Admin', 'Super Admin'].includes(role)) {
+      return res.json({ success: true, count: 0, data: [] })
     }
 
     // Every other role (including Finance): show only requests whose NEXT pending
@@ -287,6 +280,7 @@ router.post('/:id/action', async (req, res, next) => {
     if (!['approved','rejected'].includes(action)) { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:'action must be approved or rejected' }) }
     if (action==='rejected' && !note?.trim())      { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:'Rejection note required' }) }
     if (u.role === 'Booking Admin')                { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Booking Admin is not part of the approval flow' }) }
+    if (u.role === 'Super Admin')                  { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Super Admin is not part of the approval flow — approvals are handled by Tech Lead / Manager / Finance.' }) }
 
     const { rows: reqRows } = await client.query('SELECT * FROM travel_requests WHERE id=$1 FOR UPDATE',[id])
     if (!reqRows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success:false, message:'Not found' }) }
@@ -302,7 +296,7 @@ router.post('/:id/action', async (req, res, next) => {
     // leave a stale row behind when early-returning with 403.
     let sequence = []
     let inSequence = false
-    if (action === 'approved' && u.role !== 'Super Admin') {
+    if (action === 'approved') {
       sequence   = await approverSequenceForRequest(client, tr)
       inSequence = sequence.includes(u.role)
       const isFinance = u.role === 'Finance'
@@ -341,10 +335,8 @@ router.post('/:id/action', async (req, res, next) => {
     if (action==='rejected') {
       await client.query("UPDATE travel_requests SET status='rejected',rejected_by=$1,rejection_reason=$2 WHERE id=$3",[u.name,note,id])
     } else {
-      // Update approval flags
-      if (u.role === 'Super Admin') {
-        await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW(),finance_approved=TRUE,finance_approved_by=$1,finance_approved_at=NOW() WHERE id=$2`, [u.name, id])
-      } else if (inSequence) {
+      // Update approval flags — Super Admin is blocked upstream, so only sequence + Finance apply.
+      if (inSequence) {
         // Recompute: is the sequence now complete (including this approval)?
         const remaining = await nextPendingStep(client, id, sequence)
         if (remaining === null) {

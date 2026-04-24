@@ -173,7 +173,7 @@ export default function RoleManagement() {
                 </div>
               </div>
 
-              {/* Expanded: page list + actions */}
+              {/* Expanded: page list + used-by panel + actions */}
               {isExpanded && (
                 <div style={{ borderTop: '1px solid #1E1E2A', padding: '16px 20px' }}>
                   {/* Pages grid */}
@@ -189,6 +189,37 @@ export default function RoleManagement() {
                     )) : (
                       <span style={{ fontSize: 12, color: '#444' }}>No pages assigned</span>
                     )}
+                  </div>
+
+                  {/* ── Used by (derived relationships) ── */}
+                  <div style={{
+                    background: 'var(--bg-card-deep)', border: '1px solid var(--border)', borderRadius: 10,
+                    padding: 14, marginBottom: 16,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                      Used By
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                      <RelationCell
+                        label="Employees"
+                        value={`${role.employee_count || 0} user${role.employee_count === 1 ? '' : 's'}`}
+                        muted={!(role.employee_count > 0)}
+                      />
+                      <RelationCell
+                        label="Linked designations"
+                        value={role.linked_designations?.length
+                          ? role.linked_designations.map(d => `${d.designation} (${d.tier_name || '—'})`).join(', ')
+                          : 'None — create a designation mapped to this role on the Designations page'}
+                        muted={!role.linked_designations?.length}
+                      />
+                      <RelationCell
+                        label="Approves requests for"
+                        value={role.acts_as_approver_for?.length
+                          ? role.acts_as_approver_for.map(t => `${t.name} (rank ${t.rank})`).join(', ')
+                          : 'Not part of any tier approval sequence'}
+                        muted={!role.acts_as_approver_for?.length}
+                      />
+                    </div>
                   </div>
 
                   {/* Actions */}
@@ -309,6 +340,15 @@ export default function RoleManagement() {
           </form>
         </Modal>
       )}
+    </div>
+  )
+}
+
+function RelationCell({ label, value, muted }) {
+  return (
+    <div style={{ background:'var(--bg-card)', borderRadius: 8, padding:'10px 12px' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color:'var(--text-muted)', letterSpacing:'0.05em', textTransform:'uppercase', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 11, color: muted ? 'var(--text-muted)' : 'var(--text-primary)', lineHeight: 1.4 }}>{value}</div>
     </div>
   )
 }

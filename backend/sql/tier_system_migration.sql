@@ -47,14 +47,22 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_id     INTEGER REFERENCES tiers(
 CREATE INDEX IF NOT EXISTS idx_users_tier_id ON users(tier_id);
 
 -- Seed default tiers — hierarchy: Tier 1 highest authority, Tier 5 lowest.
--- Approver lists are applied sequentially (lowest authority first) by the approval engine.
--- Booking Admin is intentionally NOT an approver — they handle post-approval bookings.
+-- Approver lists run sequentially (lowest authority first). Super Admin and Booking
+-- Admin are intentionally NOT approvers — Super Admin manages users/sites, Booking
+-- Admin handles post-approval bookings.
+--
+-- Per-tier approver counts follow standard corporate practice (1 or max 2):
+--   Tier 1 (CEO)                  : 2 approvers — peer executive review
+--   Tier 2 (Super Admin / Booking): 2 approvers — strict control for sensitive roles
+--   Tier 3 (Manager / Finance)    : 1 approver  — peer budget control
+--   Tier 4 (Tech Lead)            : 1 approver  — direct reporting line
+--   Tier 5 (Software Engineer)    : 2 approvers — junior flow with TL + Manager
 INSERT INTO tiers (name, rank, description, flight_classes, train_classes, bus_types, hotel_types, budget_limit, budget_period, approver_roles, approval_type)
 VALUES
-  ('Tier 1', 1, 'Super Admin',                ARRAY['First Class','Business'],     ARRAY['1AC','2AC','Executive'], ARRAY['Volvo','Luxury','Sleeper'],    ARRAY['5-Star','Luxury'], 100000, 'trip', ARRAY[]::TEXT[],                          'ALL'),
-  ('Tier 2', 2, 'Booking Admin',              ARRAY['Business','Premium Economy'], ARRAY['1AC','2AC'],             ARRAY['Volvo','Sleeper','AC Seater'], ARRAY['4-Star','5-Star'],  60000, 'trip', ARRAY['Super Admin']::TEXT[],             'ALL'),
-  ('Tier 3', 3, 'Manager',                    ARRAY['Business','Premium Economy'], ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['4-Star'],           40000, 'trip', ARRAY['Super Admin']::TEXT[],             'ALL'),
-  ('Tier 4', 4, 'Tech Lead',                  ARRAY['Premium Economy','Economy'],  ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['3-Star'],           25000, 'trip', ARRAY['Manager','Super Admin']::TEXT[],   'ALL'),
+  ('Tier 1', 1, 'Super Admin',                ARRAY['First Class','Business'],     ARRAY['1AC','2AC','Executive'], ARRAY['Volvo','Luxury','Sleeper'],    ARRAY['5-Star','Luxury'], 100000, 'trip', ARRAY['Manager','Finance']::TEXT[],       'ALL'),
+  ('Tier 2', 2, 'Booking Admin',              ARRAY['Business','Premium Economy'], ARRAY['1AC','2AC'],             ARRAY['Volvo','Sleeper','AC Seater'], ARRAY['4-Star','5-Star'],  60000, 'trip', ARRAY['Manager','Finance']::TEXT[],       'ALL'),
+  ('Tier 3', 3, 'Manager',                    ARRAY['Business','Premium Economy'], ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['4-Star'],           40000, 'trip', ARRAY['Finance']::TEXT[],                 'ALL'),
+  ('Tier 4', 4, 'Tech Lead',                  ARRAY['Premium Economy','Economy'],  ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['3-Star'],           25000, 'trip', ARRAY['Manager']::TEXT[],                 'ALL'),
   ('Tier 5', 5, 'Software Engineer',          ARRAY['Economy'],                    ARRAY['3AC','Sleeper'],         ARRAY['AC Seater','Non-AC Seater'],   ARRAY['Budget','3-Star'],  15000, 'trip', ARRAY['Tech Lead','Manager']::TEXT[],     'ALL')
 ON CONFLICT (name) DO NOTHING;
 
@@ -74,17 +82,19 @@ SELECT v.designation, t.id
 ON CONFLICT (designation) DO NOTHING;
 
 -- One-time realignment: refresh approver_roles on the default tier rows so sequential
--- approval reflects the hierarchy. Booking Admin is intentionally omitted — they handle
--- post-approval bookings, not the approval flow itself. Idempotent; five default names only.
-UPDATE tiers SET approver_roles = ARRAY[]::TEXT[]                         WHERE name = 'Tier 1';
-UPDATE tiers SET approver_roles = ARRAY['Super Admin']::TEXT[]            WHERE name = 'Tier 2';
-UPDATE tiers SET approver_roles = ARRAY['Super Admin']::TEXT[]            WHERE name = 'Tier 3';
-UPDATE tiers SET approver_roles = ARRAY['Manager','Super Admin']::TEXT[]  WHERE name = 'Tier 4';
-UPDATE tiers SET approver_roles = ARRAY['Tech Lead','Manager']::TEXT[]    WHERE name = 'Tier 5';
+-- approval reflects the hierarchy (1 or max 2 approvers per standard practice).
+-- Super Admin and Booking Admin never approve, so they don't appear as approver roles.
+UPDATE tiers SET approver_roles = ARRAY['Manager','Finance']::TEXT[]   WHERE name = 'Tier 1';
+UPDATE tiers SET approver_roles = ARRAY['Manager','Finance']::TEXT[]   WHERE name = 'Tier 2';
+UPDATE tiers SET approver_roles = ARRAY['Finance']::TEXT[]             WHERE name = 'Tier 3';
+UPDATE tiers SET approver_roles = ARRAY['Manager']::TEXT[]             WHERE name = 'Tier 4';
+UPDATE tiers SET approver_roles = ARRAY['Tech Lead','Manager']::TEXT[] WHERE name = 'Tier 5';
 
--- Remove Booking Admin from ALL tiers (including any custom tiers admins may have added).
+-- Remove Booking Admin and Super Admin from ALL tiers (including custom ones).
 UPDATE tiers SET approver_roles = array_remove(approver_roles, 'Booking Admin')
 WHERE 'Booking Admin' = ANY(approver_roles);
+UPDATE tiers SET approver_roles = array_remove(approver_roles, 'Super Admin')
+WHERE 'Super Admin' = ANY(approver_roles);
 
 -- Rename designation "Employee" → "Software Engineer" across existing installs.
 -- Idempotent: only fires when a row still uses the old name.
@@ -101,3 +111,17 @@ UPDATE users SET designation = 'Software Engineer' WHERE designation = 'Employee
 -- Refresh the built-in Tier 5 description if it still reads 'Employee'.
 UPDATE tiers SET description = 'Software Engineer'
 WHERE name = 'Tier 5' AND description = 'Employee';
+
+-- ── Designation → Role mapping ─────────────────────────────────
+-- Each designation declares the role it belongs to. When an employee picks a
+-- designation during onboarding, the role + tier + approver chain are all resolved
+-- from this table.
+ALTER TABLE designation_tiers ADD COLUMN IF NOT EXISTS role user_role_enum;
+
+-- Backfill role for the seeded designations (case-insensitive match on the name).
+UPDATE designation_tiers SET role = 'Software Engineer'::user_role_enum WHERE LOWER(designation) = 'software engineer' AND role IS NULL;
+UPDATE designation_tiers SET role = 'Tech Lead'::user_role_enum         WHERE LOWER(designation) = 'tech lead'         AND role IS NULL;
+UPDATE designation_tiers SET role = 'Manager'::user_role_enum           WHERE LOWER(designation) = 'manager'           AND role IS NULL;
+UPDATE designation_tiers SET role = 'Finance'::user_role_enum           WHERE LOWER(designation) = 'finance'           AND role IS NULL;
+UPDATE designation_tiers SET role = 'Booking Admin'::user_role_enum     WHERE LOWER(designation) = 'booking admin'     AND role IS NULL;
+UPDATE designation_tiers SET role = 'Super Admin'::user_role_enum       WHERE LOWER(designation) = 'super admin'       AND role IS NULL;

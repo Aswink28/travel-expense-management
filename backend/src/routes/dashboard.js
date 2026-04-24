@@ -75,15 +75,10 @@ router.get('/', async (req, res, next) => {
 
     // Pending approvals waiting for this user — use the same tier visibility scope,
     // scoped to pending hierarchy work (or finance lane for Finance).
+    // Software Engineer, Booking Admin, and Super Admin never appear in approval flows.
     let pendingForMe = 0
-    if (role === 'Software Engineer' || role === 'Booking Admin') {
+    if (['Software Engineer', 'Booking Admin', 'Super Admin'].includes(role)) {
       pendingForMe = 0
-    } else if (role === 'Super Admin') {
-      const { rows } = await pool.query(
-        `SELECT COUNT(*)::int c FROM travel_requests WHERE status='pending' AND user_id != $1`,
-        [uid]
-      )
-      pendingForMe = rows[0].c
     } else if (role === 'Finance') {
       const { rows } = await pool.query(
         `SELECT COUNT(*)::int c FROM travel_requests tr

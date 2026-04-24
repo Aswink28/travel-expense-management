@@ -20,6 +20,7 @@ const ALL_PAGES = [
   { id: 'employees',          label: 'Employees',        icon: '◆',  group: 'Administration' },
   { id: 'roles',              label: 'Role Manager',     icon: '⚙',  group: 'Administration' },
   { id: 'tiers',              label: 'Tier Config',      icon: '◐',  group: 'Administration' },
+  { id: 'designations',       label: 'Designations',     icon: '◇',  group: 'Administration' },
 ]
 
 // ── GET /api/roles/pages — master list of all pages ──────────
@@ -32,24 +33,45 @@ router.get('/pages', async (req, res) => {
 // by looking up designation_tiers where designation = role.name.
 router.get('/', async (req, res, next) => {
   try {
-    const { rows: roles } = await pool.query('SELECT * FROM roles ORDER BY id')
-    const { rows: pages } = await pool.query('SELECT * FROM role_pages ORDER BY role_name, sort_order')
-    // Resolve each role's tier through the matching designation (case-insensitive)
-    const { rows: tierMap } = await pool.query(`
-      SELECT dt.designation, t.id AS tier_id, t.name AS tier_name, t.rank AS tier_rank,
-             t.approver_roles AS tier_approvers
-      FROM designation_tiers dt
-      JOIN tiers t ON t.id = dt.tier_id
-    `)
-    const byDesignation = new Map(tierMap.map(t => [t.designation.toLowerCase(), t]))
+    const [{ rows: roles }, { rows: pages }, { rows: designations }, { rows: tiers }, { rows: userCounts }] = await Promise.all([
+      pool.query('SELECT * FROM roles ORDER BY id'),
+      pool.query('SELECT * FROM role_pages ORDER BY role_name, sort_order'),
+      pool.query(`
+        SELECT dt.id, dt.designation, dt.role,
+               t.id AS tier_id, t.name AS tier_name, t.rank AS tier_rank,
+               t.approver_roles AS tier_approver_roles
+        FROM designation_tiers dt
+        LEFT JOIN tiers t ON t.id = dt.tier_id
+      `),
+      pool.query('SELECT id, name, rank, approver_roles FROM tiers'),
+      pool.query(`SELECT role::text AS role, COUNT(*)::int AS n FROM users WHERE is_active = TRUE GROUP BY role`),
+    ])
+
+    const byDesignationName = new Map(designations.map(d => [d.designation.toLowerCase(), d]))
+    const userCountByRole   = new Map(userCounts.map(u => [u.role, u.n]))
 
     const rolesWithRel = roles.map(r => {
-      const tier = byDesignation.get(r.name.toLowerCase()) || null
+      // Approval flow for this role's requesters (derived via same-name designation).
+      const tierForRole = byDesignationName.get(r.name.toLowerCase()) || null
+
+      // Reverse relationship — designations that declare this role.
+      const linkedDesignations = designations
+        .filter(d => d.role === r.name)
+        .map(d => ({ id: d.id, designation: d.designation, tier_name: d.tier_name, tier_rank: d.tier_rank }))
+
+      // Tiers where this role is part of the approval sequence.
+      const actsAsApproverFor = tiers
+        .filter(t => Array.isArray(t.approver_roles) && t.approver_roles.includes(r.name))
+        .map(t => ({ id: t.id, name: t.name, rank: t.rank }))
+
       return {
         ...r,
-        pages: pages.filter(p => p.role_name === r.name),
-        approvers:     Array.isArray(tier?.tier_approvers) ? tier.tier_approvers : [],
-        approval_tier: tier ? { id: tier.tier_id, name: tier.tier_name, rank: tier.tier_rank } : null,
+        pages:        pages.filter(p => p.role_name === r.name),
+        approvers:    Array.isArray(tierForRole?.tier_approver_roles) ? tierForRole.tier_approver_roles : [],
+        approval_tier: tierForRole ? { id: tierForRole.tier_id, name: tierForRole.tier_name, rank: tierForRole.tier_rank } : null,
+        linked_designations: linkedDesignations,
+        acts_as_approver_for: actsAsApproverFor,
+        employee_count:       userCountByRole.get(r.name) || 0,
       }
     })
 
@@ -216,10 +238,22 @@ router.delete('/:id', async (req, res, next) => {
     if (!role) return res.status(404).json({ success: false, message: 'Role not found' })
     if (role.is_system) return res.status(400).json({ success: false, message: 'Cannot delete system roles' })
 
-    // Check if any users have this role
-    const { rows: users } = await pool.query('SELECT COUNT(*) as cnt FROM users WHERE role = $1', [role.name])
-    if (parseInt(users[0].cnt) > 0) {
+    // Guard 1: any active users still assigned to this role?
+    const { rows: users } = await pool.query('SELECT COUNT(*)::int AS cnt FROM users WHERE role::text = $1', [role.name])
+    if (users[0].cnt > 0) {
       return res.status(400).json({ success: false, message: `Cannot delete — ${users[0].cnt} user(s) still have this role. Reassign them first.` })
+    }
+
+    // Guard 2: any designation_tiers row referencing this role?
+    const { rows: desg } = await pool.query('SELECT COUNT(*)::int AS cnt FROM designation_tiers WHERE role::text = $1', [role.name])
+    if (desg[0].cnt > 0) {
+      return res.status(400).json({ success: false, message: `Cannot delete — ${desg[0].cnt} designation(s) are mapped to this role. Open the Designations page and re-assign them first.` })
+    }
+
+    // Guard 3: any tier listing this role as an approver?
+    const { rows: tiers } = await pool.query('SELECT COUNT(*)::int AS cnt FROM tiers WHERE $1 = ANY(approver_roles)', [role.name])
+    if (tiers[0].cnt > 0) {
+      return res.status(400).json({ success: false, message: `Cannot delete — ${tiers[0].cnt} tier(s) use this role in their approval sequence. Remove it from those tiers first.` })
     }
 
     await pool.query('DELETE FROM roles WHERE id = $1', [req.params.id])

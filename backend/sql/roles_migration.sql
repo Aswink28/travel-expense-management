@@ -86,17 +86,17 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Booking Admin', 'admin-bookings-view', 'Booking History', '📋', 4)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
--- Super Admin
+-- Super Admin — manages users/sites, does not approve travel requests.
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Super Admin', 'dashboard',          'Dashboard',      '▦',  1),
-  ('Super Admin', 'approvals',          'Approvals',      '◎',  3),
   ('Super Admin', 'new-request',        'New Request',    '+',  4),
   ('Super Admin', 'my-wallet',          'My Wallet',      '◉',  5),
   ('Super Admin', 'transactions',       'Transactions',   '📊', 6),
   ('Super Admin', 'my-tickets',         'My Tickets',     '🎟', 7),
   ('Super Admin', 'employees',          'Employees',      '◆',  8),
   ('Super Admin', 'roles',              'Role Manager',   '⚙',  9),
-  ('Super Admin', 'tiers',              'Tier Config',    '◐', 10)
+  ('Super Admin', 'tiers',              'Tier Config',    '◐', 10),
+  ('Super Admin', 'designations',       'Designations',   '◇', 11)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
 -- Rename the "Employee" role to "Software Engineer" across existing installs.
@@ -123,6 +123,9 @@ DELETE FROM role_pages WHERE page_id = 'requests';
 
 -- Retire the legacy "Ad-Hoc Booking" page (folded back into Booking History / Panel).
 DELETE FROM role_pages WHERE page_id = 'ad-hoc-booking';
+
+-- Super Admin is no longer an approver — drop the Approvals sidebar entry.
+DELETE FROM role_pages WHERE role_name = 'Super Admin' AND page_id = 'approvals';
 
 -- Rename "Admin Bookings" → "Booking History" across any existing installs.
 UPDATE role_pages SET page_label = 'Booking History'

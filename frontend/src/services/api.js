@@ -159,6 +159,7 @@ export const tiersAPI = {
   update:            (id, body)          => api.put(`/tiers/${id}`, body),
   remove:            id                  => api.delete(`/tiers/${id}`),
   saveDesignation:   body                => api.post('/tiers/designations', body),
+  updateDesignation: (id, body)          => api.put(`/tiers/designations/${id}`, body),
   deleteDesignation: designation         => api.delete(`/tiers/designations/${encodeURIComponent(designation)}`),
   preview:           designation         => api.get(`/tiers/preview/${encodeURIComponent(designation)}`),
 }
