@@ -16,6 +16,7 @@ import SelfBookingPanel from './components/booking/SelfBookingPanel'
 import MyTicketsPage    from './components/booking/MyTicketsPage'
 import TierConfig             from './components/admin/TierConfig'
 import DesignationManagement from './components/admin/DesignationManagement'
+import ApproverAuditLog       from './components/admin/ApproverAuditLog'
 import EmployeeManagement from './components/admin/EmployeeManagement'
 import RoleManagement     from './components/admin/RoleManagement'
 import BulkEmployeeUpload from './components/admin/BulkEmployeeUpload'
@@ -89,6 +90,7 @@ function InnerApp() {
     'roles':          <RoleManagement />,
     'tiers':          <TierConfig />,
     'designations':   <DesignationManagement />,
+    'audit-log':      <ApproverAuditLog />,
     'book':           <SelfBookingPanel />,
     'my-tickets':     <MyTicketsPage />,
     'transactions':   <TransactionsPage />,

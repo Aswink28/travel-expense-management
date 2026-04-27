@@ -54,6 +54,53 @@ async function nextPendingStep(client, requestId, sequence) {
   return sequence.find(d => !approved.has(d.toLowerCase())) || null
 }
 
+// ── User-specific approver chain (preferred path) ───────────────
+// Reads employee_approvers rows and resolves a primary→backup expected user per step.
+// Returns null if the employee has no chain (caller should fall back to designation-based).
+async function fetchUserApproverChain(client, employeeId) {
+  const { rows } = await client.query(`
+    SELECT ea.step_designation, ea.step_order,
+           ea.primary_user_id,
+           up.is_active AS primary_active,
+           up.name      AS primary_name,
+           ea.backup_user_id,
+           ub.is_active AS backup_active,
+           ub.name      AS backup_name
+    FROM employee_approvers ea
+    LEFT JOIN users up ON up.id = ea.primary_user_id
+    LEFT JOIN users ub ON ub.id = ea.backup_user_id
+    WHERE ea.user_id = $1
+    ORDER BY ea.step_order ASC, ea.step_designation ASC
+  `, [employeeId])
+  if (!rows.length) return null
+  return rows
+}
+
+function resolveStepUser(step) {
+  if (step.primary_user_id && step.primary_active) return step.primary_user_id
+  if (step.backup_user_id  && step.backup_active)  return step.backup_user_id
+  return null
+}
+
+// Returns the next step that hasn't been approved yet, or null when the chain is done.
+// A step is "done" if EITHER the primary OR backup user has approved (allows admins
+// to reassign mid-flight without invalidating prior signoffs).
+async function nextPendingUserStep(client, requestId, chain) {
+  const { rows: approvals } = await client.query(
+    `SELECT approver_id FROM approvals WHERE request_id=$1 AND action='approved'`,
+    [requestId]
+  )
+  const approvedIds = new Set(approvals.map(a => a.approver_id))
+  for (const step of chain) {
+    const stepDone = (step.primary_user_id && approvedIds.has(step.primary_user_id))
+                  || (step.backup_user_id  && approvedIds.has(step.backup_user_id))
+    if (!stepDone) {
+      return { ...step, expected_user_id: resolveStepUser(step) }
+    }
+  }
+  return null
+}
+
 // Resolve the effective approver designation sequence for a given request.
 async function approverSequenceForRequest(client, tr) {
   // 1. Per-employee override (users.approver_roles — entries are designations)
@@ -186,16 +233,33 @@ router.get('/queue', async (req, res, next) => {
 
     const filtered = []
     for (const tr of candidates) {
+      // Prefer user-specific chain (employee_approvers); fall back to designation matching.
+      const userChain = await fetchUserApproverChain(pool, tr.user_id)
+
+      if (userChain) {
+        const step = await nextPendingUserStep(pool, tr.id, userChain)
+        if (!step) continue                                  // chain complete (shouldn't happen with status=pending)
+        if (isFinance && step.step_designation.toLowerCase() !== 'finance' &&
+            !userChain.some(s => s.step_designation.toLowerCase() === 'finance')) {
+          // Finance not in this employee's chain → parallel budget lane.
+          filtered.push(tr)
+          continue
+        }
+        // The caller user must match the expected user (primary if active, else backup).
+        if (step.expected_user_id && step.expected_user_id === uid) filtered.push(tr)
+        continue
+      }
+
+      // ── Legacy designation-based routing ──
       const sequence = await approverSequenceForRequest(pool, tr)
       const sequenceLc = sequence.map(s => s.toLowerCase())
       if (isFinance && !sequenceLc.includes('finance')) {
-        // Parallel budget lane — Finance handles amounts independently.
         filtered.push(tr)
         continue
       }
       if (!callerDesignationLc) continue
-      const step = await nextPendingStep(pool, tr.id, sequence)
-      if (step && step.toLowerCase() === callerDesignationLc) filtered.push(tr)
+      const stepDesg = await nextPendingStep(pool, tr.id, sequence)
+      if (stepDesg && stepDesg.toLowerCase() === callerDesignationLc) filtered.push(tr)
     }
     res.json({ success: true, count: filtered.length, data: filtered })
   } catch (e) { next(e) }
@@ -309,43 +373,78 @@ router.post('/:id/action', async (req, res, next) => {
     if (acted.length) { await client.query('ROLLBACK'); return res.status(409).json({ success:false, message:'Already acted on this request' }) }
 
     // Pre-validate the approval sequence BEFORE inserting the approval row so we don't
-    // leave a stale row behind when early-returning with 403.
+    // leave a stale row behind when early-returning with 403. Two routing modes:
+    //   · USER chain (employee_approvers) — expected user must match caller.id
+    //   · Designation chain (legacy)      — caller's designation must match step
     let sequence = []
     let inSequence = false
     const callerDesignationLc = (u.designation || '').toLowerCase()
+    let usingUserChain = false
     if (action === 'approved') {
-      sequence   = await approverSequenceForRequest(client, tr)
-      const sequenceLc = sequence.map(s => s.toLowerCase())
-      inSequence = !!callerDesignationLc && sequenceLc.includes(callerDesignationLc)
       const isFinance = u.role === 'Finance'
+      const userChain = await fetchUserApproverChain(client, tr.user_id)
 
-      if (!inSequence && !isFinance) {
-        await client.query('ROLLBACK')
-        return res.status(403).json({
-          success: false,
-          message: u.designation
-            ? `Your designation "${u.designation}" is not configured to approve requests from ${tr.user_name}`
-            : `Your account has no designation set, so it can't be matched to an approval step. Update your designation in Employee Management.`,
-        })
-      }
-
-      if (inSequence) {
-        if (!sequence.length) {
-          await client.query('ROLLBACK')
-          return res.status(403).json({ success: false, message: 'No approval flow is configured for this employee' })
-        }
-        const step = await nextPendingStep(client, id, sequence)
+      if (userChain) {
+        usingUserChain = true
+        const step = await nextPendingUserStep(client, id, userChain)
         if (step === null) {
           await client.query('ROLLBACK')
           return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
         }
-        if (step.toLowerCase() !== callerDesignationLc) {
-          const order = sequence.map((d, i) => `${i + 1}. ${d}`).join(' → ')
+        if (!step.expected_user_id) {
           await client.query('ROLLBACK')
           return res.status(403).json({
             success: false,
-            message: `Out of order. The next approver must hold the designation "${step}". Sequence: ${order}`,
+            message: `No active approver assigned for "${step.step_designation}". Ask an admin to set a primary or backup.`,
           })
+        }
+        // Finance is allowed to act independently if this employee's chain doesn't include Finance.
+        const financeInChain = userChain.some(s => s.step_designation.toLowerCase() === 'finance')
+        if (isFinance && !financeInChain) {
+          inSequence = false                  // pure budget-lane action; engine still records it below
+        } else if (step.expected_user_id !== u.id) {
+          await client.query('ROLLBACK')
+          return res.status(403).json({
+            success: false,
+            message: `Not your turn. The next approver for "${step.step_designation}" is the assigned ${step.primary_active ? 'primary' : 'backup'} user.`,
+          })
+        } else {
+          inSequence = true
+        }
+      } else {
+        // Legacy designation-based path
+        sequence   = await approverSequenceForRequest(client, tr)
+        const sequenceLc = sequence.map(s => s.toLowerCase())
+        inSequence = !!callerDesignationLc && sequenceLc.includes(callerDesignationLc)
+
+        if (!inSequence && !isFinance) {
+          await client.query('ROLLBACK')
+          return res.status(403).json({
+            success: false,
+            message: u.designation
+              ? `Your designation "${u.designation}" is not configured to approve requests from ${tr.user_name}`
+              : `Your account has no designation set, so it can't be matched to an approval step. Update your designation in Employee Management.`,
+          })
+        }
+
+        if (inSequence) {
+          if (!sequence.length) {
+            await client.query('ROLLBACK')
+            return res.status(403).json({ success: false, message: 'No approval flow is configured for this employee' })
+          }
+          const stepDesg = await nextPendingStep(client, id, sequence)
+          if (stepDesg === null) {
+            await client.query('ROLLBACK')
+            return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
+          }
+          if (stepDesg.toLowerCase() !== callerDesignationLc) {
+            const order = sequence.map((d, i) => `${i + 1}. ${d}`).join(' → ')
+            await client.query('ROLLBACK')
+            return res.status(403).json({
+              success: false,
+              message: `Out of order. The next approver must hold the designation "${stepDesg}". Sequence: ${order}`,
+            })
+          }
         }
       }
     }
@@ -366,7 +465,13 @@ router.post('/:id/action', async (req, res, next) => {
       // Update approval flags — Super Admin is blocked upstream, so only sequence + Finance apply.
       if (inSequence) {
         // Recompute: is the sequence now complete (including this approval)?
-        const remaining = await nextPendingStep(client, id, sequence)
+        let remaining
+        if (usingUserChain) {
+          const refreshedChain = await fetchUserApproverChain(client, tr.user_id)
+          remaining = refreshedChain ? await nextPendingUserStep(client, id, refreshedChain) : null
+        } else {
+          remaining = await nextPendingStep(client, id, sequence)
+        }
         if (remaining === null) {
           await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW() WHERE id=$2`, [u.name, id])
         }

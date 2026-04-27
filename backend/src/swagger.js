@@ -966,6 +966,529 @@ const options = {
           responses: { 200: { description: 'Hotel booked' } },
         },
       },
+
+      // ═══════════ EMPLOYEES — get-by-id + audit log + bulk ops ═══════════
+      '/employees/audit-log': {
+        get: {
+          tags: ['Employees'],
+          summary: 'List approver-chain audit entries',
+          description: 'Super Admin only. Last 200 reassignment events (e.g. when a primary approver is deactivated and pending requests are auto-routed to a backup).',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: { description: 'Recent audit entries (action_type, affected employee, old/new approver, reason, acted_by)' },
+          },
+        },
+      },
+      '/employees/{id}/get': {
+        get: {
+          tags: ['Employees'],
+          summary: 'Get a single employee with approver chain',
+          description: 'Returns full employee profile, designation, tier, and the per-step approver_chain (primary + backup user IDs).',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: { description: 'Employee record + approver chain' },
+            404: { description: 'Employee not found' },
+          },
+        },
+      },
+      '/employees/{id}/suspend-wallet': {
+        post: {
+          tags: ['Employees'],
+          summary: 'Suspend an employee\'s PPI wallet',
+          description: 'Super Admin or Finance only. Reason is required.',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['reason'], properties: { reason: { type: 'string' } },
+          }}}},
+          responses: { 200: { description: 'Wallet suspended' }, 502: { description: 'PPI service failed' } },
+        },
+      },
+      '/employees/{id}/close-wallet': {
+        post: {
+          tags: ['Employees'],
+          summary: 'Permanently close an employee\'s PPI wallet',
+          description: 'Super Admin only. Also deactivates the user account.',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['reason'], properties: { reason: { type: 'string' } },
+          }}}},
+          responses: { 200: { description: 'Wallet closed and account deactivated' } },
+        },
+      },
+      '/employees/bulk/upload': {
+        post: {
+          tags: ['Bulk Onboarding'],
+          summary: 'Upload an employee CSV/XLSX for bulk onboarding',
+          description: 'Multipart/form-data. Returns a job ID; processing happens asynchronously.',
+          requestBody: { required: true, content: { 'multipart/form-data': { schema: {
+            type: 'object', properties: { file: { type: 'string', format: 'binary' } },
+          }}}},
+          responses: { 200: { description: 'Job created' }, 400: { description: 'Invalid file' } },
+        },
+      },
+      '/employees/bulk/jobs': {
+        get: {
+          tags: ['Bulk Onboarding'],
+          summary: 'List bulk-upload jobs',
+          responses: { 200: { description: 'Jobs (running, completed, failed)' } },
+        },
+      },
+      '/employees/bulk/jobs/{jobId}': {
+        get: {
+          tags: ['Bulk Onboarding'],
+          summary: 'Get job detail with row-level results',
+          parameters: [
+            { name: 'jobId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['success','error','pending'] } },
+            { name: 'page', in: 'query', schema: { type: 'integer' } },
+          ],
+          responses: { 200: { description: 'Job + paginated rows' } },
+        },
+        delete: {
+          tags: ['Bulk Onboarding'],
+          summary: 'Delete a bulk-upload job',
+          parameters: [{ name: 'jobId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: { 200: { description: 'Job deleted' } },
+        },
+      },
+      '/employees/bulk/jobs/{jobId}/retry-failed': {
+        post: {
+          tags: ['Bulk Onboarding'],
+          summary: 'Retry the failed rows in a job',
+          parameters: [{ name: 'jobId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: { 200: { description: 'Retry triggered' } },
+        },
+      },
+      '/employees/bulk/jobs/{jobId}/export-errors': {
+        get: {
+          tags: ['Bulk Onboarding'],
+          summary: 'Download a CSV of failed rows for a job',
+          parameters: [{ name: 'jobId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: { 200: { description: 'CSV stream' } },
+        },
+      },
+      '/employees/bulk/template': {
+        get: {
+          tags: ['Bulk Onboarding'],
+          summary: 'Download the canonical CSV template',
+          responses: { 200: { description: 'CSV template' } },
+        },
+      },
+
+      // ═══════════ ROLES (Role Manager) ═══════════
+      '/roles': {
+        get: {
+          tags: ['Roles'],
+          summary: 'List all roles with pages and tier-derived approver flow',
+          description: 'Super Admin only. Each role includes pages, linked_designations, acts_as_approver_for, and employee_count.',
+          responses: { 200: { description: 'Roles array' } },
+        },
+        post: {
+          tags: ['Roles'],
+          summary: 'Create a custom role',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['name'],
+            properties: {
+              name:        { type: 'string', example: 'Custom Reviewer' },
+              description: { type: 'string' },
+              color:       { type: 'string', example: '#0A84FF' },
+              pages:       { type: 'array', items: { type: 'object', properties: { page_id: { type: 'string' } } } },
+            },
+          }}}},
+          responses: { 201: { description: 'Role created' }, 409: { description: 'Role already exists' } },
+        },
+      },
+      '/roles/pages': {
+        get: {
+          tags: ['Roles'],
+          summary: 'List the master page catalog (selectable in the Create Role form)',
+          responses: { 200: { description: 'Pages with id, label, icon, group' } },
+        },
+      },
+      '/roles/{id}': {
+        put: {
+          tags: ['Roles'],
+          summary: 'Update a role (description, color, pages — name is immutable)',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object',
+            properties: {
+              description: { type: 'string' },
+              color:       { type: 'string' },
+              pages:       { type: 'array' },
+            },
+          }}}},
+          responses: { 200: { description: 'Role updated' } },
+        },
+        delete: {
+          tags: ['Roles'],
+          summary: 'Delete a custom role',
+          description: 'Blocked when active users, designations, or tier approver lists still reference the role.',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Role deleted' }, 400: { description: 'Role still in use' } },
+        },
+      },
+
+      // ═══════════ TIERS + DESIGNATIONS ═══════════
+      '/tiers': {
+        get: {
+          tags: ['Tiers'],
+          summary: 'List all tiers + designation mappings',
+          description: 'Returns { tiers, designations }. Each designation includes role + tier + employee_count + tier_approver_roles.',
+          responses: { 200: { description: 'Tiers with designations' } },
+        },
+        post: {
+          tags: ['Tiers'],
+          summary: 'Create a new tier (Super Admin)',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['name', 'rank'],
+            properties: {
+              name:                      { type: 'string',  example: 'Tier 6' },
+              rank:                      { type: 'integer', example: 6, description: '1 = highest authority' },
+              description:               { type: 'string', nullable: true },
+              flight_classes:            { type: 'array', items: { type: 'string' }, example: ['Economy'] },
+              train_classes:             { type: 'array', items: { type: 'string' }, example: ['3AC','Sleeper'] },
+              bus_types:                 { type: 'array', items: { type: 'string' }, example: ['AC Seater'] },
+              hotel_types:               { type: 'array', items: { type: 'string' }, example: ['Budget','3-Star'] },
+              budget_limit:              { type: 'number', example: 15000 },
+              budget_period:             { type: 'string', enum: ['trip','day'], default: 'trip' },
+              approver_roles:            { type: 'array', items: { type: 'string' }, description: 'Designation names — engine treats these as the approval sequence.' },
+              approval_type:             { type: 'string', enum: ['ALL','ANY_ONE'], default: 'ALL' },
+              intl_flight_class_upgrade: { type: 'boolean' },
+              max_hotel_per_night:       { type: 'number' },
+              meal_daily_limit:          { type: 'number' },
+              cab_daily_limit:           { type: 'number' },
+              advance_booking_days:      { type: 'integer' },
+              intl_budget_limit:         { type: 'number' },
+              is_active:                 { type: 'boolean', default: true },
+            },
+          }}}},
+          responses: { 201: { description: 'Tier created' }, 409: { description: 'Name or rank already exists' } },
+        },
+      },
+      '/tiers/{id}': {
+        put: {
+          tags: ['Tiers'],
+          summary: 'Update a tier (Super Admin)',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object',
+            description: 'All fields optional; same shape as POST /tiers.',
+          }}}},
+          responses: { 200: { description: 'Tier updated' }, 404: { description: 'Tier not found' } },
+        },
+        delete: {
+          tags: ['Tiers'],
+          summary: 'Delete a tier (Super Admin)',
+          description: 'Blocked when employees are still assigned to this tier.',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Tier deleted' }, 409: { description: 'Tier still has employees' } },
+        },
+      },
+      '/tiers/preview/{designation}': {
+        get: {
+          tags: ['Tiers'],
+          summary: 'Preview the tier (and policy) for a given designation',
+          description: 'Used by the Employee form to auto-fill role + tier + approver chain when a designation is selected.',
+          parameters: [{ name: 'designation', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Tier policy with designation_role, or null if unmapped' } },
+        },
+      },
+      '/tiers/designations': {
+        post: {
+          tags: ['Tiers'],
+          summary: 'Upsert a designation → (role, tier) mapping',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['designation','tier_id'],
+            properties: {
+              designation: { type: 'string', example: 'Software Developer' },
+              tier_id:     { type: 'integer' },
+              role:        { $ref: '#/components/schemas/UserRole' },
+            },
+          }}}},
+          responses: { 200: { description: 'Mapping saved' }, 404: { description: 'Tier not found' } },
+        },
+      },
+      '/tiers/designations/{id}': {
+        put: {
+          tags: ['Tiers'],
+          summary: 'Edit a designation mapping by id',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object',
+            properties: {
+              designation: { type: 'string' },
+              tier_id:     { type: 'integer' },
+              role:        { $ref: '#/components/schemas/UserRole' },
+            },
+          }}}},
+          responses: { 200: { description: 'Mapping updated' }, 409: { description: 'Designation name conflict' } },
+        },
+      },
+      '/tiers/designations/{designation}': {
+        delete: {
+          tags: ['Tiers'],
+          summary: 'Delete a designation mapping (case-insensitive)',
+          description: 'Blocked when employees still hold this designation.',
+          parameters: [{ name: 'designation', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Mapping deleted' }, 409: { description: 'Designation in use' } },
+        },
+      },
+
+      // ═══════════ WALLET — extras (PPI + load status) ═══════════
+      '/wallet/ppi-balance': {
+        get: {
+          tags: ['Wallet'],
+          summary: 'Live PPI wallet balance for the current user',
+          responses: { 200: { description: 'PPI balance and status' } },
+        },
+      },
+      '/wallet/ppi-transactions': {
+        get: {
+          tags: ['Wallet'],
+          summary: 'PPI transaction history (current user)',
+          responses: { 200: { description: 'PPI transactions' } },
+        },
+      },
+      '/wallet/ppi-transactions/{userId}': {
+        get: {
+          tags: ['Wallet'],
+          summary: 'PPI transactions for any user (Finance / Super Admin / Request Approver)',
+          parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: { 200: { description: 'PPI transactions' } },
+        },
+      },
+      '/wallet/load-status/{requestId}': {
+        get: {
+          tags: ['Wallet'],
+          summary: 'Wallet-load status for an approved request',
+          parameters: [{ name: 'requestId', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'load status, error message, retry availability' } },
+        },
+      },
+      '/wallet/retry-load/{requestId}': {
+        post: {
+          tags: ['Wallet'],
+          summary: 'Retry a failed PPI wallet load',
+          parameters: [{ name: 'requestId', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Retry result' } },
+        },
+      },
+
+      // ═══════════ AIR FLIGHTS — full lifecycle ═══════════
+      '/flights/air/sectors': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_SectorAvailability — list sector pairs supported by the supplier',
+          responses: { 200: { description: 'Available sectors' } },
+        },
+      },
+      '/flights/air/search': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_Search — flight search by route + date',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['origin','destination','departureDate'],
+            properties: {
+              origin:        { type: 'string', example: 'MAA' },
+              destination:   { type: 'string', example: 'BOM' },
+              departureDate: { type: 'string', format: 'date' },
+              returnDate:    { type: 'string', format: 'date', nullable: true },
+              cabinClass:    { type: 'string', enum: ['Economy','Premium Economy','Business','First Class'] },
+              tripType:      { type: 'string', enum: ['OneWay','RoundTrip'] },
+              adults:        { type: 'integer', default: 1 },
+              children:      { type: 'integer', default: 0 },
+              infants:       { type: 'integer', default: 0 },
+            },
+          }}}},
+          responses: { 200: { description: 'Search results with Search_Key + flight options' } },
+        },
+      },
+      '/flights/air/fare-rule': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_FareRule — fare conditions for a specific flight key',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['searchKey','flightKey'],
+            properties: { searchKey: { type: 'string' }, flightKey: { type: 'string' } },
+          }}}},
+          responses: { 200: { description: 'Fare rules text' } },
+        },
+      },
+      '/flights/air/low-fare': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_LowFare — calendar of cheapest fares around the date',
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
+          responses: { 200: { description: 'Calendar of fares' } },
+        },
+      },
+      '/flights/air/reprice': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_Reprice — confirm latest fare and get the priced Flight_Key',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['searchKey','flightKey','passengers','customerMobile'],
+            properties: {
+              searchKey:      { type: 'string' },
+              flightKey:      { type: 'string' },
+              customerMobile: { type: 'string' },
+              passengers:     { type: 'array', items: { type: 'object' } },
+            },
+          }}}},
+          responses: { 200: { description: 'Repriced fare with new Flight_Key for downstream calls' } },
+        },
+      },
+      '/flights/air/ssr': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_GetSSR — list available extras (meals, baggage, insurance) for a repriced flight',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['searchKey','flightKey','passengers'],
+          }}}},
+          responses: { 200: { description: 'SSR options grouped by type' } },
+        },
+      },
+      '/flights/air/seat-map': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_GetSeatMap — seat layout per segment',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['searchKey','flightKey','passengers'],
+          }}}},
+          responses: { 200: { description: 'Seat map with availability + pricing' } },
+        },
+      },
+      '/flights/air/temp-booking': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_TempBooking — create a temporary supplier booking (Booking_RefNo)',
+          description: 'Holds the seat. Supplier expires the temp PNR after a few minutes if not ticketed.',
+          responses: { 201: { description: 'Booking_RefNo issued' } },
+        },
+      },
+      '/flights/air/ticket': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_Ticketing — commit the booking and obtain the airline PNR',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['bookingRefNo'],
+            properties: {
+              bookingRefNo:  { type: 'string' },
+              ticketingType: { type: 'integer', default: 1 },
+            },
+          }}}},
+          responses: { 200: { description: 'Airline PNR returned' } },
+        },
+      },
+      '/flights/air/reprint': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_Reprint — fetch ticket details for an existing Booking_RefNo',
+          responses: { 200: { description: 'Ticket details' } },
+        },
+      },
+      '/flights/air/history': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_History — booking timeline for a Booking_RefNo',
+          responses: { 200: { description: 'Timeline events' } },
+        },
+      },
+      '/flights/air/cancel': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_Cancellation — cancel an issued booking',
+          responses: { 200: { description: 'Cancelled' } },
+        },
+      },
+      '/flights/air/release-pnr': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_ReleasePNR — release a held PNR before ticketing',
+          responses: { 200: { description: 'PNR released' } },
+        },
+      },
+      '/flights/air/post-ssr': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_GetPostSSR — list ancillaries that can still be added post-ticketing',
+          requestBody: { required: true, content: { 'application/json': { schema: {
+            type: 'object', required: ['bookingRefNo'],
+            properties: { bookingRefNo: { type: 'string' }, airlinePnr: { type: 'string' } },
+          }}}},
+          responses: { 200: { description: 'Available post-booking SSR options' } },
+        },
+      },
+      '/flights/air/post-ssr/initiate': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_InitiatePostSSR — start a post-booking ancillary purchase',
+          responses: { 200: { description: 'Initiation token + price' } },
+        },
+      },
+      '/flights/air/post-ssr/confirm': {
+        post: {
+          tags: ['Air'],
+          summary: 'Air_ConfirmPostSSR — confirm the ancillary (preceded by AddPayment)',
+          responses: { 200: { description: 'Confirmed' } },
+        },
+      },
+      '/flights/air/balance': {
+        get: {
+          tags: ['Air'],
+          summary: 'GetBalance — agency credit balance with the supplier',
+          responses: { 200: { description: 'effectiveBalance, creditBalance, lienBalance, odAmount' } },
+        },
+      },
+      '/flights/air/payment': {
+        post: {
+          tags: ['Air'],
+          summary: 'AddPayment — top up agency credit before ticketing/ancillary',
+          responses: { 200: { description: 'Payment recorded' } },
+        },
+      },
+      '/flights/air/book': {
+        post: {
+          tags: ['Air'],
+          summary: 'Convenience: full Search → Reprice → TempBooking → Ticketing in one call',
+          responses: { 200: { description: 'Final ticket with PNR' } },
+        },
+      },
+
+      // ═══════════ HELD FLIGHTS (Hold & Pay Later) ═══════════
+      '/held-flights': {
+        get: {
+          tags: ['Held Flights'],
+          summary: 'List currently held (un-ticketed) flights for the current user',
+          responses: { 200: { description: 'Held flights' } },
+        },
+        post: {
+          tags: ['Held Flights'],
+          summary: 'Persist a hold record',
+          responses: { 201: { description: 'Held flight stored' } },
+        },
+        delete: {
+          tags: ['Held Flights'],
+          summary: 'Clear all held flights for the user',
+          responses: { 200: { description: 'All held flights cleared' } },
+        },
+      },
+      '/held-flights/{refNo}': {
+        patch: {
+          tags: ['Held Flights'],
+          summary: 'Update a held flight by Booking_RefNo',
+          parameters: [{ name: 'refNo', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Updated' } },
+        },
+        delete: {
+          tags: ['Held Flights'],
+          summary: 'Delete one held flight',
+          parameters: [{ name: 'refNo', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Deleted' } },
+        },
+      },
     },
   },
   apis: [], // all paths defined inline above

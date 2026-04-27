@@ -100,6 +100,12 @@ async function run() {
   await pool.query(roleConsSql)
   console.log('   ✓ Roles, users, and designations consolidated')
 
+  // 2h. Per-employee primary + backup approvers + audit log
+  console.log('\n2h. Running employee approvers migration...')
+  const empApproversSql = fs.readFileSync(path.join(__dirname,'..','sql','employee_approvers_migration.sql'),'utf8')
+  await pool.query(empApproversSql)
+  console.log('   ✓ employee_approvers + approver_audit_log tables ready')
+
   // 3. Create uploads directory
   const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })

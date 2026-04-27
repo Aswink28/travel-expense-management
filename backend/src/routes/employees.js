@@ -40,6 +40,45 @@ async function resolveTierForDesignation(client, designation) {
   return rows[0] || null
 }
 
+// ── Helper: load an employee's approver chain (ordered) ──────────
+async function fetchApproverChain(client, employeeId) {
+  const { rows } = await client.query(`
+    SELECT ea.id, ea.step_designation, ea.step_order,
+           ea.primary_user_id,
+           up.name AS primary_name, up.is_active AS primary_active,
+           ea.backup_user_id,
+           ub.name AS backup_name,  ub.is_active AS backup_active
+    FROM employee_approvers ea
+    LEFT JOIN users up ON up.id = ea.primary_user_id
+    LEFT JOIN users ub ON ub.id = ea.backup_user_id
+    WHERE ea.user_id = $1
+    ORDER BY ea.step_order ASC, ea.step_designation ASC
+  `, [employeeId])
+  return rows
+}
+
+// ── Helper: replace an employee's approver chain in one transaction ──
+//   payload: [{ step_designation, step_order, primary_user_id, backup_user_id }]
+async function saveApproverChain(client, employeeId, chain) {
+  if (!Array.isArray(chain)) return
+  await client.query('DELETE FROM employee_approvers WHERE user_id = $1', [employeeId])
+  for (const step of chain) {
+    if (!step || !step.step_designation) continue
+    await client.query(
+      `INSERT INTO employee_approvers
+         (user_id, step_designation, step_order, primary_user_id, backup_user_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        employeeId,
+        step.step_designation,
+        Number.isInteger(Number(step.step_order)) ? Number(step.step_order) : 1,
+        step.primary_user_id || null,
+        step.backup_user_id  || null,
+      ]
+    )
+  }
+}
+
 // ── GET /api/employees ───────────────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
@@ -63,6 +102,29 @@ router.get('/', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
+// ── GET /api/employees/audit-log ─────────────────────────────
+// Audit log of approver reassignments. Defined BEFORE /:id so the literal path wins
+// the route match.
+router.get('/audit-log', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT a.id, a.acted_at, a.action_type, a.step_designation, a.reason,
+             a.affected_user_id, ua.name AS affected_name,
+             a.old_user_id,      uo.name AS old_name,
+             a.new_user_id,      un.name AS new_name,
+             a.acted_by,         ub.name AS acted_by_name
+      FROM approver_audit_log a
+      LEFT JOIN users ua ON ua.id = a.affected_user_id
+      LEFT JOIN users uo ON uo.id = a.old_user_id
+      LEFT JOIN users un ON un.id = a.new_user_id
+      LEFT JOIN users ub ON ub.id = a.acted_by
+      ORDER BY a.acted_at DESC
+      LIMIT 200
+    `)
+    res.json({ success: true, count: rows.length, data: rows })
+  } catch (e) { next(e) }
+})
+
 // ── GET /api/employees/:id ───────────────────────────────────
 router.get('/:id', async (req, res, next) => {
   try {
@@ -83,7 +145,8 @@ router.get('/:id', async (req, res, next) => {
       WHERE u.id = $1
     `, [req.params.id])
     if (!rows.length) return res.status(404).json({ success: false, message: 'Employee not found' })
-    res.json({ success: true, data: rows[0] })
+    const approver_chain = await fetchApproverChain(pool, req.params.id)
+    res.json({ success: true, data: { ...rows[0], approver_chain } })
   } catch (e) { next(e) }
 })
 
@@ -92,7 +155,8 @@ router.post('/', async (req, res, next) => {
   const { name, email, password, role, department, reporting_to,
           mobile_number, date_of_birth, gender, pan_number, aadhaar_number, productId,
           approver_roles, approval_type, required_approval_count,
-          designation, tier_id: tier_id_in } = req.body
+          designation, tier_id: tier_id_in,
+          approver_chain } = req.body
 
   if (!name || !email || !password || !role) {
     return res.status(400).json({ success: false, message: 'Name, email, password, and role are required' })
@@ -248,8 +312,14 @@ router.post('/', async (req, res, next) => {
       [user.id]
     )
 
+    // Save the per-employee approver chain (primary + backup per step) inside the same txn.
+    if (Array.isArray(approver_chain)) {
+      await saveApproverChain(client, user.id, approver_chain)
+    }
+
     await client.query('COMMIT')
-    res.status(201).json({ success: true, message: 'Employee created successfully', data: user })
+    const finalChain = await fetchApproverChain(pool, user.id)
+    res.status(201).json({ success: true, message: 'Employee created successfully', data: { ...user, approver_chain: finalChain } })
   } catch (e) {
     await client.query('ROLLBACK')
     if (e.code === '23505') {
@@ -270,7 +340,8 @@ router.put('/:id', async (req, res, next) => {
     const { name, email, role, department, reporting_to, password,
             mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
             approver_roles, approval_type, required_approval_count,
-            designation, tier_id: tier_id_in } = req.body
+            designation, tier_id: tier_id_in,
+            approver_chain } = req.body
     const { id } = req.params
 
     let approvalCfg = { provided: false }
@@ -339,24 +410,62 @@ router.put('/:id', async (req, res, next) => {
       sets.push(`color = $${idx++}`); vals.push(roleRow[0]?.color || '#0A84FF')
     }
 
-    if (!sets.length) return res.status(400).json({ success: false, message: 'No fields to update' })
+    // Allow chain-only updates (no other fields changed) — common when admins just
+    // re-assign approvers without touching personal data.
+    const onlyChainUpdate = !sets.length && Array.isArray(approver_chain)
+    if (!sets.length && !onlyChainUpdate) {
+      return res.status(400).json({ success: false, message: 'No fields to update' })
+    }
 
-    vals.push(id)
-    const { rows: [user] } = await pool.query(
-      `UPDATE users SET ${sets.join(', ')} WHERE id = $${idx}
-       RETURNING id, emp_id, name, email, role, department, avatar, color, reporting_to, is_active,
-                 mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
-                 approver_roles, approval_type, required_approval_count,
-                 designation, tier_id, created_at`,
-      vals
-    )
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
 
-    res.json({ success: true, message: 'Employee updated', data: user })
+      let user
+      if (sets.length) {
+        vals.push(id)
+        const { rows } = await client.query(
+          `UPDATE users SET ${sets.join(', ')} WHERE id = $${idx}
+           RETURNING id, emp_id, name, email, role, department, avatar, color, reporting_to, is_active,
+                     mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
+                     approver_roles, approval_type, required_approval_count,
+                     designation, tier_id, created_at`,
+          vals
+        )
+        user = rows[0]
+      } else {
+        const { rows } = await client.query(
+          `SELECT id, emp_id, name, email, role, department, avatar, color, reporting_to, is_active,
+                  mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
+                  approver_roles, approval_type, required_approval_count,
+                  designation, tier_id, created_at
+           FROM users WHERE id = $1`,
+          [id]
+        )
+        user = rows[0]
+      }
+
+      if (Array.isArray(approver_chain)) {
+        await saveApproverChain(client, id, approver_chain)
+      }
+
+      await client.query('COMMIT')
+      const finalChain = await fetchApproverChain(pool, id)
+      res.json({ success: true, message: 'Employee updated', data: { ...user, approver_chain: finalChain } })
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw e
+    } finally {
+      client.release()
+    }
   } catch (e) { next(e) }
 })
 
 // ── PATCH /api/employees/:id/status ──────────────────────────
+// Deactivation triggers bulk reassignment: every employee that has this user as a
+// primary approver gets routed to the backup. Audit log captures each swap.
 router.patch('/:id/status', async (req, res, next) => {
+  const client = await pool.connect()
   try {
     const { id } = req.params
     const { is_active } = req.body
@@ -365,15 +474,62 @@ router.patch('/:id/status', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Cannot deactivate yourself' })
     }
 
-    const { rows: [user] } = await pool.query(
+    await client.query('BEGIN')
+    const { rows: [user] } = await client.query(
       `UPDATE users SET is_active = $1 WHERE id = $2
        RETURNING id, emp_id, name, email, role, is_active`,
       [is_active, id]
     )
-    if (!user) return res.status(404).json({ success: false, message: 'Employee not found' })
+    if (!user) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ success: false, message: 'Employee not found' })
+    }
 
-    res.json({ success: true, message: `Employee ${user.is_active ? 'activated' : 'deactivated'}`, data: user })
-  } catch (e) { next(e) }
+    let reassignmentSummary = null
+    // On deactivation, audit every employee_approvers row whose primary is this user.
+    // The engine resolves primary→backup at read time, so no row mutation is needed —
+    // we just log the implicit reassignment so the chain change is auditable.
+    if (is_active === false) {
+      const { rows: affected } = await client.query(`
+        SELECT ea.user_id        AS affected_user_id,
+               ea.step_designation,
+               ea.primary_user_id,
+               ea.backup_user_id
+        FROM employee_approvers ea
+        WHERE ea.primary_user_id = $1
+      `, [id])
+
+      for (const row of affected) {
+        await client.query(
+          `INSERT INTO approver_audit_log
+             (action_type, affected_user_id, step_designation, old_user_id, new_user_id, reason, acted_by)
+           VALUES ('reassign_pending', $1, $2, $3, $4, $5, $6)`,
+          [
+            row.affected_user_id,
+            row.step_designation,
+            row.primary_user_id,
+            row.backup_user_id,
+            `Primary approver deactivated (${user.name}); requests now route to backup.`,
+            req.user.id,
+          ]
+        )
+      }
+      reassignmentSummary = { affected: affected.length }
+    }
+
+    await client.query('COMMIT')
+    res.json({
+      success: true,
+      message: `Employee ${user.is_active ? 'activated' : 'deactivated'}`,
+      data: user,
+      reassignment: reassignmentSummary,
+    })
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    next(e)
+  } finally {
+    client.release()
+  }
 })
 
 // ── POST /api/employees/:id/suspend-wallet ──────────────────

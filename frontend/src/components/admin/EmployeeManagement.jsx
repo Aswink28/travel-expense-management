@@ -77,6 +77,9 @@ const INITIAL_FORM = {
   approval_type: "ALL",
   designation: "",
   tier_id: null,
+  // Per-employee approver chain — one entry per step in the tier's approval sequence.
+  // Each entry: { step_designation, step_order, primary_user_id, backup_user_id }
+  approver_chain: [],
 };
 
 function MLabel({ text, required }) {
@@ -148,30 +151,53 @@ export default function EmployeeManagement({ setTab }) {
     setForm((prev) => ({ ...prev, designation }));
     setTierPreview(null);
     if (!designation) {
-      setForm((prev) => ({ ...prev, tier_id: null }));
+      setForm((prev) => ({ ...prev, tier_id: null, approver_chain: [] }));
       return;
     }
     try {
       const res = await tiersAPI.preview(designation);
       const t = res?.data;
       if (!t) {
-        setForm((prev) => ({ ...prev, tier_id: null }));
+        setForm((prev) => ({ ...prev, tier_id: null, approver_chain: [] }));
         return;
       }
       setTierPreview(t);
       const approvers = Array.isArray(t.approver_roles) ? t.approver_roles : [];
       const mappedRole = t.designation_role || null;
-      setForm((prev) => ({
-        ...prev,
-        tier_id: t.id,
-        approver_roles: approvers.length ? approvers : prev.approver_roles,
-        approval_type: t.approval_type || prev.approval_type,
-        // If the designation declares a role, auto-apply it so Role + Tier stay aligned.
-        role: mappedRole || prev.role,
-      }));
+
+      // Build a fresh approver-chain skeleton keyed by each step in the tier's sequence,
+      // ordered lowest-authority-first. Preserve any primary/backup the admin had
+      // already picked for that step before the designation changed.
+      const orderedSteps = [...approvers].sort(
+        (a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99)
+      );
+      setForm((prev) => {
+        const existing = Array.isArray(prev.approver_chain) ? prev.approver_chain : [];
+        const byStep = new Map(
+          existing.map((s) => [s.step_designation?.toLowerCase(), s])
+        );
+        const nextChain = orderedSteps.map((stepDesg, i) => {
+          const prior = byStep.get(stepDesg.toLowerCase());
+          return {
+            step_designation: stepDesg,
+            step_order: i + 1,
+            primary_user_id: prior?.primary_user_id || null,
+            backup_user_id:  prior?.backup_user_id  || null,
+          };
+        });
+        return {
+          ...prev,
+          tier_id: t.id,
+          approver_roles: approvers.length ? approvers : prev.approver_roles,
+          approval_type: t.approval_type || prev.approval_type,
+          role: mappedRole || prev.role,
+          approver_chain: nextChain,
+        };
+      });
       setFieldErrors((prev) => {
         const n = { ...prev };
         delete n.approver_roles;
+        delete n.approver_chain;
         return n;
       });
     } catch (_) {
@@ -221,6 +247,13 @@ export default function EmployeeManagement({ setTab }) {
     const stored = Array.isArray(emp.approver_roles) ? emp.approver_roles : [];
     const filtered = stored.filter((r) => allowed.includes(r));
     const approverRoles = filtered.length ? filtered : allowed;
+    const incomingChain = Array.isArray(emp.approver_chain) ? emp.approver_chain : []
+    const normalisedChain = incomingChain.map((s) => ({
+      step_designation: s.step_designation,
+      step_order:       Number(s.step_order) || 1,
+      primary_user_id:  s.primary_user_id || null,
+      backup_user_id:   s.backup_user_id  || null,
+    }))
     setForm({
       name: emp.name || "",
       email: emp.email || "",
@@ -237,6 +270,7 @@ export default function EmployeeManagement({ setTab }) {
       approval_type: emp.approval_type || "ALL",
       designation: emp.designation || "",
       tier_id: emp.tier_id || null,
+      approver_chain: normalisedChain,
     });
     setFieldErrors({});
     // Refresh tier preview if the employee has a designation
@@ -314,6 +348,7 @@ export default function EmployeeManagement({ setTab }) {
         approval_type: form.approval_type,
         designation: form.designation || null,
         tier_id: form.tier_id || null,
+        approver_chain: Array.isArray(form.approver_chain) ? form.approver_chain : [],
       };
       if (editId && !payload.password) delete payload.password;
       if (!payload.department) delete payload.department;
@@ -539,6 +574,7 @@ export default function EmployeeManagement({ setTab }) {
     const month = String(1 + Math.floor(Math.random() * 12)).padStart(2, "0");
     const day = String(1 + Math.floor(Math.random() * 28)).padStart(2, "0");
     const demoRole = pick(ROLE_NAMES.length ? ROLE_NAMES : ["Employee"]);
+    const demoDesignation = designationForRole(demoRole);
     setForm({
       name: `${first} ${last}`,
       email: `${first.toLowerCase()}.${last.toLowerCase()}.${uid}@company.in`,
@@ -556,8 +592,14 @@ export default function EmployeeManagement({ setTab }) {
       aadhaar_number: rDigits(12),
       approver_roles: defaultApproversForRole(demoRole),
       approval_type: "ALL",
+      designation: demoDesignation,
+      tier_id: null,
+      approver_chain: [],
     });
     setFieldErrors({});
+    // Trigger the same designation-resolution path the manual form uses, so the tier
+    // preview, tier_id, and the Primary & Backup Approvers card all populate.
+    if (demoDesignation) applyDesignation(demoDesignation);
   }
 
   const filtered = employees.filter((emp) => {
@@ -586,16 +628,19 @@ export default function EmployeeManagement({ setTab }) {
 
   return (
     <div className="fade-up">
-      <PageTitle
-        title="Employee Management"
-        sub="Create and manage employee accounts"
-      />
+      {!showModal && (
+        <PageTitle
+          title="Employee Management"
+          sub="Create and manage employee accounts"
+        />
+      )}
       {error && (
         <Alert type="error" style={{ marginBottom: 16 }}>
           {error}
         </Alert>
       )}
 
+      {!showModal && <>
       {/* Toolbar */}
       <div
         style={{
@@ -1047,14 +1092,38 @@ export default function EmployeeManagement({ setTab }) {
           </div>
         )}
       </Card>
+      </>}
 
-      {/* ── Create / Edit Modal ─────────────────────────────── */}
+      {/* ── Create / Edit — full-page view (replaces the modal popup) ─── */}
       {showModal && (
-        <Modal
-          title={editId ? "Edit Employee" : "Create New Employee"}
-          onClose={() => setShowModal(false)}
-          width={560}
-        >
+        <Card style={{ padding: 28, marginTop: 16, maxWidth: 960, marginLeft: 'auto', marginRight: 'auto' }}>
+          {/* Page header with back button + title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              style={{
+                background: 'var(--bg-card-deep)', border: '1px solid var(--border)',
+                color: 'var(--text-primary)', width: 36, height: 36, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: 16,
+              }}
+              title="Back to Employees"
+            >
+              ←
+            </button>
+            <div style={{ flex: 1 }}>
+              <h2 className="syne" style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
+                {editId ? `Edit Employee — ${form.name || ''}` : 'Create New Employee'}
+              </h2>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {editId
+                  ? 'Update profile, designation, or approver chain.'
+                  : 'Pick a designation — role and tier auto-fill from Tier Config.'}
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit}>
             {errCount > 0 && (
               <Alert type="error" style={{ marginBottom: 14 }}>
@@ -1228,12 +1297,12 @@ export default function EmployeeManagement({ setTab }) {
               error={fieldErrors.aadhaar_number}
             />
 
-            {/* Row 5: Designation (real), Department, Reporting To
+            {/* Row 5: Designation (real), Reporting To
                 Picking a designation auto-fills Role and Tier from Tier Config. */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
+                gridTemplateColumns: "1fr 1fr",
                 gap: "0 12px",
               }}
             >
@@ -1251,12 +1320,6 @@ export default function EmployeeManagement({ setTab }) {
                   </option>
                 ))}
               </Select>
-              <Input
-                label="Department"
-                value={form.department}
-                onChange={(e) => f("department", e.target.value)}
-                placeholder="e.g. Engineering"
-              />
               <Input
                 label="Reporting To"
                 value={form.reporting_to}
@@ -1569,6 +1632,142 @@ export default function EmployeeManagement({ setTab }) {
               );
             })()}
 
+            {/* ── Per-employee Primary + Backup approvers ── */}
+            {Array.isArray(form.approver_chain) && form.approver_chain.length > 0 && (
+              <div
+                style={{
+                  background: "var(--bg-card-deep)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "14px 16px",
+                  marginTop: 18,
+                  marginBottom: 14,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>👥</span>
+                    <div>
+                      <div style={{ fontSize: 11, color: "var(--text-primary)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        Primary &amp; Backup Approvers
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
+                        Assign a specific person for each step. Backup is used automatically when the primary is deactivated.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {form.approver_chain.map((step, idx) => {
+                    // Only employees with this exact designation can fill this step
+                    // (Tech Lead step → only Tech Leads; Manager step → only Managers).
+                    const stepDesgLc = (step.step_designation || "").toLowerCase()
+                    const candidates = employees
+                      .filter(
+                        (e) =>
+                          e.id !== editId &&
+                          (e.designation || "").toLowerCase() === stepDesgLc
+                      )
+                      .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+                    const primaryUser = candidates.find((e) => e.id === step.primary_user_id)
+                    const backupUser  = candidates.find((e) => e.id === step.backup_user_id)
+                    const primaryInactive = primaryUser && primaryUser.is_active === false
+                    return (
+                      <div key={`${step.step_designation}-${idx}`} style={{ background: "var(--bg-card)", borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, color: "var(--accent)", letterSpacing: "0.05em",
+                            background: "color-mix(in srgb, var(--accent) 16%, transparent)",
+                            padding: "2px 7px", borderRadius: 999,
+                          }}>STEP {idx + 1}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
+                            {step.step_designation}
+                          </span>
+                          {candidates.length === 0 && (
+                            <span style={{ fontSize: 10, color: "#FF9F0A" }}>
+                              ⚠ No approver-eligible employees yet — onboard a Request Approver or Finance user first.
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <label style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, display: "block" }}>
+                              Primary
+                            </label>
+                            <select
+                              value={step.primary_user_id || ""}
+                              onChange={(e) => {
+                                const v = e.target.value || null
+                                setForm((p) => ({
+                                  ...p,
+                                  approver_chain: p.approver_chain.map((s, i) => i === idx ? { ...s, primary_user_id: v } : s),
+                                }))
+                              }}
+                              style={{
+                                width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)",
+                                background: "var(--bg-input)", outline: "none", fontSize: 12, color: "var(--text-primary)", cursor: "pointer",
+                              }}
+                            >
+                              <option value="">— Select primary —</option>
+                              {candidates
+                                .filter((c) => c.id !== step.backup_user_id)
+                                .map((c) => (
+                                  <option key={c.id} value={c.id} disabled={c.is_active === false}>
+                                    {c.name}
+                                    {c.is_active === false ? " (inactive)" : ""}
+                                  </option>
+                                ))}
+                            </select>
+                            {primaryInactive && (
+                              <div style={{ fontSize: 10, color: "#FF9F0A", marginTop: 4 }}>
+                                Primary is deactivated — backup will receive requests.
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, display: "block" }}>
+                              Backup
+                            </label>
+                            <select
+                              value={step.backup_user_id || ""}
+                              onChange={(e) => {
+                                const v = e.target.value || null
+                                setForm((p) => ({
+                                  ...p,
+                                  approver_chain: p.approver_chain.map((s, i) => i === idx ? { ...s, backup_user_id: v } : s),
+                                }))
+                              }}
+                              style={{
+                                width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)",
+                                background: "var(--bg-input)", outline: "none", fontSize: 12, color: "var(--text-primary)", cursor: "pointer",
+                              }}
+                            >
+                              <option value="">— Select backup —</option>
+                              {candidates
+                                .filter((c) => c.id !== step.primary_user_id)
+                                .map((c) => (
+                                  <option key={c.id} value={c.id} disabled={c.is_active === false}>
+                                    {c.name}{c.is_active === false ? " (inactive)" : ""}
+                                  </option>
+                                ))}
+                            </select>
+                            {!step.backup_user_id && step.primary_user_id && (
+                              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+                                Recommended — covers primary's leave or exit.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div
               style={{
                 display: "flex",
@@ -1602,7 +1801,7 @@ export default function EmployeeManagement({ setTab }) {
               </Button>
             </div>
           </form>
-        </Modal>
+        </Card>
       )}
 
       {/* ── Suspend / Close Wallet Modal ──────────────────── */}

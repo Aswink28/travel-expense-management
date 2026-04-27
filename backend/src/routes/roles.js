@@ -21,6 +21,7 @@ const ALL_PAGES = [
   { id: 'roles',              label: 'Role Manager',     icon: '⚙',  group: 'Administration' },
   { id: 'tiers',              label: 'Tier Config',      icon: '◐',  group: 'Administration' },
   { id: 'designations',       label: 'Designations',     icon: '◇',  group: 'Administration' },
+  { id: 'audit-log',          label: 'Approver Audit',   icon: '📋', group: 'Administration' },
 ]
 
 // ── GET /api/roles/pages — master list of all pages ──────────

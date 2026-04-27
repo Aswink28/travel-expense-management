@@ -169,6 +169,7 @@ export const employeesAPI = {
   get:            id           => api.get(`/employees/${id}`),
   create:         body         => api.post('/employees', body),
   update:         (id, body)   => api.put(`/employees/${id}`, body),
+  auditLog:       ()           => api.get('/employees/audit-log'),
   toggleStatus:   (id, active) => request(`/employees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) }),
   suspendWallet:  (id, reason) => api.post(`/employees/${id}/suspend-wallet`, { reason }),
   closeWallet:    (id, reason) => api.post(`/employees/${id}/close-wallet`, { reason }),

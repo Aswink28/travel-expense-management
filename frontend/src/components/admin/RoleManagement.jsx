@@ -162,14 +162,21 @@ export default function RoleManagement() {
                     <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{role.description || 'No description'}</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{
                     fontSize: 11, padding: '3px 10px', borderRadius: 20,
                     background: role.color + '14', color: role.color, fontWeight: 500,
                   }}>
                     {role.pages?.length || 0} page{role.pages?.length !== 1 ? 's' : ''}
                   </span>
-                  <span style={{ color: '#444', fontSize: 16, transition: 'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▾</span>
+                  <span style={{
+                    fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                    background: 'var(--bg-card-deep)', color: 'var(--text-muted)', fontWeight: 500,
+                    border: '1px solid var(--border)',
+                  }}>
+                    {role.linked_designations?.length || 0} designation{role.linked_designations?.length === 1 ? '' : 's'}
+                  </span>
+                  <span style={{ color: '#444', fontSize: 16, transition: 'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none', marginLeft: 4 }}>▾</span>
                 </div>
               </div>
 
@@ -188,6 +195,39 @@ export default function RoleManagement() {
                       </span>
                     )) : (
                       <span style={{ fontSize: 12, color: '#444' }}>No pages assigned</span>
+                    )}
+                  </div>
+
+                  {/* Linked designations — populated when an admin maps a designation
+                      to this role on the Designations page. */}
+                  <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
+                    Linked Designations
+                    {role.linked_designations?.length > 0 && (
+                      <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
+                        ({role.linked_designations.length})
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                    {role.linked_designations?.length ? role.linked_designations.map(d => (
+                      <span key={d.id} style={{
+                        fontSize: 11, padding:'4px 10px', borderRadius: 999,
+                        background: (role.color || '#0A84FF') + '14',
+                        color:      role.color || '#0A84FF',
+                        border: `1px solid ${(role.color || '#0A84FF')}30`,
+                        display:'inline-flex', alignItems:'center', gap: 6,
+                      }}>
+                        {d.designation}
+                        {d.tier_name && (
+                          <span style={{ fontSize: 9, opacity: 0.75, fontWeight: 600, padding:'1px 6px', borderRadius: 999, background:'rgba(0,0,0,0.25)' }}>
+                            {d.tier_name}
+                          </span>
+                        )}
+                      </span>
+                    )) : (
+                      <span style={{ fontSize: 12, color: '#FF9F0A' }}>
+                        ⚠ No designations linked yet — add one on the Designations page and pick this role.
+                      </span>
                     )}
                   </div>
 
