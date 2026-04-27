@@ -67,12 +67,15 @@ export default function ApprovalsQueue() {
       <Card style={{ padding:16, marginBottom:22 }}>
         <div style={{ fontSize:11, color:'#3A3A4A', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>Your approval authority as {user.role}</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-          {user.role === 'Tech Lead'   && <span style={{ fontSize:12, background:'#0A84FF18', color:'#0A84FF', padding:'4px 12px', borderRadius:6 }}>Approves Employee requests (hierarchy lane)</span>}
-          {user.role === 'Manager'     && <span style={{ fontSize:12, background:'#FF9F0A18', color:'#FF9F0A', padding:'4px 12px', borderRadius:6 }}>Approves Employee + TL requests (hierarchy lane)</span>}
-          {user.role === 'Finance'     && <span style={{ fontSize:12, background:'#40C8E018', color:'#40C8E0', padding:'4px 12px', borderRadius:6 }}>Mandatory finance approval + sets final amounts</span>}
-          {user.role === 'Super Admin' && <span style={{ fontSize:12, background:'#30D15818', color:'#30D158', padding:'4px 12px', borderRadius:6 }}>Full access — covers both hierarchy + finance lanes</span>}
+          {user.role === 'Request Approver' && <span style={{ fontSize:12, background:'#BF5AF218', color:'#BF5AF2', padding:'4px 12px', borderRadius:6 }}>Approves at your tier — your designation drives the order in the sequential chain</span>}
+          {user.role === 'Finance'           && <span style={{ fontSize:12, background:'#40C8E018', color:'#40C8E0', padding:'4px 12px', borderRadius:6 }}>Mandatory finance approval + sets final amounts</span>}
+          {user.designation && (
+            <span style={{ fontSize:11, background:'#1A1A22', color:'#888', padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)' }}>
+              Designation: <strong style={{ color:'#ccc' }}>{user.designation}</strong>
+            </span>
+          )}
         </div>
-        <div style={{ fontSize:11, color:'#444' }}>Approvals are parallel — hierarchy and Finance act independently. Wallet loads after BOTH lanes approve.</div>
+        <div style={{ fontSize:11, color:'#444' }}>Hierarchy approvals run sequentially by tier; Finance approves the budget in its own lane. Wallet loads only after both complete.</div>
       </Card>
 
       {queue.length === 0 ? (
@@ -175,7 +178,7 @@ export default function ApprovalsQueue() {
           </div>
 
           {/* Finance can set amounts */}
-          {['Finance','Super Admin','Manager'].includes(user.role) && (
+          {['Finance','Super Admin','Request Approver'].includes(user.role) && (
             <div style={{ marginBottom:16 }}>
               <div style={{ fontSize:11, color:'#555', marginBottom:8, textTransform:'uppercase', letterSpacing:'.04em' }}>
                 Approved Amounts (leave blank to approve as estimated)

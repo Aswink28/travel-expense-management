@@ -127,6 +127,28 @@ DELETE FROM role_pages WHERE page_id = 'ad-hoc-booking';
 -- Super Admin is no longer an approver — drop the Approvals sidebar entry.
 DELETE FROM role_pages WHERE role_name = 'Super Admin' AND page_id = 'approvals';
 
+-- Ensure Dashboard is the first menu item for every role.
+-- Step 1: if a role doesn't have a dashboard page, insert it.
+INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order)
+SELECT r.name, 'dashboard', 'Dashboard', '▦', 0
+FROM roles r
+WHERE NOT EXISTS (
+  SELECT 1 FROM role_pages p WHERE p.role_name = r.name AND p.page_id = 'dashboard'
+);
+
+-- Step 2: renumber every role's pages so Dashboard sits at sort_order=1 and the rest
+-- stay in their original relative order (no ties).
+WITH ranked AS (
+  SELECT id,
+         ROW_NUMBER() OVER (
+           PARTITION BY role_name
+           ORDER BY (page_id = 'dashboard') DESC, sort_order ASC, page_id ASC
+         ) AS new_order
+  FROM role_pages
+)
+UPDATE role_pages rp SET sort_order = ranked.new_order
+FROM ranked WHERE ranked.id = rp.id;
+
 -- Rename "Admin Bookings" → "Booking History" across any existing installs.
 UPDATE role_pages SET page_label = 'Booking History'
 WHERE page_id = 'admin-bookings-view' AND page_label <> 'Booking History';

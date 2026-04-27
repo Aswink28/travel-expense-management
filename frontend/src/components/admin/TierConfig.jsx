@@ -45,6 +45,7 @@ export default function TierConfig() {
   const canEdit   = user?.role === 'Super Admin'
   const [tiers, setTiers]                = useState([])
   const [roles, setRoles]                = useState([])
+  const [designations, setDesignations]  = useState([])
   const [loading, setLoading]            = useState(true)
   const [error, setError]                = useState('')
   const [saving, setSaving]              = useState(false)
@@ -61,18 +62,20 @@ export default function TierConfig() {
       setLoading(true)
       const [tres, rres] = await Promise.all([tiersAPI.list(), rolesAPI.list()])
       setTiers(tres.data?.tiers || [])
+      setDesignations(tres.data?.designations || [])
       setRoles(rres.data || [])
       setError('')
     } catch (e) { setError(e.message) }
     finally   { setLoading(false) }
   }
 
-  // Super Admin manages users/sites; Booking Admin handles post-approval bookings —
-  // neither is part of the approval flow, so keep both out of the picker.
-  const NON_APPROVER_ROLES = new Set(['Super Admin', 'Booking Admin'])
-  const activeRoleNames = roles
-    .filter(r => r.is_active && !NON_APPROVER_ROLES.has(r.name))
-    .map(r => r.name)
+  // Approver-pickable designations: exclude designations whose role is non-approver
+  // (Employee, Booking Admin, Super Admin). Tier.approver_roles entries are
+  // designation names, so the picker should show designations.
+  const NON_APPROVER_ROLES = new Set(['Employee', 'Super Admin', 'Booking Admin'])
+  const activeRoleNames = designations
+    .filter(d => d.role && !NON_APPROVER_ROLES.has(d.role))
+    .map(d => d.designation)
 
   // ── Tier CRUD ──────────────────────────────────────────────
   function openCreateTier() {

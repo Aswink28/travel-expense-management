@@ -8,10 +8,10 @@ const adminPool = new Pool({ host:process.env.DB_HOST, port:process.env.DB_PORT,
 const pool      = new Pool({ host:process.env.DB_HOST, port:process.env.DB_PORT, database:process.env.DB_NAME, user:process.env.DB_USER, password:process.env.DB_PASSWORD })
 
 const USERS = [
-  { email:'arjun@company.in',  password:'pass123',  role:'Software Engineer' },
-  { email:'priya@company.in',  password:'pass123',  role:'Software Engineer' },
-  { email:'deepa@company.in',  password:'pass123',  role:'Tech Lead'     },
-  { email:'ravi@company.in',   password:'pass123',  role:'Manager'       },
+  { email:'arjun@company.in',  password:'pass123',  role:'Employee' },
+  { email:'priya@company.in',  password:'pass123',  role:'Employee' },
+  { email:'deepa@company.in',  password:'pass123',  role:'Request Approver'     },
+  { email:'ravi@company.in',   password:'pass123',  role:'Request Approver'       },
   { email:'anil@company.in',   password:'pass123',  role:'Finance'       },
   { email:'meena@company.in',  password:'pass123',  role:'Booking Admin' },
   { email:'admin@company.in',  password:'admin123', role:'Super Admin'   },
@@ -86,6 +86,20 @@ async function run() {
   await pool.query(tierExtSql)
   console.log('   ✓ Tier policy fields extended')
 
+  // 2g. Role consolidation migration — collapses job-title roles (Tech Lead, Manager,
+  //     Software Engineer) into permission classes (Employee, Request Approver).
+  //     Runs in two phases because Postgres won't let a newly-added enum value be
+  //     used in the same transaction it was created in.
+  console.log('\n2g. Running role consolidation migration (phase 1: enum)...')
+  const roleEnumSql = fs.readFileSync(path.join(__dirname,'..','sql','role_consolidation_enum.sql'),'utf8')
+  await pool.query(roleEnumSql)
+  console.log('   ✓ Enum values added')
+
+  console.log('\n2g. Running role consolidation migration (phase 2: data)...')
+  const roleConsSql = fs.readFileSync(path.join(__dirname,'..','sql','role_consolidation_migration.sql'),'utf8')
+  await pool.query(roleConsSql)
+  console.log('   ✓ Roles, users, and designations consolidated')
+
   // 3. Create uploads directory
   const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })
@@ -131,7 +145,7 @@ async function run() {
         finance_approved, finance_approved_by, finance_approved_at,
         wallet_credited, wallet_credit_amount, wallet_credited_at, booking_status
       ) VALUES (
-        'TR-DEMO1', $1, 'Arjun Sharma', 'Software Engineer', 'Engineering',
+        'TR-DEMO1', $1, 'Arjun Sharma', 'Employee', 'Engineering',
         'Chennai', 'Bangalore', 'short', 'Train', 'self',
         CURRENT_DATE + 5, CURRENT_DATE + 7, 'Client Demo',
         1800, 3000, 6300,
@@ -149,7 +163,7 @@ async function run() {
       await pool.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,balance_after) VALUES ($1,$2,'TR-DEMO1','credit','allowance',1500,'Daily allowance (3 days) — TR-DEMO1',$3) ON CONFLICT DO NOTHING`, [wid1, arjun[0].id, b1+6300])
     }
 
-    if (deepa.length) await pool.query(`INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note) VALUES ('TR-DEMO1',$1,'Deepa Krishnan','Tech Lead','approved','Valid trip') ON CONFLICT DO NOTHING`, [deepa[0].id])
+    if (deepa.length) await pool.query(`INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note) VALUES ('TR-DEMO1',$1,'Deepa Krishnan','Request Approver','approved','Valid trip') ON CONFLICT DO NOTHING`, [deepa[0].id])
     if (anil.length)  await pool.query(`INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note,approved_travel_cost,approved_hotel_cost,approved_allowance) VALUES ('TR-DEMO1',$1,'Anil Menon','Finance','approved','Budget approved',1800,3000,1500) ON CONFLICT DO NOTHING`, [anil[0].id])
     console.log('   ✓ TR-DEMO1 — Arjun — Self Booking — approved + wallet ₹6,300 loaded')
   }
@@ -170,7 +184,7 @@ async function run() {
         finance_approved, finance_approved_by, finance_approved_at,
         wallet_credited, wallet_credit_amount, wallet_credited_at, booking_status
       ) VALUES (
-        'TR-DEMO2', $1, 'Priya Nair', 'Software Engineer', 'QA',
+        'TR-DEMO2', $1, 'Priya Nair', 'Employee', 'QA',
         'Chennai', 'Mumbai', 'long', 'Flight', 'company',
         CURRENT_DATE + 10, CURRENT_DATE + 13, 'Sprint Review',
         8500, 12000, 24500,
@@ -188,7 +202,7 @@ async function run() {
       await pool.query(`INSERT INTO wallet_transactions (wallet_id,user_id,request_id,txn_type,category,amount,description,balance_after) VALUES ($1,$2,'TR-DEMO2','credit','allowance',4000,'Daily allowance (4 days) — TR-DEMO2',$3) ON CONFLICT DO NOTHING`, [wid2, priya[0].id, b2+24500])
     }
 
-    if (deepa.length) await pool.query(`INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note) VALUES ('TR-DEMO2',$1,'Deepa Krishnan','Tech Lead','approved','Approved for sprint review') ON CONFLICT DO NOTHING`, [deepa[0].id])
+    if (deepa.length) await pool.query(`INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note) VALUES ('TR-DEMO2',$1,'Deepa Krishnan','Request Approver','approved','Approved for sprint review') ON CONFLICT DO NOTHING`, [deepa[0].id])
     if (anil.length)  await pool.query(`INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note,approved_travel_cost,approved_hotel_cost,approved_allowance) VALUES ('TR-DEMO2',$1,'Anil Menon','Finance','approved','Finance approved',8500,12000,4000) ON CONFLICT DO NOTHING`, [anil[0].id])
     console.log('   ✓ TR-DEMO2 — Priya — COMPANY Booking — approved + wallet ₹24,500 loaded ← Booking Admin will see this')
   }
@@ -203,7 +217,7 @@ async function run() {
         estimated_travel_cost, estimated_hotel_cost, estimated_total,
         status, booking_status
       ) VALUES (
-        'TR-DEMO3', $1, 'Arjun Sharma', 'Software Engineer', 'Engineering',
+        'TR-DEMO3', $1, 'Arjun Sharma', 'Employee', 'Engineering',
         'Chennai', 'Delhi', 'long', 'Flight', 'company',
         CURRENT_DATE + 20, CURRENT_DATE + 23, 'Architecture Review',
         9000, 15000, 28000,

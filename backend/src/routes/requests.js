@@ -7,50 +7,64 @@ const router  = express.Router()
 router.use(authenticate)
 
 // ── Sequential approval engine ───────────────────────────────
-// Tier hierarchy (1 = highest authority). Lower authority approves first.
-const ROLE_RANK = {
-  'Super Admin':   1,
-  'Booking Admin': 2,
-  'Manager':       3,
-  'Finance':       3,
-  'Tech Lead':     4,
-  'Software Engineer': 5,
-}
-function roleRank(role) { return ROLE_RANK[role] ?? 99 }
+// Roles are now permission classes (Employee, Request Approver, Finance,
+// Booking Admin, Super Admin). Designations carry the granular hierarchy.
+// Each tier's approver_roles entries are treated as DESIGNATION NAMES — the
+// engine matches caller.designation against those entries, ranked by the
+// designation's tier rank (lower rank number = higher authority).
 
-// Sort roles so the lowest-authority approver comes first (highest rank number first).
-// Super Admin (manages users/sites) and Booking Admin (handles post-approval bookings)
-// are intentionally excluded — they're never part of the approval sequence.
-function computeApprovalSequence(approverRoles) {
-  if (!Array.isArray(approverRoles) || !approverRoles.length) return []
-  const BLOCKED = new Set(['Super Admin', 'Booking Admin'])
-  const uniq = [...new Set(approverRoles.filter(r => r && !BLOCKED.has(r)))]
-  return uniq.sort((a, b) => roleRank(b) - roleRank(a))
+// These role values never appear in any approval sequence.
+const NON_APPROVER_ROLES = new Set(['Employee', 'Booking Admin', 'Super Admin'])
+
+// Look up tier ranks for a list of designations in one query.
+async function fetchDesignationRanks(client, designations) {
+  if (!designations.length) return {}
+  const { rows } = await client.query(`
+    SELECT dt.designation, t.rank
+    FROM designation_tiers dt JOIN tiers t ON t.id = dt.tier_id
+    WHERE dt.designation = ANY($1)
+  `, [designations])
+  const map = {}
+  for (const r of rows) map[r.designation.toLowerCase()] = r.rank
+  return map
 }
 
-// Returns the role expected to act next on the request, or null when every step is done.
+// Sort designations so the lowest-authority approver (highest rank number) acts first.
+// Stable: designations without a known rank fall to the end of the list.
+async function computeApprovalSequence(client, approverEntries) {
+  if (!Array.isArray(approverEntries) || !approverEntries.length) return []
+  const uniq = [...new Set(approverEntries.filter(e => typeof e === 'string' && e.trim()))]
+  if (!uniq.length) return []
+  const ranks = await fetchDesignationRanks(client, uniq)
+  return uniq.slice().sort(
+    (a, b) => (ranks[b.toLowerCase()] ?? -1) - (ranks[a.toLowerCase()] ?? -1)
+  )
+}
+
+// Returns the designation expected to act next on the request, or null when every step is done.
 async function nextPendingStep(client, requestId, sequence) {
   if (!sequence.length) return null
   const { rows } = await client.query(
-    `SELECT DISTINCT approver_role FROM approvals WHERE request_id=$1 AND action='approved'`,
+    `SELECT DISTINCT LOWER(approver_designation) AS d
+     FROM approvals
+     WHERE request_id=$1 AND action='approved' AND approver_designation IS NOT NULL`,
     [requestId]
   )
-  const approved = new Set(rows.map(r => r.approver_role))
-  return sequence.find(r => !approved.has(r)) || null
+  const approved = new Set(rows.map(r => r.d))
+  return sequence.find(d => !approved.has(d.toLowerCase())) || null
 }
 
-// Resolve the effective approver_roles sequence for a given request.
-// Tier Config is the single source of truth; legacy paths remain as safety nets.
+// Resolve the effective approver designation sequence for a given request.
 async function approverSequenceForRequest(client, tr) {
-  // 1. Per-employee override (users.approver_roles)
+  // 1. Per-employee override (users.approver_roles — entries are designations)
   const { rows: userRows } = await client.query(
     'SELECT approver_roles FROM users WHERE id = $1',
     [tr.user_id]
   )
   const perUser = userRows[0]?.approver_roles
-  if (Array.isArray(perUser) && perUser.length) return computeApprovalSequence(perUser)
+  if (Array.isArray(perUser) && perUser.length) return computeApprovalSequence(client, perUser)
 
-  // 2. Tier defaults (via tier mapped to user's designation, or directly via tier_id)
+  // 2. Tier defaults (via user's designation → tier, or directly via tier_id)
   const { rows: tierRows } = await client.query(`
     SELECT t.approver_roles
     FROM users u
@@ -58,28 +72,26 @@ async function approverSequenceForRequest(client, tr) {
     WHERE u.id = $1
   `, [tr.user_id])
   const tierRoles = tierRows[0]?.approver_roles
-  if (Array.isArray(tierRoles) && tierRoles.length) return computeApprovalSequence(tierRoles)
+  if (Array.isArray(tierRoles) && tierRoles.length) return computeApprovalSequence(client, tierRoles)
 
-  // 3. Role-name designation fallback — look up designation_tiers using the user's role
-  //    as the designation key. This lets existing employees (who have no designation
-  //    set yet) still pick up the tier for their role.
+  // 3. Designation-name fallback (matches the user's role text against designation_tiers)
   const { rows: roleTier } = await client.query(`
     SELECT t.approver_roles
     FROM designation_tiers dt
     JOIN tiers t ON t.id = dt.tier_id
-    WHERE LOWER(dt.designation) = LOWER($1)
+    WHERE LOWER(dt.designation) = LOWER($1::text)
     LIMIT 1
   `, [tr.user_role])
   if (Array.isArray(roleTier[0]?.approver_roles) && roleTier[0].approver_roles.length) {
-    return computeApprovalSequence(roleTier[0].approver_roles)
+    return computeApprovalSequence(client, roleTier[0].approver_roles)
   }
 
-  // 4. Legacy fallback (role_approvers table) — still honoured for backward compat
+  // 4. Legacy fallback (role_approvers table)
   const { rows: legacyRows } = await client.query(
     'SELECT approver_role_name FROM role_approvers WHERE role_name = $1',
     [tr.user_role]
   )
-  return computeApprovalSequence(legacyRows.map(r => r.approver_role_name))
+  return computeApprovalSequence(client, legacyRows.map(r => r.approver_role_name))
 }
 
 // ── Distance/mode lookup helper ───────────────────────────────
@@ -116,11 +128,11 @@ router.get('/', async (req, res, next) => {
     const { role, id:uid } = req.user
     const { status } = req.query
     let where = '', params = []
-    if (role === 'Software Engineer')      { where = 'WHERE tr.user_id=$1'; params=[uid] }
-    else if (role === 'Tech Lead') { where = `WHERE tr.user_role='Software Engineer'` }
-    else if (role === 'Manager')   { where = `WHERE tr.user_role IN ('Software Engineer','Tech Lead','Finance')` }
-    else if (role === 'Finance')   { where = `WHERE tr.status IN ('pending','pending_finance') OR tr.finance_approved=FALSE` }
+    if (role === 'Employee')           { where = 'WHERE tr.user_id=$1'; params=[uid] }
+    else if (role === 'Request Approver') { where = `WHERE tr.user_role IN ('Employee')` }
+    else if (role === 'Finance')       { where = `WHERE tr.status IN ('pending','pending_finance') OR tr.finance_approved=FALSE` }
     else if (role === 'Booking Admin') { where = `WHERE tr.status='approved' AND tr.booking_type='company'` }
+    // Super Admin: no filter (sees all)
     if (status) {
       where += (where?` AND `:' WHERE ') + `tr.status=$${params.length+1}`
       params.push(status)
@@ -144,22 +156,23 @@ router.get('/', async (req, res, next) => {
 // ── GET /api/requests/queue ───────────────────────────────────
 router.get('/queue', async (req, res, next) => {
   try {
-    const { role, id: uid } = req.user
+    const { role, designation, id: uid } = req.user
     // Roles that never see the approval queue:
-    //   · Software Engineer → submits requests, doesn't approve
-    //   · Booking Admin     → handles post-approval bookings only
-    //   · Super Admin       → manages users/sites, doesn't approve travel requests
-    if (['Software Engineer', 'Booking Admin', 'Super Admin'].includes(role)) {
+    //   · Employee       → submits requests, doesn't approve
+    //   · Booking Admin  → handles post-approval bookings only
+    //   · Super Admin    → manages users/sites, doesn't approve travel requests
+    if (NON_APPROVER_ROLES.has(role)) {
       return res.json({ success: true, count: 0, data: [] })
     }
 
-    // Every other role (including Finance): show only requests whose NEXT pending
-    // step matches this role. If Finance is NOT part of the sequence (legacy budget
-    // lane) we fall back to the old behaviour of surfacing it for the amount set-up.
+    // Approver / Finance: show only requests whose NEXT pending step matches the
+    // caller's designation. Finance is also surfaced when it isn't in the sequence
+    // (legacy parallel budget lane).
+    const callerDesignationLc = (designation || '').toLowerCase()
     const isFinance = role === 'Finance'
     const { rows: candidates } = await pool.query(`
       SELECT tr.*,
-             COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
+             COALESCE((SELECT json_agg(json_build_object('approver_name',a.approver_name,'approver_role',a.approver_role,'approver_designation',a.approver_designation,'action',a.action,'note',a.note,'acted_at',a.acted_at) ORDER BY a.acted_at) FROM approvals a WHERE a.request_id=tr.id),'[]') AS approvals
       FROM travel_requests tr
       WHERE tr.status IN ('pending','pending_finance')
         AND (
@@ -174,13 +187,15 @@ router.get('/queue', async (req, res, next) => {
     const filtered = []
     for (const tr of candidates) {
       const sequence = await approverSequenceForRequest(pool, tr)
-      if (isFinance && !sequence.includes('Finance')) {
+      const sequenceLc = sequence.map(s => s.toLowerCase())
+      if (isFinance && !sequenceLc.includes('finance')) {
         // Parallel budget lane — Finance handles amounts independently.
         filtered.push(tr)
         continue
       }
+      if (!callerDesignationLc) continue
       const step = await nextPendingStep(pool, tr.id, sequence)
-      if (step === role) filtered.push(tr)
+      if (step && step.toLowerCase() === callerDesignationLc) filtered.push(tr)
     }
     res.json({ success: true, count: filtered.length, data: filtered })
   } catch (e) { next(e) }
@@ -280,7 +295,8 @@ router.post('/:id/action', async (req, res, next) => {
     if (!['approved','rejected'].includes(action)) { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:'action must be approved or rejected' }) }
     if (action==='rejected' && !note?.trim())      { await client.query('ROLLBACK'); return res.status(400).json({ success:false, message:'Rejection note required' }) }
     if (u.role === 'Booking Admin')                { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Booking Admin is not part of the approval flow' }) }
-    if (u.role === 'Super Admin')                  { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Super Admin is not part of the approval flow — approvals are handled by Tech Lead / Manager / Finance.' }) }
+    if (u.role === 'Super Admin')                  { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Super Admin is not part of the approval flow — approvals are handled by Request Approver or Finance.' }) }
+    if (u.role === 'Employee')                     { await client.query('ROLLBACK'); return res.status(403).json({ success:false, message:'Employees do not approve requests.' }) }
 
     const { rows: reqRows } = await client.query('SELECT * FROM travel_requests WHERE id=$1 FOR UPDATE',[id])
     if (!reqRows.length) { await client.query('ROLLBACK'); return res.status(404).json({ success:false, message:'Not found' }) }
@@ -296,14 +312,21 @@ router.post('/:id/action', async (req, res, next) => {
     // leave a stale row behind when early-returning with 403.
     let sequence = []
     let inSequence = false
+    const callerDesignationLc = (u.designation || '').toLowerCase()
     if (action === 'approved') {
       sequence   = await approverSequenceForRequest(client, tr)
-      inSequence = sequence.includes(u.role)
+      const sequenceLc = sequence.map(s => s.toLowerCase())
+      inSequence = !!callerDesignationLc && sequenceLc.includes(callerDesignationLc)
       const isFinance = u.role === 'Finance'
 
       if (!inSequence && !isFinance) {
         await client.query('ROLLBACK')
-        return res.status(403).json({ success: false, message: `Your role (${u.role}) is not configured to approve requests from ${tr.user_name}` })
+        return res.status(403).json({
+          success: false,
+          message: u.designation
+            ? `Your designation "${u.designation}" is not configured to approve requests from ${tr.user_name}`
+            : `Your account has no designation set, so it can't be matched to an approval step. Update your designation in Employee Management.`,
+        })
       }
 
       if (inSequence) {
@@ -316,19 +339,24 @@ router.post('/:id/action', async (req, res, next) => {
           await client.query('ROLLBACK')
           return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
         }
-        if (step !== u.role) {
-          const order = sequence.map((r, i) => `${i + 1}. ${r}`).join(' → ')
+        if (step.toLowerCase() !== callerDesignationLc) {
+          const order = sequence.map((d, i) => `${i + 1}. ${d}`).join(' → ')
           await client.query('ROLLBACK')
           return res.status(403).json({
             success: false,
-            message: `Out of order. The next approver must be ${step}. Sequence: ${order}`,
+            message: `Out of order. The next approver must hold the designation "${step}". Sequence: ${order}`,
           })
         }
       }
     }
 
-    await client.query('INSERT INTO approvals (request_id,approver_id,approver_name,approver_role,action,note,approved_travel_cost,approved_hotel_cost,approved_allowance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [id,u.id,u.name,u.role,action,note||null,approved_travel_cost||null,approved_hotel_cost||null,approved_allowance||null])
+    await client.query(
+      `INSERT INTO approvals (request_id, approver_id, approver_name, approver_role, approver_designation,
+                              action, note, approved_travel_cost, approved_hotel_cost, approved_allowance)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [id, u.id, u.name, u.role, u.designation || null,
+       action, note || null, approved_travel_cost || null, approved_hotel_cost || null, approved_allowance || null]
+    )
 
     let walletWarning = null
 

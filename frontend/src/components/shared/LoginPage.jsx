@@ -3,9 +3,9 @@ import { useAuth } from '../../context/AuthContext'
 import ThemeSwitcher from './ThemeSwitcher'
 
 const DEMO = [
-  { name: 'Arjun Sharma',   email: 'arjun@company.in',  role: 'Software Engineer', color: '#5BAEFF', avatar: 'AS', password: 'pass123' },
-  { name: 'Deepa Krishnan', email: 'deepa@company.in',  role: 'Tech Lead',     color: '#B868FF', avatar: 'DK', password: 'pass123' },
-  { name: 'Ravi Kumar',     email: 'ravi@company.in',   role: 'Manager',       color: '#FFA84A', avatar: 'RK', password: 'pass123' },
+  { name: 'Arjun Sharma',   email: 'arjun@company.in',  role: 'Employee',         color: '#5BAEFF', avatar: 'AS', password: 'pass123' },
+  { name: 'Deepa Krishnan', email: 'deepa@company.in',  role: 'Request Approver', color: '#B868FF', avatar: 'DK', password: 'pass123' },
+  { name: 'Ravi Kumar',     email: 'ravi@company.in',   role: 'Request Approver', color: '#FFA84A', avatar: 'RK', password: 'pass123' },
   { name: 'Anil Menon',     email: 'anil@company.in',   role: 'Finance',       color: '#5EE9DD', avatar: 'AM', password: 'pass123' },
   { name: 'Meena Iyer',     email: 'meena@company.in',  role: 'Booking Admin', color: '#FF6B8A', avatar: 'MI', password: 'pass123' },
   { name: 'Super Admin',    email: 'admin@company.in',  role: 'Super Admin',   color: '#5EE9B5', avatar: 'SA', password: 'admin123' },

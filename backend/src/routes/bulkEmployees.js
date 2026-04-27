@@ -53,7 +53,7 @@ async function processJob(jobId) {
 
       const parts = data.name.trim().split(/\s+/)
       const avatar = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : data.name.slice(0, 2).toUpperCase()
-      const { rows: roleRow } = await client.query('SELECT color FROM roles WHERE name=$1', [data.role || 'Software Engineer'])
+      const { rows: roleRow } = await client.query('SELECT color FROM roles WHERE name=$1', [data.role || 'Employee'])
       const color = roleRow[0]?.color || '#0A84FF'
       const password_hash = await bcrypt.hash(data.password, 10)
 
@@ -77,7 +77,7 @@ async function processJob(jobId) {
                             mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
                             ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id, ppi_wallet_id`,
-        [emp_id, data.name.trim(), data.email, password_hash, data.role || 'Software Engineer',
+        [emp_id, data.name.trim(), data.email, password_hash, data.role || 'Employee',
          data.department || 'Engineering', avatar, color, data.reporting_to || null,
          data.mobile_number, data.date_of_birth, data.gender, data.pan_number, data.aadhaar_number,
          ppiWallet.walletId, ppiWallet.walletNumber, ppiWallet.customerId, ppiWallet.walletStatus, ppiWallet.kycStatus]
@@ -288,9 +288,9 @@ router.delete('/jobs/:jobId', async (req, res, next) => {
 router.get('/template', (req, res) => {
   const data = [
     { name: 'Rahul Sharma', email: 'rahul@company.in', password: 'Pass@123', mobile_number: '9876543210', date_of_birth: '1995-03-15',
-      gender: 'Male', pan_number: 'ABCDE1234F', aadhaar_number: '123456789012', role: 'Software Engineer', department: 'Engineering', reporting_to: 'Manager Name' },
+      gender: 'Male', pan_number: 'ABCDE1234F', aadhaar_number: '123456789012', role: 'Employee', department: 'Engineering', reporting_to: 'Manager Name' },
     { name: 'Priya Nair', email: 'priya@company.in', password: 'Pass@123', mobile_number: '9876543211', date_of_birth: '1992-08-22',
-      gender: 'Female', pan_number: 'FGHIJ5678K', aadhaar_number: '234567890123', role: 'Tech Lead', department: 'Design', reporting_to: 'Ravi Kumar' },
+      gender: 'Female', pan_number: 'FGHIJ5678K', aadhaar_number: '234567890123', role: 'Request Approver', department: 'Design', reporting_to: 'Ravi Kumar' },
   ]
   const ws = XLSX.utils.json_to_sheet(data)
   const wb = XLSX.utils.book_new()

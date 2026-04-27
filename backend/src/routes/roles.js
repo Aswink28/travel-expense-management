@@ -119,16 +119,18 @@ router.post('/', async (req, res, next) => {
       [roleName, description || null, color || '#888']
     )
 
-    // Insert page assignments
-    if (pages && pages.length) {
-      for (let i = 0; i < pages.length; i++) {
-        const p = pages[i]
-        const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}
-        await client.query(
-          'INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES ($1, $2, $3, $4, $5)',
-          [roleName, p.page_id, p.label || pageInfo.label || p.page_id, p.icon || pageInfo.icon || '◈', i + 1]
-        )
-      }
+    // Insert page assignments — Dashboard is always first, regardless of what the
+    // admin selected (or didn't select) in the modal.
+    const dashboardInfo = ALL_PAGES.find(ap => ap.id === 'dashboard') || { label: 'Dashboard', icon: '▦' }
+    const otherPages = (pages || []).filter(p => p.page_id !== 'dashboard')
+    const orderedPages = [{ page_id: 'dashboard', label: dashboardInfo.label, icon: dashboardInfo.icon }, ...otherPages]
+    for (let i = 0; i < orderedPages.length; i++) {
+      const p = orderedPages[i]
+      const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}
+      await client.query(
+        'INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES ($1, $2, $3, $4, $5)',
+        [roleName, p.page_id, p.label || pageInfo.label || p.page_id, p.icon || pageInfo.icon || '◈', i + 1]
+      )
     }
 
     // Approval flow is NOT configured here — it comes from Tier Config via
@@ -193,11 +195,14 @@ router.put('/:id', async (req, res, next) => {
       await client.query(`UPDATE roles SET ${sets.join(', ')} WHERE id = $${idx}`, vals)
     }
 
-    // Replace page assignments
+    // Replace page assignments — Dashboard is always pinned to position 1.
     if (pages !== undefined) {
       await client.query('DELETE FROM role_pages WHERE role_name = $1', [role.name])
-      for (let i = 0; i < pages.length; i++) {
-        const p = pages[i]
+      const dashboardInfo = ALL_PAGES.find(ap => ap.id === 'dashboard') || { label: 'Dashboard', icon: '▦' }
+      const otherPages = pages.filter(p => p.page_id !== 'dashboard')
+      const orderedPages = [{ page_id: 'dashboard', label: dashboardInfo.label, icon: dashboardInfo.icon }, ...otherPages]
+      for (let i = 0; i < orderedPages.length; i++) {
+        const p = orderedPages[i]
         const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}
         await client.query(
           'INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES ($1, $2, $3, $4, $5)',

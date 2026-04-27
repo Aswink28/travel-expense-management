@@ -25,18 +25,47 @@ const ROLE_RANK = {
   "Software Engineer": 5,
 };
 
-// Default designation mirrors the role name. Override this map if a role ever
-// needs to map to a differently-named designation in Tier Config.
-const ROLE_DEFAULT_DESIGNATION = {};
+// When a role is picked, auto-apply its default designation. Roles are permission
+// classes (Employee, Request Approver, Finance, Booking Admin, Super Admin); the
+// default designation here is the most common job title for each class.
+const ROLE_DEFAULT_DESIGNATION = {
+  "Employee": "Software Engineer",
+  "Request Approver": "Tech Lead",
+  "Finance": "Finance",
+  "Booking Admin": "Booking Admin",
+  "Super Admin": "Super Admin",
+};
 function designationForRole(roleName) {
   return ROLE_DEFAULT_DESIGNATION[roleName] || roleName;
 }
+
+const readonlyLabelStyle = {
+  fontSize: 11,
+  color: "var(--text-muted)",
+  marginBottom: 6,
+  display: "block",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+const readonlyInputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--bg-input)",
+  outline: "none",
+  fontSize: 13,
+  color: "var(--text-muted)",
+  cursor: "not-allowed",
+  opacity: 0.85,
+};
 
 const INITIAL_FORM = {
   name: "",
   email: "",
   password: "",
-  role: "Software Engineer",
+  role: "Employee",
   department: "",
   reporting_to: "",
   mobile_number: "",
@@ -157,7 +186,7 @@ export default function EmployeeManagement({ setTab }) {
 
   function openCreate() {
     setEditId(null);
-    const defaults = defaultApproversForRole("Software Engineer");
+    const defaults = defaultApproversForRole("Employee");
     setForm({
       ...INITIAL_FORM,
       approver_roles: defaults,
@@ -169,7 +198,7 @@ export default function EmployeeManagement({ setTab }) {
     setShowModal(true);
     // Auto-resolve tier for the default role so the modal opens with the tier
     // policy preview already visible.
-    applyDesignation(designationForRole("Software Engineer"));
+    applyDesignation(designationForRole("Employee"));
   }
 
   function toDateInput(val) {
@@ -245,7 +274,8 @@ export default function EmployeeManagement({ setTab }) {
     if (!editId && !v.password) e.password = "Password is required";
     else if (v.password && v.password.length < 6)
       e.password = "Minimum 6 characters";
-    if (!v.role) e.role = "Role is required";
+    if (!v.designation) e.designation = "Designation is required";
+    if (!v.role) e.role = "Role could not be derived from the selected designation. Map the designation to a role in the Designations page.";
     if (!v.mobile_number) e.mobile_number = "Mobile number is required";
     else if (!/^\d{10}$/.test(v.mobile_number))
       e.mobile_number = "Must be 10 digits";
@@ -1198,7 +1228,8 @@ export default function EmployeeManagement({ setTab }) {
               error={fieldErrors.aadhaar_number}
             />
 
-            {/* Row 5: Role, Dept, Reporting */}
+            {/* Row 5: Designation (real), Department, Reporting To
+                Picking a designation auto-fills Role and Tier from Tier Config. */}
             <div
               style={{
                 display: "grid",
@@ -1208,13 +1239,15 @@ export default function EmployeeManagement({ setTab }) {
             >
               <Select
                 label={<MLabel text="Designation" required />}
-                value={form.role}
-                onChange={(e) => f("role", e.target.value)}
-                error={fieldErrors.role}
+                value={form.designation}
+                onChange={(e) => applyDesignation(e.target.value)}
+                error={fieldErrors.designation}
               >
-                {ROLE_NAMES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
+                <option value="">Select a designation</option>
+                {designations.map((d) => (
+                  <option key={d.id} value={d.designation}>
+                    {d.designation}
+                    {d.tier_name ? ` · ${d.tier_name}` : ""}
                   </option>
                 ))}
               </Select>
@@ -1232,7 +1265,7 @@ export default function EmployeeManagement({ setTab }) {
               />
             </div>
 
-            {/* Designation → auto-assigns tier */}
+            {/* Auto-derived Role + Tier (read-only, from the selected designation) */}
             <div
               style={{
                 display: "grid",
@@ -1241,80 +1274,32 @@ export default function EmployeeManagement({ setTab }) {
               }}
             >
               <div>
-                <label
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                    marginBottom: 6,
-                    display: "block",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Designation
+                <label style={readonlyLabelStyle}>
+                  Role <span style={{ opacity: 0.7, fontWeight: 500 }}>· auto from designation</span>
                 </label>
                 <input
-                  list="emp-designation-options"
-                  value={form.designation}
-                  onChange={(e) => applyDesignation(e.target.value)}
-                  placeholder="e.g. Software Engineer"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg-input)",
-                    outline: "none",
-                    fontSize: 13,
-                    color: "var(--text-primary)",
-                  }}
+                  type="text"
+                  value={form.role || ""}
+                  readOnly
+                  placeholder="Pick a designation to auto-assign"
+                  style={readonlyInputStyle}
                 />
-                <datalist id="emp-designation-options">
-                  {designations.map((d) => (
-                    <option key={d.id} value={d.designation}>
-                      {d.tier_name}
-                    </option>
-                  ))}
-                </datalist>
               </div>
               <div>
-                <label
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                    marginBottom: 6,
-                    display: "block",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Tier <span style={{ opacity: 0.7, fontWeight: 500 }}>· auto-assigned</span>
+                <label style={readonlyLabelStyle}>
+                  Tier <span style={{ opacity: 0.7, fontWeight: 500 }}>· auto from designation</span>
                 </label>
-                <select
-                  value={form.tier_id || ""}
-                  disabled
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg-input)",
-                    outline: "none",
-                    fontSize: 13,
-                    color: "var(--text-muted)",
-                    cursor: "not-allowed",
-                    opacity: 0.75,
-                  }}
-                >
-                  <option value="">Auto (from role / designation)</option>
-                  {tiers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} · rank {t.rank}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  value={(() => {
+                    if (!form.tier_id) return "";
+                    const t = tiers.find((x) => x.id === form.tier_id);
+                    return t ? `${t.name} · rank ${t.rank}` : "";
+                  })()}
+                  readOnly
+                  placeholder="Pick a designation to auto-assign"
+                  style={readonlyInputStyle}
+                />
               </div>
             </div>
 

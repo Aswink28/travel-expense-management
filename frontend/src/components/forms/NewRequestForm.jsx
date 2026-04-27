@@ -11,14 +11,15 @@ export default function NewRequestForm({ onSuccess }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Approval configuration is sourced entirely from the employee profile (Employee Creation).
-  // Approvals run strictly in order from lowest-authority to highest.
-  const ROLE_RANK = {
+  // Approver chain entries are designation names (e.g. "Tech Lead", "Manager"). This
+  // map ranks them by tier authority so we render the chain in execution order
+  // (lowest authority → highest authority).
+  const DESIGNATION_RANK = {
     'Super Admin': 1, 'Booking Admin': 2, 'Manager': 3, 'Finance': 3, 'Tech Lead': 4, 'Software Engineer': 5,
   }
   const approverRoles = (Array.isArray(user?.approver_roles) ? user.approver_roles : [])
     .slice()
-    .sort((a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99))
+    .sort((a, b) => (DESIGNATION_RANK[b] ?? 99) - (DESIGNATION_RANK[a] ?? 99))
 
   // ----- Form State -----
   const [form, setForm] = useState({

@@ -27,9 +27,8 @@ function WelcomeBanner() {
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const msgs = {
-    'Software Engineer': 'Submit requests, track wallet balance, and download tickets from the dashboard.',
-    'Tech Lead':     'Approve team requests. Both hierarchy and Finance lanes must complete before wallet loads.',
-    'Manager':       'Review and approve escalated requests. Finance approves budget amounts in parallel.',
+    'Employee':         'Submit requests, track wallet balance, and download tickets from the dashboard.',
+    'Request Approver': 'Approve travel requests at your tier in the chain. Both hierarchy and Finance lanes must complete before wallet loads.',
     'Finance':       'You set the final approved amounts. Wallet is credited after your approval.',
     'Booking Admin': 'Book travel and hotels using employee wallet. Upload tickets to their portal.',
     'Super Admin':   'Full access. Your approval covers both hierarchy and Finance lanes simultaneously.',
@@ -61,11 +60,11 @@ function InnerApp() {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
-    if (['Tech Lead','Manager','Finance','Super Admin'].includes(user.role)) {
+    if (['Request Approver','Finance','Super Admin'].includes(user.role)) {
       requestsAPI.queue().then(d => setPendingCount(d.count||0)).catch(()=>{})
     }
     const interval = setInterval(() => {
-      if (['Tech Lead','Manager','Finance','Super Admin'].includes(user.role)) {
+      if (['Request Approver','Finance','Super Admin'].includes(user.role)) {
         requestsAPI.queue().then(d => setPendingCount(d.count||0)).catch(()=>{})
       }
     }, 30000) // refresh every 30s

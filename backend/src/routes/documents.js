@@ -20,7 +20,7 @@ router.get('/:id/download', async (req, res, next) => {
 
     // Check access: own doc or admin/booking admin
     const canAccess = doc.for_user_id === req.user.id ||
-      ['Booking Admin','Super Admin','Manager','Finance'].includes(req.user.role)
+      ['Booking Admin','Super Admin','Request Approver','Finance'].includes(req.user.role)
 
     if (!canAccess) return res.status(403).json({ success:false, message:'Access denied' })
 
@@ -41,7 +41,7 @@ router.get('/request/:requestId', async (req, res, next) => {
     if (!tr.length) return res.status(404).json({ success:false, message:'Request not found' })
 
     const canAccess = tr[0].user_id === req.user.id ||
-      ['Booking Admin','Super Admin','Manager','Finance','Tech Lead'].includes(req.user.role)
+      ['Booking Admin','Super Admin','Request Approver','Finance'].includes(req.user.role)
     if (!canAccess) return res.status(403).json({ success:false, message:'Access denied' })
 
     const { rows } = await pool.query(`

@@ -19,9 +19,8 @@ const options = {
             password: {
               tokenUrl: '/api/auth/oauth/token',
               scopes: {
-                'Software Engineer': 'Software Engineer access',
-                'Tech Lead':     'Tech Lead access',
-                'Manager':       'Manager access',
+                'Employee':         'Submit and track requests',
+                'Request Approver': 'Approve travel requests at their tier',
                 'Finance':       'Finance access',
                 'Booking Admin': 'Booking Admin access',
                 'Super Admin':   'Full access',
@@ -51,7 +50,7 @@ const options = {
         },
         UserRole: {
           type: 'string',
-          enum: ['Software Engineer', 'Tech Lead', 'Manager', 'Finance', 'Booking Admin', 'Super Admin'],
+          enum: ['Employee', 'Request Approver', 'Finance', 'Booking Admin', 'Super Admin'],
         },
         WalletSummary: {
           type: 'object',
@@ -309,7 +308,7 @@ const options = {
                 access_token: { type: 'string' },
                 token_type:   { type: 'string', example: 'Bearer' },
                 expires_in:   { type: 'integer', example: 28800 },
-                scope:        { type: 'string', example: 'Software Engineer' },
+                scope:        { type: 'string', example: 'Employee' },
               },
             }}}},
             401: { description: 'Invalid credentials' },

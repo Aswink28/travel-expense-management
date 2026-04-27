@@ -33,7 +33,7 @@ router.get('/ppi-balance', async (req, res, next) => {
 })
 
 // ── GET /api/wallet/balance/:userId — admin ───────────────────
-router.get('/balance/:userId', authorise('Booking Admin','Super Admin','Finance','Manager'), async (req, res, next) => {
+router.get('/balance/:userId', authorise('Booking Admin','Super Admin','Finance','Request Approver'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       'SELECT w.*,u.name,u.role,u.email FROM wallets w JOIN users u ON u.id=w.user_id WHERE w.user_id=$1',
@@ -60,7 +60,7 @@ router.get('/transactions', async (req, res, next) => {
 })
 
 // ── GET /api/wallet/transactions/:userId — admin ──────────────
-router.get('/transactions/:userId', authorise('Booking Admin','Super Admin','Finance','Manager'), async (req, res, next) => {
+router.get('/transactions/:userId', authorise('Booking Admin','Super Admin','Finance','Request Approver'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT wt.*, u2.name AS performed_by_name, tr.from_location, tr.to_location
@@ -150,7 +150,7 @@ router.get('/ppi-transactions', async (req, res, next) => {
 })
 
 // ── GET /api/wallet/ppi-transactions/:userId — Admin fetch PPI transactions for a user ──
-router.get('/ppi-transactions/:userId', authorise('Finance', 'Super Admin', 'Manager'), async (req, res, next) => {
+router.get('/ppi-transactions/:userId', authorise('Finance', 'Super Admin', 'Request Approver'), async (req, res, next) => {
   try {
     const { rows } = await pool.query('SELECT ppi_wallet_id, name FROM users WHERE id=$1', [req.params.userId])
     if (!rows.length || !rows[0].ppi_wallet_id) {

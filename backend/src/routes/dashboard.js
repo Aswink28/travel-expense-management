@@ -77,7 +77,7 @@ router.get('/', async (req, res, next) => {
     // scoped to pending hierarchy work (or finance lane for Finance).
     // Software Engineer, Booking Admin, and Super Admin never appear in approval flows.
     let pendingForMe = 0
-    if (['Software Engineer', 'Booking Admin', 'Super Admin'].includes(role)) {
+    if (['Employee', 'Booking Admin', 'Super Admin'].includes(role)) {
       pendingForMe = 0
     } else if (role === 'Finance') {
       const { rows } = await pool.query(
@@ -160,7 +160,7 @@ router.get('/tier', async (req, res, next) => {
 })
 
 // ── GET /api/dashboard/tiers — all tiers (admin/manager) ─────
-router.get('/tiers', authorise('Super Admin','Manager','Finance'), async (req, res, next) => {
+router.get('/tiers', authorise('Super Admin','Request Approver','Finance'), async (req, res, next) => {
   try {
     const { rows: tiers }  = await pool.query('SELECT * FROM tier_config ORDER BY id')
     const { rows: limits } = await pool.query('SELECT * FROM expense_limits ORDER BY role,category')
