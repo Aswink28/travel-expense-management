@@ -75,7 +75,7 @@ const th = { textAlign:'left', padding:'12px 16px', fontSize: 10, fontWeight: 70
 const td = { padding:'10px 16px', fontSize: 12, color:'var(--text-primary)' }
 
 function actionStyle(type) {
-  if (type === 'reassign_pending') return { bg:'#FF9F0A18', fg:'#FF9F0A' }
-  if (type === 'manual_edit')      return { bg:'#0A84FF18', fg:'#0A84FF' }
+  if (type === 'reassign_pending') return { bg:'color-mix(in srgb, var(--warning) 9%, transparent)', fg:'var(--warning)' }
+  if (type === 'manual_edit')      return { bg:'color-mix(in srgb, var(--accent) 9%, transparent)', fg:'var(--accent)' }
   return { bg:'var(--bg-input)', fg:'var(--text-muted)' }
 }

@@ -5,8 +5,8 @@ import { Card, Button, Spinner, Modal, PageTitle, ProgressBar } from '../shared/
 import { Upload, Download, RefreshCw, XCircle, FileSpreadsheet } from 'lucide-react'
 
 const STATUS_COLORS = {
-  pending: '#FFD60A', processing: '#0A84FF', completed: '#30D158',
-  completed_with_errors: '#FF9F0A', cancelled: '#888',
+  pending: 'var(--warning)', processing: 'var(--accent)', completed: 'var(--success)',
+  completed_with_errors: 'var(--warning)', cancelled: 'var(--text-faint)',
 }
 
 // ── Parse a row error_message into structured { field, message } parts. ──
@@ -45,7 +45,7 @@ function friendlyError(msg) {
 
 export default function BulkEmployeeUpload() {
   const { user } = useAuth()
-  const accent = user.color || '#30D158'
+  const accent = user.color || 'var(--success)'
   const fileRef = useRef(null)
 
   const [jobs, setJobs]             = useState([])
@@ -165,8 +165,8 @@ export default function BulkEmployeeUpload() {
       <Card style={{ padding: 24, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 14, color: '#E2E2E8', fontWeight: 500, marginBottom: 4 }}>Upload Employee File</div>
-            <div style={{ fontSize: 11, color: '#555' }}>Accepted: .xlsx, .xls, .csv — Max 25,000 rows per file</div>
+            <div style={{ fontSize: 14, color: 'var(--text-body)', fontWeight: 500, marginBottom: 4 }}>Upload Employee File</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Accepted: .xlsx, .xls, .csv — Max 25,000 rows per file</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <a href={bulkEmployeesAPI.template()} download style={{ textDecoration: 'none' }}>
@@ -182,40 +182,40 @@ export default function BulkEmployeeUpload() {
 
       {/* Required columns */}
       <Card style={{ padding: 16, marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>Required Columns</div>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>Required Columns</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           {['name', 'email', 'password', 'mobile_number', 'date_of_birth', 'gender', 'pan_number', 'aadhaar_number', 'designation'].map(c => (
-            <span key={c} style={{ fontSize: 11, background: '#FF453A12', color: '#FF453A', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c} *</span>
+            <span key={c} style={{ fontSize: 11, background: 'color-mix(in srgb, var(--danger) 7%, transparent)', color: 'var(--danger)', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c} *</span>
           ))}
           {['role', 'department', 'tier_id'].map(c => (
-            <span key={c} style={{ fontSize: 11, background: '#1A1A22', color: '#666', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c}</span>
+            <span key={c} style={{ fontSize: 11, background: 'var(--bg-input)', color: 'var(--text-faint)', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c}</span>
           ))}
         </div>
-        <div style={{ fontSize: 11, color: '#666', lineHeight: 1.5 }}>
-          <span style={{ color: '#888' }}>Note:</span>{' '}
-          <code style={{ color: '#FFD60A' }}>designation</code> must be mapped to a tier in Tier Config (it drives the approval flow).{' '}
-          <code style={{ color: '#FFD60A' }}>role</code> defaults to <code>Employee</code> and must exist in master data.
+        <div style={{ fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.5 }}>
+          <span style={{ color: 'var(--text-faint)' }}>Note:</span>{' '}
+          <code style={{ color: 'var(--warning)' }}>designation</code> must be mapped to a tier in Tier Config (it drives the approval flow).{' '}
+          <code style={{ color: 'var(--warning)' }}>role</code> defaults to <code>Employee</code> and must exist in master data.
         </div>
       </Card>
 
       {/* Jobs list */}
       <Card style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #1E1E2A', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 13, color: '#888', fontWeight: 500 }}>Bulk Upload Jobs</div>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-faint)', fontWeight: 500 }}>Bulk Upload Jobs</div>
           <Button size="sm" variant="ghost" onClick={loadJobs}><RefreshCw size={12} /> Refresh</Button>
         </div>
 
         {!jobs.length ? (
-          <div style={{ textAlign: 'center', padding: 50, color: '#444', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)', fontSize: 13 }}>
             <FileSpreadsheet size={32} style={{ opacity: .3, marginBottom: 10 }} /><br />
             No bulk jobs yet. Upload an Excel file to get started.
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #1E1E2A' }}>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 {['File', 'Progress', 'Success', 'Failed', 'Skipped', 'Status', 'Created', 'Actions'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 10, color: '#555', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 500 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -224,30 +224,30 @@ export default function BulkEmployeeUpload() {
                 const pct = job.total_rows > 0 ? (job.processed / job.total_rows) * 100 : 0
                 const isActive = ['pending', 'processing'].includes(job.status)
                 return (
-                  <tr key={job.id} style={{ borderBottom: '1px solid #16161E' }}>
+                  <tr key={job.id} style={{ borderBottom: '1px solid var(--bg-card-deep)' }}>
                     <td style={{ padding: '10px 16px' }}>
-                      <div style={{ color: '#ccc', fontWeight: 500 }}>{job.file_name}</div>
-                      <div style={{ fontSize: 10, color: '#444' }}>{job.total_rows} rows</div>
+                      <div style={{ color: 'var(--text-body)', fontWeight: 500 }}>{job.file_name}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{job.total_rows} rows</div>
                     </td>
                     <td style={{ padding: '10px 16px', minWidth: 120 }}>
-                      <div style={{ fontSize: 10, color: '#888', marginBottom: 4 }}>{job.processed}/{job.total_rows}</div>
-                      <ProgressBar pct={pct} color={STATUS_COLORS[job.status] || '#888'} height={4} />
+                      <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 4 }}>{job.processed}/{job.total_rows}</div>
+                      <ProgressBar pct={pct} color={STATUS_COLORS[job.status] || 'var(--text-faint)'} height={4} />
                     </td>
-                    <td style={{ padding: '10px 16px', color: '#30D158', fontWeight: 600 }}>{job.succeeded}</td>
-                    <td style={{ padding: '10px 16px', color: '#FF453A', fontWeight: 600 }}>{job.failed}</td>
-                    <td style={{ padding: '10px 16px', color: '#888' }}>{job.skipped}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--success)', fontWeight: 600 }}>{job.succeeded}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--danger)', fontWeight: 600 }}>{job.failed}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--text-faint)' }}>{job.skipped}</td>
                     <td style={{ padding: '10px 16px' }}>
                       <span style={{
                         fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 500,
-                        background: (STATUS_COLORS[job.status] || '#888') + '18',
-                        color: STATUS_COLORS[job.status] || '#888',
+                        background: (STATUS_COLORS[job.status] || 'var(--text-faint)') + '18',
+                        color: STATUS_COLORS[job.status] || 'var(--text-faint)',
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                       }}>
                         {isActive && <Spinner size={10} color={STATUS_COLORS[job.status]} />}
                         {job.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 16px', fontSize: 11, color: '#555' }}>
+                    <td style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-dim)' }}>
                       {new Date(job.created_at).toLocaleDateString('en-IN')}
                     </td>
                     <td style={{ padding: '10px 16px' }}>
@@ -273,13 +273,13 @@ export default function BulkEmployeeUpload() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 16 }}>
             {[
               ['Total', detailJob.total_rows, accent],
-              ['Processed', detailJob.processed, '#0A84FF'],
-              ['Success', detailJob.succeeded, '#30D158'],
-              ['Failed', detailJob.failed, '#FF453A'],
-              ['Skipped', detailJob.skipped, '#888'],
+              ['Processed', detailJob.processed, 'var(--accent)'],
+              ['Success', detailJob.succeeded, 'var(--success)'],
+              ['Failed', detailJob.failed, 'var(--danger)'],
+              ['Skipped', detailJob.skipped, 'var(--text-faint)'],
             ].map(([label, val, color]) => (
-              <div key={label} style={{ background: '#1A1A22', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
-                <div style={{ fontSize: 10, color: '#555', marginBottom: 4 }}>{label}</div>
+              <div key={label} style={{ background: 'var(--bg-input)', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>{label}</div>
                 <div className="syne" style={{ fontSize: 18, fontWeight: 700, color }}>{val}</div>
               </div>
             ))}
@@ -287,7 +287,7 @@ export default function BulkEmployeeUpload() {
 
           <div style={{ marginBottom: 16 }}>
             <ProgressBar pct={detailJob.total_rows > 0 ? (detailJob.processed / detailJob.total_rows) * 100 : 0} color={STATUS_COLORS[detailJob.status]} height={6} />
-            <div style={{ fontSize: 10, color: '#555', marginTop: 4, textAlign: 'right' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4, textAlign: 'right' }}>
               {Math.round((detailJob.processed / Math.max(detailJob.total_rows, 1)) * 100)}% complete
             </div>
           </div>
@@ -297,7 +297,7 @@ export default function BulkEmployeeUpload() {
               <button key={s} onClick={() => { setDetailFilter(s); setDetailPage(1); loadJobDetail(detailJob.id, s, 1) }}
                 style={{
                   padding: '5px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', border: 'none',
-                  background: detailFilter === s ? accent + '22' : '#1A1A22', color: detailFilter === s ? accent : '#666',
+                  background: detailFilter === s ? `color-mix(in srgb, ${accent} 13%, transparent)` : 'var(--bg-input)', color: detailFilter === s ? accent : 'var(--text-faint)',
                 }}>
                 {s || 'All'}
               </button>
@@ -323,26 +323,26 @@ export default function BulkEmployeeUpload() {
           <div style={{ maxHeight: 350, overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #1E1E2A', position: 'sticky', top: 0, background: '#111118' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-card)' }}>
                   {['Row', 'Name', 'Email', 'Mobile', 'Status', 'Error / Wallet ID'].map(h => (
-                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: '#555', fontWeight: 500 }}>{h}</th>
+                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-dim)', fontWeight: 500 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {!detailRows.length ? (
-                  <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: '#444' }}>No rows</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text-dim)' }}>No rows</td></tr>
                 ) : detailRows.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #16161E' }}>
-                    <td style={{ padding: '6px 10px', color: '#888' }}>#{r.row_number}</td>
-                    <td style={{ padding: '6px 10px', color: '#ccc' }}>{r.raw_data?.name || '—'}</td>
-                    <td style={{ padding: '6px 10px', color: '#888' }}>{r.raw_data?.email || '—'}</td>
-                    <td style={{ padding: '6px 10px', color: '#888' }}>{r.raw_data?.mobile_number || '—'}</td>
+                  <tr key={r.id} style={{ borderBottom: '1px solid var(--bg-card-deep)' }}>
+                    <td style={{ padding: '6px 10px', color: 'var(--text-faint)' }}>#{r.row_number}</td>
+                    <td style={{ padding: '6px 10px', color: 'var(--text-body)' }}>{r.raw_data?.name || '—'}</td>
+                    <td style={{ padding: '6px 10px', color: 'var(--text-faint)' }}>{r.raw_data?.email || '—'}</td>
+                    <td style={{ padding: '6px 10px', color: 'var(--text-faint)' }}>{r.raw_data?.mobile_number || '—'}</td>
                     <td style={{ padding: '6px 10px' }}>
                       <span style={{
                         fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                        background: r.status === 'success' ? '#30D15814' : r.status === 'failed' ? '#FF453A14' : r.status === 'skipped' ? '#88888814' : '#FFD60A14',
-                        color: r.status === 'success' ? '#30D158' : r.status === 'failed' ? '#FF453A' : r.status === 'skipped' ? '#888' : '#FFD60A',
+                        background: r.status === 'success' ? 'color-mix(in srgb, var(--success) 8%, transparent)' : r.status === 'failed' ? 'color-mix(in srgb, var(--danger) 8%, transparent)' : r.status === 'skipped' ? '#88888814' : 'color-mix(in srgb, var(--warning) 8%, transparent)',
+                        color: r.status === 'success' ? 'var(--success)' : r.status === 'failed' ? 'var(--danger)' : r.status === 'skipped' ? 'var(--text-faint)' : 'var(--warning)',
                       }}>{r.status}</span>
                     </td>
                     <td style={{ padding: '6px 10px', fontSize: 11 }}>
@@ -353,15 +353,15 @@ export default function BulkEmployeeUpload() {
                               {err.field && (
                                 <span style={{
                                   fontSize: 10, padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace',
-                                  background: '#FF453A14', color: '#FF453A', flexShrink: 0,
+                                  background: 'color-mix(in srgb, var(--danger) 8%, transparent)', color: 'var(--danger)', flexShrink: 0,
                                 }}>{err.field}</span>
                               )}
-                              <span style={{ color: '#FF9F0A' }}>{err.message}</span>
+                              <span style={{ color: 'var(--warning)' }}>{err.message}</span>
                             </div>
                           ))}
                         </div>
                       ) : r.ppi_wallet_id ? (
-                        <span style={{ color: '#0A84FF', fontFamily: 'monospace', fontSize: 10 }}>{r.ppi_wallet_id.slice(0, 12)}...</span>
+                        <span style={{ color: 'var(--accent)', fontFamily: 'monospace', fontSize: 10 }}>{r.ppi_wallet_id.slice(0, 12)}...</span>
                       ) : '—'}
                     </td>
                   </tr>
@@ -372,11 +372,11 @@ export default function BulkEmployeeUpload() {
 
           {detailTotal > 50 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-              <span style={{ fontSize: 11, color: '#555' }}>{detailTotal} total rows</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{detailTotal} total rows</span>
               <div style={{ display: 'flex', gap: 4 }}>
                 <Button size="sm" variant="ghost" disabled={detailPage <= 1}
                   onClick={() => { setDetailPage(p => p - 1); loadJobDetail(detailJob.id, detailFilter, detailPage - 1) }}>Prev</Button>
-                <span style={{ fontSize: 11, color: '#888', padding: '5px 10px' }}>Page {detailPage}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-faint)', padding: '5px 10px' }}>Page {detailPage}</span>
                 <Button size="sm" variant="ghost" disabled={detailPage * 50 >= detailTotal}
                   onClick={() => { setDetailPage(p => p + 1); loadJobDetail(detailJob.id, detailFilter, detailPage + 1) }}>Next</Button>
               </div>
@@ -391,27 +391,27 @@ export default function BulkEmployeeUpload() {
           <div style={{ textAlign: 'center', padding: '10px 0 6px' }}>
             <div style={{
               width: 56, height: 56, borderRadius: '50%', margin: '0 auto 16px',
-              background: popup.type === 'success' ? '#30D15814' : '#FF453A14',
-              border: `2px solid ${popup.type === 'success' ? '#30D15830' : '#FF453A30'}`,
+              background: popup.type === 'success' ? 'color-mix(in srgb, var(--success) 8%, transparent)' : 'color-mix(in srgb, var(--danger) 8%, transparent)',
+              border: `2px solid ${popup.type === 'success' ? 'color-mix(in srgb, var(--success) 19%, transparent)' : 'color-mix(in srgb, var(--danger) 19%, transparent)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
             }}>
               {popup.type === 'success' ? '✓' : '✕'}
             </div>
             <div className="syne" style={{
               fontSize: 18, fontWeight: 700, marginBottom: 8,
-              color: popup.type === 'success' ? '#30D158' : '#FF453A',
+              color: popup.type === 'success' ? 'var(--success)' : 'var(--danger)',
             }}>
               {popup.title}
             </div>
-            <div style={{ fontSize: 13, color: '#999', marginBottom: 16, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
               {popup.message}
             </div>
             {popup.type === 'success' && popup.details && (
-              <div style={{ background: '#1A1A22', borderRadius: 10, padding: '14px 18px', textAlign: 'left', marginBottom: 16 }}>
+              <div style={{ background: 'var(--bg-input)', borderRadius: 10, padding: '14px 18px', textAlign: 'left', marginBottom: 16 }}>
                 {Object.entries(popup.details).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #1E1E2A' }}>
-                    <span style={{ fontSize: 12, color: '#555' }}>{k}</span>
-                    <span style={{ fontSize: 12, color: '#ccc', fontWeight: 500 }}>{v}</span>
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{k}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-body)', fontWeight: 500 }}>{v}</span>
                   </div>
                 ))}
               </div>

@@ -6,8 +6,8 @@ export default function TicketCard({ ticket, onClose }) {
   const data        = ticket.ticket_data || {}
 
   const modeColors = {
-    Train:  '#30D158', Bus: '#FFD60A', Flight: '#0A84FF',
-    Cab:    '#FF9F0A', Metro:'#BF5AF2', Rapido:'#FF6B6B',
+    Train:  'var(--success)', Bus: 'var(--warning)', Flight: 'var(--accent)',
+    Cab:    'var(--warning)', Metro:'var(--purple)', Rapido:'var(--danger)',
   }
   const modeIcons = {
     Train:'🚂', Bus:'🚌', Flight:'✈️', Cab:'🚕',
@@ -15,8 +15,8 @@ export default function TicketCard({ ticket, onClose }) {
   }
 
   const accentColor = isTransport
-    ? (modeColors[ticket.travel_mode] || '#0A84FF')
-    : '#BF5AF2'
+    ? (modeColors[ticket.travel_mode] || 'var(--accent)')
+    : 'var(--purple)'
 
   function printTicket() {
     const w = window.open('', '_blank', 'width=700,height=900')
@@ -25,18 +25,18 @@ export default function TicketCard({ ticket, onClose }) {
         <title>Ticket — ${ticket.pnr_number}</title>
         <style>
           * { box-sizing:border-box; margin:0; padding:0 }
-          body { font-family:'Segoe UI',Arial,sans-serif; background:#f5f5f5; padding:20px }
+          body { font-family:'Segoe UI',Arial,sans-serif; background:var(--text-primary); padding:20px }
           .ticket { background:#fff; border-radius:12px; overflow:hidden; max-width:600px; margin:0 auto; box-shadow:0 4px 20px rgba(0,0,0,.15) }
           .header { background:${accentColor}; color:#fff; padding:20px 24px }
           .header h1 { font-size:22px; font-weight:700 }
           .header p  { font-size:13px; opacity:.85; margin-top:4px }
           .body   { padding:24px }
-          .row    { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee }
-          .label  { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.05em }
-          .value  { font-size:13px; color:#333; font-weight:500 }
-          .pnr    { background:#f9f9f9; border-radius:8px; padding:16px; margin-top:16px; text-align:center }
+          .row    { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--text-body) }
+          .label  { font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em }
+          .value  { font-size:13px; color:var(--border-strong); font-weight:500 }
+          .pnr    { background:var(--text-primary); border-radius:8px; padding:16px; margin-top:16px; text-align:center }
           .pnr .num { font-size:28px; font-weight:800; letter-spacing:.1em; color:${accentColor} }
-          .footer { border-top:2px dashed #eee; padding:16px 24px; text-align:center; font-size:11px; color:#aaa }
+          .footer { border-top:2px dashed var(--text-body); padding:16px 24px; text-align:center; font-size:11px; color:var(--text-muted) }
           @media print { body { padding:0 } }
         </style>
       </head><body>
@@ -65,7 +65,7 @@ export default function TicketCard({ ticket, onClose }) {
             <div class="pnr">
               <div class="label" style="margin-bottom:6px">PNR / Booking Reference</div>
               <div class="num">${ticket.pnr_number}</div>
-              <div style="font-size:12px;color:#888;margin-top:4px">Ref: ${ticket.booking_ref}</div>
+              <div style="font-size:12px;color:var(--text-faint);margin-top:4px">Ref: ${ticket.booking_ref}</div>
             </div>
           </div>
           <div class="footer">
@@ -81,7 +81,7 @@ export default function TicketCard({ ticket, onClose }) {
 
   return (
     <div style={{
-      background:'#0E0E16', border:`1px solid ${accentColor}30`, borderRadius:16,
+      background:'var(--bg-app)', border:`1px solid ${accentColor}30`, borderRadius:16,
       overflow:'hidden', maxWidth:520,
     }}>
       {/* Ticket header */}
@@ -91,17 +91,17 @@ export default function TicketCard({ ticket, onClose }) {
             <div style={{ fontSize:22, marginBottom:6 }}>
               {isTransport ? (modeIcons[ticket.travel_mode]||'🚀') : '🏨'}
             </div>
-            <div className="syne" style={{ fontSize:16, fontWeight:700, color:'#F0F0F4' }}>
+            <div className="syne" style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>
               {isTransport ? `${ticket.travel_mode} Ticket` : 'Hotel Voucher'}
             </div>
-            <div style={{ fontSize:11, color:'#666', marginTop:2 }}>{ticket.passenger_name}</div>
+            <div style={{ fontSize:11, color:'var(--text-faint)', marginTop:2 }}>{ticket.passenger_name}</div>
           </div>
           <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:10, color:'#555', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>PNR</div>
+            <div style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>PNR</div>
             <div className="syne" style={{ fontSize:18, fontWeight:800, color:accentColor, letterSpacing:'.1em' }}>
               {ticket.pnr_number}
             </div>
-            <div style={{ fontSize:10, color:'#444', marginTop:2 }}>Ref: {ticket.booking_ref}</div>
+            <div style={{ fontSize:10, color:'var(--text-dim)', marginTop:2 }}>Ref: {ticket.booking_ref}</div>
           </div>
         </div>
       </div>
@@ -111,15 +111,15 @@ export default function TicketCard({ ticket, onClose }) {
         {isTransport ? (
           <>
             {/* Route visual */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, padding:'12px 14px', background:'#1A1A22', borderRadius:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, padding:'12px 14px', background:'var(--bg-input)', borderRadius:10 }}>
               <div style={{ textAlign:'center', flex:1 }}>
-                <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>FROM</div>
-                <div style={{ fontSize:14, color:'#F0F0F4', fontWeight:600 }}>{ticket.from_location}</div>
+                <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:4 }}>FROM</div>
+                <div style={{ fontSize:14, color:'var(--text-primary)', fontWeight:600 }}>{ticket.from_location}</div>
               </div>
               <div style={{ fontSize:18, color:accentColor }}>→</div>
               <div style={{ textAlign:'center', flex:1 }}>
-                <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>TO</div>
-                <div style={{ fontSize:14, color:'#F0F0F4', fontWeight:600 }}>{ticket.to_location}</div>
+                <div style={{ fontSize:11, color:'var(--text-dim)', marginBottom:4 }}>TO</div>
+                <div style={{ fontSize:14, color:'var(--text-primary)', fontWeight:600 }}>{ticket.to_location}</div>
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
@@ -131,18 +131,18 @@ export default function TicketCard({ ticket, onClose }) {
                 ['Vendor',  ticket.vendor      || '—'],
                 ['Amount',  `₹${Number(ticket.amount).toLocaleString('en-IN')}`],
               ].map(([k,v]) => (
-                <div key={k} style={{ background:'#1A1A22', borderRadius:7, padding:'8px 10px' }}>
-                  <div style={{ fontSize:9, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{k}</div>
-                  <div style={{ fontSize:12, color:'#ccc' }}>{v}</div>
+                <div key={k} style={{ background:'var(--bg-input)', borderRadius:7, padding:'8px 10px' }}>
+                  <div style={{ fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{k}</div>
+                  <div style={{ fontSize:12, color:'var(--text-body)' }}>{v}</div>
                 </div>
               ))}
             </div>
           </>
         ) : (
           <>
-            <div style={{ padding:'12px 14px', background:'#1A1A22', borderRadius:10, marginBottom:12 }}>
-              <div style={{ fontSize:15, color:'#F0F0F4', fontWeight:600, marginBottom:4 }}>{ticket.hotel_name}</div>
-              {ticket.ticket_data?.hotelAddress && <div style={{ fontSize:11, color:'#555' }}>{ticket.ticket_data.hotelAddress}</div>}
+            <div style={{ padding:'12px 14px', background:'var(--bg-input)', borderRadius:10, marginBottom:12 }}>
+              <div style={{ fontSize:15, color:'var(--text-primary)', fontWeight:600, marginBottom:4 }}>{ticket.hotel_name}</div>
+              {ticket.ticket_data?.hotelAddress && <div style={{ fontSize:11, color:'var(--text-dim)' }}>{ticket.ticket_data.hotelAddress}</div>}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
               {[
@@ -153,9 +153,9 @@ export default function TicketCard({ ticket, onClose }) {
                 ['Vendor',     ticket.vendor || '—'],
                 ['Amount',     `₹${Number(ticket.amount).toLocaleString('en-IN')}`],
               ].map(([k,v]) => (
-                <div key={k} style={{ background:'#1A1A22', borderRadius:7, padding:'8px 10px' }}>
-                  <div style={{ fontSize:9, color:'#444', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{k}</div>
-                  <div style={{ fontSize:12, color:'#ccc' }}>{v}</div>
+                <div key={k} style={{ background:'var(--bg-input)', borderRadius:7, padding:'8px 10px' }}>
+                  <div style={{ fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{k}</div>
+                  <div style={{ fontSize:12, color:'var(--text-body)' }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -163,22 +163,22 @@ export default function TicketCard({ ticket, onClose }) {
         )}
 
         {/* Status + issued */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14, paddingTop:12, borderTop:'1px solid #1E1E2A' }}>
-          <span style={{ fontSize:10, background: ticket.status==='confirmed'?'#30D15818':'#FF453A18', color:ticket.status==='confirmed'?'#30D158':'#FF453A', padding:'3px 10px', borderRadius:20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14, paddingTop:12, borderTop:'1px solid var(--border)' }}>
+          <span style={{ fontSize:10, background: ticket.status==='confirmed'?'color-mix(in srgb, var(--success) 9%, transparent)':'color-mix(in srgb, var(--danger) 9%, transparent)', color:ticket.status==='confirmed'?'var(--success)':'var(--danger)', padding:'3px 10px', borderRadius:20 }}>
             ● {ticket.status?.toUpperCase()}
           </span>
-          <span style={{ fontSize:10, color:'#444' }}>Issued: {new Date(ticket.created_at).toLocaleString('en-IN')}</span>
+          <span style={{ fontSize:10, color:'var(--text-dim)' }}>Issued: {new Date(ticket.created_at).toLocaleString('en-IN')}</span>
         </div>
       </div>
 
       {/* Actions */}
-      <div style={{ padding:'12px 22px', borderTop:'1px solid #1A1A22', display:'flex', gap:8 }}>
+      <div style={{ padding:'12px 22px', borderTop:'1px solid var(--bg-input)', display:'flex', gap:8 }}>
         <button onClick={printTicket} style={{
           flex:1, padding:'9px 14px', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:500,
           background:`${accentColor}18`, color:accentColor, border:`1px solid ${accentColor}35`,
         }}>🖨️ Print / Save PDF</button>
         {onClose && (
-          <button onClick={onClose} style={{ padding:'9px 14px', borderRadius:8, cursor:'pointer', fontSize:12, background:'none', border:'1px solid #2A2A35', color:'#666' }}>
+          <button onClick={onClose} style={{ padding:'9px 14px', borderRadius:8, cursor:'pointer', fontSize:12, background:'none', border:'1px solid var(--border-input)', color:'var(--text-faint)' }}>
             Close
           </button>
         )}

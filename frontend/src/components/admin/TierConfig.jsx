@@ -187,7 +187,7 @@ export default function TierConfig() {
                     {inactive && (
                       <span style={{
                         fontSize: 9, fontWeight: 800, letterSpacing:'0.08em', textTransform:'uppercase',
-                        color:'#FF9F0A', background:'#FF9F0A18', border:'1px solid #FF9F0A40',
+                        color:'var(--warning)', background:'color-mix(in srgb, var(--warning) 9%, transparent)', border:'1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
                         padding:'2px 7px', borderRadius: 999,
                       }}>Inactive</span>
                     )}
@@ -197,7 +197,7 @@ export default function TierConfig() {
                     <div style={{ display:'flex', gap: 6 }}>
                       <Button size="sm" variant="ghost" onClick={() => openEditTier(t)}>Edit</Button>
                       <Button size="sm"
-                        style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }}
+                        style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color:'var(--danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
                         onClick={() => requestDeleteTier(t)}>
                         Delete
                       </Button>
@@ -266,7 +266,7 @@ export default function TierConfig() {
             <div style={{ fontSize: 13, color:'var(--text-muted)', lineHeight: 1.5, marginBottom: 16 }}>{confirmRow.message}</div>
             <div style={{ display:'flex', justifyContent:'flex-end', gap: 8 }}>
               <Button variant="ghost" onClick={() => setConfirmRow(null)} disabled={saving}>Cancel</Button>
-              <Button style={{ background:'#FF453A', color:'#fff', border:'none' }} onClick={confirmRow.onConfirm} disabled={saving}>
+              <Button style={{ background:'var(--danger)', color:'#fff', border:'none' }} onClick={confirmRow.onConfirm} disabled={saving}>
                 {saving ? 'Working…' : 'Confirm'}
               </Button>
             </div>
@@ -388,7 +388,7 @@ function PickerBlock({ label, options, selected, onToggle, error }) {
           )
         })}
       </div>
-      {error && <div style={{ fontSize: 11, color:'#FF453A', marginTop: 4 }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color:'var(--danger)', marginTop: 4 }}>{error}</div>}
     </div>
   )
 }

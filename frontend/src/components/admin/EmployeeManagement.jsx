@@ -86,7 +86,7 @@ function MLabel({ text, required }) {
   return (
     <>
       {text}
-      {required && <span style={{ color: "#FF453A", marginLeft: 2 }}>*</span>}
+      {required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
     </>
   );
 }
@@ -121,7 +121,7 @@ export default function EmployeeManagement({ setTab }) {
     return acc;
   }, {});
   const ROLE_NAMES = roles.filter((r) => r.is_active).map((r) => r.name);
-  const accent = user.color || "#30D158";
+  const accent = user.color || 'var(--success)';
 
   useEffect(() => {
     load();
@@ -700,10 +700,10 @@ export default function EmployeeManagement({ setTab }) {
           style={{
             flex: 1,
             minWidth: 200,
-            background: "#1A1A22",
-            border: "1px solid #2A2A35",
+            background: 'var(--bg-input)',
+            border: "1px solid var(--border-input)",
             borderRadius: 8,
-            color: "#E2E2E8",
+            color: 'var(--text-body)',
             fontSize: 13,
             padding: "9px 12px",
             outline: "none",
@@ -716,10 +716,10 @@ export default function EmployeeManagement({ setTab }) {
             setPage(1);
           }}
           style={{
-            background: "#1A1A22",
-            border: "1px solid #2A2A35",
+            background: 'var(--bg-input)',
+            border: "1px solid var(--border-input)",
             borderRadius: 8,
-            color: "#E2E2E8",
+            color: 'var(--text-body)',
             fontSize: 13,
             padding: "9px 12px",
             outline: "none",
@@ -771,22 +771,22 @@ export default function EmployeeManagement({ setTab }) {
               (e) =>
                 (e.ppi_wallet_status || "ACTIVE").toUpperCase() === "ACTIVE",
             ).length,
-            "#30D158",
+            'var(--success)',
           ],
           [
             "Suspended",
             employees.filter(
               (e) => (e.ppi_wallet_status || "").toUpperCase() === "SUSPENDED",
             ).length,
-            "#FFD60A",
+            'var(--warning)',
           ],
-          ["Roles", new Set(employees.map((e) => e.role)).size, "#BF5AF2"],
+          ["Roles", new Set(employees.map((e) => e.role)).size, 'var(--purple)'],
         ].map(([label, val, color]) => (
           <Card key={label} style={{ padding: "14px 18px" }}>
             <div
               style={{
                 fontSize: 10,
-                color: "#555",
+                color: 'var(--text-dim)',
                 textTransform: "uppercase",
                 letterSpacing: ".05em",
                 marginBottom: 4,
@@ -811,7 +811,7 @@ export default function EmployeeManagement({ setTab }) {
             style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
           >
             <thead>
-              <tr style={{ borderBottom: "1px solid #1E1E2A" }}>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {[
                   "Employee",
                   "Mobile",
@@ -828,7 +828,7 @@ export default function EmployeeManagement({ setTab }) {
                       padding: "12px 16px",
                       textAlign: "left",
                       fontSize: 11,
-                      color: "#555",
+                      color: 'var(--text-dim)',
                       textTransform: "uppercase",
                       letterSpacing: ".04em",
                       fontWeight: 500,
@@ -844,7 +844,7 @@ export default function EmployeeManagement({ setTab }) {
                 <tr>
                   <td
                     colSpan={8}
-                    style={{ padding: 40, textAlign: "center", color: "#444" }}
+                    style={{ padding: 40, textAlign: "center", color: 'var(--text-dim)' }}
                   >
                     No employees found
                   </td>
@@ -853,7 +853,7 @@ export default function EmployeeManagement({ setTab }) {
                 paged.map((emp) => (
                   <tr
                     key={emp.id}
-                    style={{ borderBottom: "1px solid #16161E" }}
+                    style={{ borderBottom: "1px solid var(--bg-card-deep)" }}
                     onMouseEnter={(e) =>
                       (e.currentTarget.style.background = "#14141C")
                     }
@@ -875,30 +875,30 @@ export default function EmployeeManagement({ setTab }) {
                             height: 32,
                             borderRadius: "50%",
                             background:
-                              (ROLE_COLORS[emp.role] || "#0A84FF") + "22",
-                            border: `1.5px solid ${ROLE_COLORS[emp.role] || "#0A84FF"}44`,
+                              (ROLE_COLORS[emp.role] || 'var(--accent)') + "22",
+                            border: `1.5px solid ${ROLE_COLORS[emp.role] || 'var(--accent)'}44`,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             fontSize: 10,
                             fontWeight: 700,
-                            color: ROLE_COLORS[emp.role] || "#0A84FF",
+                            color: ROLE_COLORS[emp.role] || 'var(--accent)',
                             flexShrink: 0,
                           }}
                         >
                           {emp.avatar || emp.name?.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <div style={{ color: "#E2E2E8", fontWeight: 500 }}>
+                          <div style={{ color: 'var(--text-body)', fontWeight: 500 }}>
                             {emp.name}
                           </div>
-                          <div style={{ fontSize: 10, color: "#555" }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                             {emp.emp_id} · {emp.email}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: "10px 16px", color: "#888" }}>
+                    <td style={{ padding: "10px 16px", color: 'var(--text-faint)' }}>
                       {emp.mobile_number || "—"}
                     </td>
                     <td style={{ padding: "10px 16px" }}>
@@ -908,8 +908,8 @@ export default function EmployeeManagement({ setTab }) {
                           padding: "3px 10px",
                           borderRadius: 20,
                           fontWeight: 500,
-                          background: (ROLE_COLORS[emp.role] || "#888") + "14",
-                          color: ROLE_COLORS[emp.role] || "#888",
+                          background: (ROLE_COLORS[emp.role] || 'var(--text-faint)') + "14",
+                          color: ROLE_COLORS[emp.role] || 'var(--text-faint)',
                         }}
                       >
                         {emp.role}
@@ -923,10 +923,10 @@ export default function EmployeeManagement({ setTab }) {
                           ).toUpperCase();
                           const wsColor =
                             ws === "ACTIVE"
-                              ? "#30D158"
+                              ? 'var(--success)'
                               : ws === "SUSPENDED"
-                                ? "#FFD60A"
-                                : "#FF453A";
+                                ? 'var(--warning)'
+                                : 'var(--danger)';
                           return (
                             <span
                               style={{
@@ -934,7 +934,7 @@ export default function EmployeeManagement({ setTab }) {
                                 padding: "3px 10px",
                                 borderRadius: 20,
                                 fontWeight: 500,
-                                background: wsColor + "14",
+                                background: `color-mix(in srgb, ${wsColor} 8%, transparent)`,
                                 color: wsColor,
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -954,7 +954,7 @@ export default function EmployeeManagement({ setTab }) {
                           );
                         })()
                       ) : (
-                        <span style={{ color: "#444", fontSize: 11 }}>
+                        <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>
                           No Wallet
                         </span>
                       )}
@@ -966,8 +966,8 @@ export default function EmployeeManagement({ setTab }) {
                           padding: "3px 10px",
                           borderRadius: 20,
                           fontWeight: 500,
-                          background: emp.is_active ? "#30D15814" : "#FF453A14",
-                          color: emp.is_active ? "#30D158" : "#FF453A",
+                          background: emp.is_active ? "color-mix(in srgb, var(--success) 8%, transparent)" : "color-mix(in srgb, var(--danger) 8%, transparent)",
+                          color: emp.is_active ? 'var(--success)' : 'var(--danger)',
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 5,
@@ -978,19 +978,19 @@ export default function EmployeeManagement({ setTab }) {
                             width: 5,
                             height: 5,
                             borderRadius: "50%",
-                            background: emp.is_active ? "#30D158" : "#FF453A",
+                            background: emp.is_active ? 'var(--success)' : 'var(--danger)',
                           }}
                         />
                         {emp.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td style={{ padding: "10px 16px", color: "#888" }}>
+                    <td style={{ padding: "10px 16px", color: 'var(--text-faint)' }}>
                       ₹{Number(emp.wallet_balance || 0).toLocaleString("en-IN")}
                     </td>
                     <td
                       style={{
                         padding: "10px 16px",
-                        color: "#555",
+                        color: 'var(--text-dim)',
                         fontSize: 11,
                       }}
                     >
@@ -1016,9 +1016,9 @@ export default function EmployeeManagement({ setTab }) {
                             <Button
                               size="sm"
                               style={{
-                                background: "#FFD60A18",
-                                color: "#FFD60A",
-                                border: "1px solid #FFD60A30",
+                                background: "color-mix(in srgb, var(--warning) 9%, transparent)",
+                                color: 'var(--warning)',
+                                border: "1px solid color-mix(in srgb, var(--warning) 19%, transparent)",
                               }}
                               onClick={() => openWalletAction("suspend", emp)}
                             >
@@ -1033,9 +1033,9 @@ export default function EmployeeManagement({ setTab }) {
                             <Button
                               size="sm"
                               style={{
-                                background: "#FF453A18",
-                                color: "#FF453A",
-                                border: "1px solid #FF453A30",
+                                background: "color-mix(in srgb, var(--danger) 9%, transparent)",
+                                color: 'var(--danger)',
+                                border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
                               }}
                               onClick={() => openWalletAction("close", emp)}
                             >
@@ -1059,10 +1059,10 @@ export default function EmployeeManagement({ setTab }) {
               justifyContent: "space-between",
               alignItems: "center",
               padding: "12px 16px",
-              borderTop: "1px solid #1E1E2A",
+              borderTop: "1px solid var(--border)",
             }}
           >
-            <div style={{ fontSize: 12, color: "#555" }}>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
               Showing {(safePage - 1) * perPage + 1}–
               {Math.min(safePage * perPage, filtered.length)} of{" "}
               {filtered.length}
@@ -1073,9 +1073,9 @@ export default function EmployeeManagement({ setTab }) {
                 disabled={safePage <= 1}
                 style={{
                   background: "none",
-                  border: "1px solid #2A2A35",
+                  border: "1px solid var(--border-input)",
                   borderRadius: 6,
-                  color: safePage <= 1 ? "#555" : "#999",
+                  color: safePage <= 1 ? 'var(--text-dim)' : 'var(--text-muted)',
                   padding: "5px 10px",
                   fontSize: 12,
                   cursor: safePage <= 1 ? "default" : "pointer",
@@ -1097,7 +1097,7 @@ export default function EmployeeManagement({ setTab }) {
                   p === "..." ? (
                     <span
                       key={`dot-${i}`}
-                      style={{ color: "#444", fontSize: 12, padding: "0 4px" }}
+                      style={{ color: 'var(--text-dim)', fontSize: 12, padding: "0 4px" }}
                     >
                       ...
                     </span>
@@ -1113,8 +1113,8 @@ export default function EmployeeManagement({ setTab }) {
                         fontWeight: 600,
                         cursor: "pointer",
                         background: p === safePage ? accent : "none",
-                        border: p === safePage ? "none" : "1px solid #2A2A35",
-                        color: p === safePage ? "#fff" : "#888",
+                        border: p === safePage ? "none" : "1px solid var(--border-input)",
+                        color: p === safePage ? '#fff' : 'var(--text-faint)',
                       }}
                     >
                       {p}
@@ -1126,9 +1126,9 @@ export default function EmployeeManagement({ setTab }) {
                 disabled={safePage >= totalPages}
                 style={{
                   background: "none",
-                  border: "1px solid #2A2A35",
+                  border: "1px solid var(--border-input)",
                   borderRadius: 6,
-                  color: safePage >= totalPages ? "#555" : "#999",
+                  color: safePage >= totalPages ? 'var(--text-dim)' : 'var(--text-muted)',
                   padding: "5px 10px",
                   fontSize: 12,
                   cursor: safePage >= totalPages ? "default" : "pointer",
@@ -1196,9 +1196,9 @@ export default function EmployeeManagement({ setTab }) {
                   cursor: "pointer",
                   fontSize: 11,
                   fontWeight: 500,
-                  background: "#0A84FF10",
-                  border: "1px solid #0A84FF30",
-                  color: "#0A84FF",
+                  background: "color-mix(in srgb, var(--accent) 6%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--accent) 19%, transparent)",
+                  color: 'var(--accent)',
                   transition: "opacity .15s",
                   marginBottom: 14,
                 }}
@@ -1280,7 +1280,7 @@ export default function EmployeeManagement({ setTab }) {
                     top: 30,
                     background: "none",
                     border: "none",
-                    color: "#555",
+                    color: 'var(--text-dim)',
                     cursor: "pointer",
                     fontSize: 14,
                     padding: 2,
@@ -1500,7 +1500,7 @@ export default function EmployeeManagement({ setTab }) {
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#FF9F0A",
+                          color: 'var(--warning)',
                           padding: "4px 0",
                         }}
                       >
@@ -1511,7 +1511,7 @@ export default function EmployeeManagement({ setTab }) {
                         <div
                           style={{
                             fontSize: 11,
-                            color: "#FF453A",
+                            color: 'var(--danger)',
                             marginTop: 6,
                             fontWeight: 600,
                           }}
@@ -1544,7 +1544,7 @@ export default function EmployeeManagement({ setTab }) {
                       >
                         {orderedOptions.map((name) => {
                           const r = roles.find((x) => x.name === name);
-                          const color = r?.color || "#888";
+                          const color = r?.color || 'var(--text-faint)';
                           const isSelected = selected.includes(name);
                           return (
                             <label
@@ -1557,9 +1557,9 @@ export default function EmployeeManagement({ setTab }) {
                                 borderRadius: 8,
                                 cursor: "pointer",
                                 background: isSelected
-                                  ? color + "22"
+                                  ? `color-mix(in srgb, ${color} 13%, transparent)`
                                   : "var(--bg-input)",
-                                border: `1px solid ${isSelected ? color + "80" : "var(--border)"}`,
+                                border: `1px solid ${isSelected ? `color-mix(in srgb, ${color} 50%, transparent)` : "var(--border)"}`,
                                 transition: "all .15s ease",
                                 userSelect: "none",
                               }}
@@ -1580,7 +1580,7 @@ export default function EmployeeManagement({ setTab }) {
                                   width: 18,
                                   height: 18,
                                   borderRadius: "50%",
-                                  background: color + "30",
+                                  background: `color-mix(in srgb, ${color} 19%, transparent)`,
                                   border: `1.5px solid ${color}60`,
                                   display: "flex",
                                   alignItems: "center",
@@ -1611,7 +1611,7 @@ export default function EmployeeManagement({ setTab }) {
                         <div
                           style={{
                             fontSize: 11,
-                            color: "#FF453A",
+                            color: 'var(--danger)',
                             marginBottom: 10,
                           }}
                         >
@@ -1723,7 +1723,7 @@ export default function EmployeeManagement({ setTab }) {
                             {step.step_designation}
                           </span>
                           {candidates.length === 0 && (
-                            <span style={{ fontSize: 10, color: "#FF9F0A" }}>
+                            <span style={{ fontSize: 10, color: 'var(--warning)' }}>
                               ⚠ No approver-eligible employees yet — onboard a Request Approver or Finance user first.
                             </span>
                           )}
@@ -1759,7 +1759,7 @@ export default function EmployeeManagement({ setTab }) {
                                 ))}
                             </select>
                             {primaryInactive && (
-                              <div style={{ fontSize: 10, color: "#FF9F0A", marginTop: 4 }}>
+                              <div style={{ fontSize: 10, color: 'var(--warning)', marginTop: 4 }}>
                                 Primary is deactivated — backup will receive requests.
                               </div>
                             )}
@@ -1862,8 +1862,8 @@ export default function EmployeeManagement({ setTab }) {
                   borderRadius: "50%",
                   margin: "0 auto 14px",
                   background:
-                    walletAction.type === "suspend" ? "#FFD60A14" : "#FF453A14",
-                  border: `2px solid ${walletAction.type === "suspend" ? "#FFD60A30" : "#FF453A30"}`,
+                    walletAction.type === "suspend" ? "color-mix(in srgb, var(--warning) 8%, transparent)" : "color-mix(in srgb, var(--danger) 8%, transparent)",
+                  border: `2px solid ${walletAction.type === "suspend" ? "color-mix(in srgb, var(--warning) 19%, transparent)" : "color-mix(in srgb, var(--danger) 19%, transparent)"}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1878,14 +1878,14 @@ export default function EmployeeManagement({ setTab }) {
                   fontSize: 18,
                   fontWeight: 700,
                   color:
-                    walletAction.type === "suspend" ? "#FFD60A" : "#FF453A",
+                    walletAction.type === "suspend" ? 'var(--warning)' : 'var(--danger)',
                 }}
               >
                 {walletAction.type === "suspend"
                   ? "Suspend Wallet"
                   : "Close Wallet Permanently"}
               </div>
-              <div style={{ fontSize: 13, color: "#888", marginTop: 6 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-faint)', marginTop: 6 }}>
                 {walletAction.type === "suspend"
                   ? `This will temporarily freeze ${walletAction.emp.name}'s wallet. No transactions will be allowed until reactivated.`
                   : `This will permanently close ${walletAction.emp.name}'s wallet and deactivate their account. This action cannot be undone.`}
@@ -1895,7 +1895,7 @@ export default function EmployeeManagement({ setTab }) {
             {/* Employee info */}
             <div
               style={{
-                background: "#1A1A22",
+                background: 'var(--bg-input)',
                 borderRadius: 10,
                 padding: "12px 16px",
                 marginBottom: 16,
@@ -1908,8 +1908,8 @@ export default function EmployeeManagement({ setTab }) {
                   marginBottom: 6,
                 }}
               >
-                <span style={{ fontSize: 11, color: "#555" }}>Employee</span>
-                <span style={{ fontSize: 12, color: "#ccc", fontWeight: 500 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Employee</span>
+                <span style={{ fontSize: 12, color: 'var(--text-body)', fontWeight: 500 }}>
                   {walletAction.emp.name}
                 </span>
               </div>
@@ -1920,13 +1920,13 @@ export default function EmployeeManagement({ setTab }) {
                   marginBottom: 6,
                 }}
               >
-                <span style={{ fontSize: 11, color: "#555" }}>Employee ID</span>
-                <span style={{ fontSize: 12, color: "#ccc" }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Employee ID</span>
+                <span style={{ fontSize: 12, color: 'var(--text-body)' }}>
                   {walletAction.emp.emp_id}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: "#555" }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                   Current Wallet Status
                 </span>
                 <span
@@ -1935,8 +1935,8 @@ export default function EmployeeManagement({ setTab }) {
                     color:
                       (walletAction.emp.ppi_wallet_status || "ACTIVE") ===
                       "ACTIVE"
-                        ? "#30D158"
-                        : "#FFD60A",
+                        ? 'var(--success)'
+                        : 'var(--warning)',
                     fontWeight: 500,
                   }}
                 >
@@ -1952,14 +1952,14 @@ export default function EmployeeManagement({ setTab }) {
               <label
                 style={{
                   fontSize: 11,
-                  color: "#555",
+                  color: 'var(--text-dim)',
                   textTransform: "uppercase",
                   letterSpacing: ".04em",
                   display: "block",
                   marginBottom: 8,
                 }}
               >
-                Reason <span style={{ color: "#FF453A" }}>*</span>
+                Reason <span style={{ color: 'var(--danger)' }}>*</span>
               </label>
               <textarea
                 value={walletReason}
@@ -1972,10 +1972,10 @@ export default function EmployeeManagement({ setTab }) {
                 rows={3}
                 style={{
                   width: "100%",
-                  background: "#0B0B14",
-                  border: "1px solid #252530",
+                  background: 'var(--bg-app)',
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
-                  color: "#E2E2E8",
+                  color: 'var(--text-body)',
                   fontSize: 13,
                   padding: "10px 12px",
                   outline: "none",
@@ -1989,13 +1989,13 @@ export default function EmployeeManagement({ setTab }) {
             {walletAction.type === "close" && (
               <div
                 style={{
-                  background: "#FF453A10",
-                  border: "1px solid #FF453A25",
+                  background: "color-mix(in srgb, var(--danger) 6%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--danger) 15%, transparent)",
                   borderRadius: 8,
                   padding: "10px 14px",
                   marginBottom: 16,
                   fontSize: 12,
-                  color: "#FF453A",
+                  color: 'var(--danger)',
                 }}
               >
                 Warning: This action is permanent and cannot be reversed. The
@@ -2021,8 +2021,8 @@ export default function EmployeeManagement({ setTab }) {
                 onClick={handleWalletAction}
                 style={{
                   background:
-                    walletAction.type === "suspend" ? "#FFD60A" : "#FF453A",
-                  color: walletAction.type === "suspend" ? "#0B0B14" : "#fff",
+                    walletAction.type === "suspend" ? 'var(--warning)' : 'var(--danger)',
+                  color: walletAction.type === "suspend" ? 'var(--bg-app)' : '#fff',
                   opacity: walletActing || !walletReason.trim() ? 0.5 : 1,
                 }}
               >
@@ -2048,8 +2048,8 @@ export default function EmployeeManagement({ setTab }) {
                 borderRadius: "50%",
                 margin: "0 auto 16px",
                 background:
-                  popup.type === "success" ? "#30D15814" : "#FF453A14",
-                border: `2px solid ${popup.type === "success" ? "#30D15830" : "#FF453A30"}`,
+                  popup.type === "success" ? "color-mix(in srgb, var(--success) 8%, transparent)" : "color-mix(in srgb, var(--danger) 8%, transparent)",
+                border: `2px solid ${popup.type === "success" ? "color-mix(in srgb, var(--success) 19%, transparent)" : "color-mix(in srgb, var(--danger) 19%, transparent)"}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2064,7 +2064,7 @@ export default function EmployeeManagement({ setTab }) {
                 fontSize: 18,
                 fontWeight: 700,
                 marginBottom: 8,
-                color: popup.type === "success" ? "#30D158" : "#FF453A",
+                color: popup.type === "success" ? 'var(--success)' : 'var(--danger)',
               }}
             >
               {popup.title}
@@ -2072,7 +2072,7 @@ export default function EmployeeManagement({ setTab }) {
             <div
               style={{
                 fontSize: 13,
-                color: "#999",
+                color: 'var(--text-muted)',
                 marginBottom: 16,
                 lineHeight: 1.5,
               }}
@@ -2082,7 +2082,7 @@ export default function EmployeeManagement({ setTab }) {
             {popup.type === "success" && popup.details && (
               <div
                 style={{
-                  background: "#1A1A22",
+                  background: 'var(--bg-input)',
                   borderRadius: 10,
                   padding: "14px 18px",
                   textAlign: "left",
@@ -2096,20 +2096,20 @@ export default function EmployeeManagement({ setTab }) {
                       display: "flex",
                       justifyContent: "space-between",
                       padding: "4px 0",
-                      borderBottom: "1px solid #1E1E2A",
+                      borderBottom: "1px solid var(--border)",
                     }}
                   >
                     <span
                       style={{
                         fontSize: 11,
-                        color: "#555",
+                        color: 'var(--text-dim)',
                         textTransform: "capitalize",
                       }}
                     >
                       {k.replace(/([A-Z])/g, " $1")}
                     </span>
                     <span
-                      style={{ fontSize: 12, color: "#ccc", fontWeight: 500 }}
+                      style={{ fontSize: 12, color: 'var(--text-body)', fontWeight: 500 }}
                     >
                       {v}
                     </span>

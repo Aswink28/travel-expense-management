@@ -65,76 +65,76 @@ export default function WalletPage() {
 
       {/* Suspended / Closed warning */}
       {ppiWallet && (ppiWallet.walletStatus || '').toUpperCase() === 'SUSPENDED' && (
-        <div style={{ background:'#FFD60A10', border:'1px solid #FFD60A25', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ background:'color-mix(in srgb, var(--warning) 6%, transparent)', border:'1px solid color-mix(in srgb, var(--warning) 15%, transparent)', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
           <span style={{ fontSize:24 }}>⏸</span>
           <div>
-            <div style={{ fontSize:14, color:'#FFD60A', fontWeight:600 }}>Wallet Suspended</div>
-            <div style={{ fontSize:12, color:'var(--text-muted, #888)', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
+            <div style={{ fontSize:14, color:'var(--warning)', fontWeight:600 }}>Wallet Suspended</div>
+            <div style={{ fontSize:12, color:'var(--text-muted, var(--text-faint))', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
           </div>
         </div>
       )}
       {ppiWallet && (ppiWallet.walletStatus || '').toUpperCase() === 'CLOSED' && (
-        <div style={{ background:'#FF453A10', border:'1px solid #FF453A25', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ background:'color-mix(in srgb, var(--danger) 6%, transparent)', border:'1px solid color-mix(in srgb, var(--danger) 15%, transparent)', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
           <span style={{ fontSize:24 }}>⛔</span>
           <div>
-            <div style={{ fontSize:14, color:'#FF453A', fontWeight:600 }}>Wallet Closed</div>
-            <div style={{ fontSize:12, color:'var(--text-muted, #888)', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible. Please contact your administrator.</div>
+            <div style={{ fontSize:14, color:'var(--danger)', fontWeight:600 }}>Wallet Closed</div>
+            <div style={{ fontSize:12, color:'var(--text-muted, var(--text-faint))', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible. Please contact your administrator.</div>
           </div>
         </div>
       )}
 
       {/* Wallet Balance Card */}
-      <Card style={{ padding:22, marginBottom:16, background:'var(--bg-card-deep, #0E0E16)', borderColor:'var(--border, #1E1E2A)', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'#0A84FF', opacity:.06, pointerEvents:'none' }} />
+      <Card style={{ padding:22, marginBottom:16, background:'var(--bg-card-deep, var(--bg-app))', borderColor:'var(--border, var(--border))', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'var(--accent)', opacity:.06, pointerEvents:'none' }} />
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
           <div>
-            <div style={{ fontSize:11, color:'var(--text-faint, #555)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>Wallet Balance</div>
-            <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'#0A84FF', letterSpacing:'-.04em' }}>
+            <div style={{ fontSize:11, color:'var(--text-faint, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>Wallet Balance</div>
+            <div className="syne" style={{ fontSize:36, fontWeight:800, color:user.color||'var(--accent)', letterSpacing:'-.04em' }}>
               ₹{Number(ppiWallet?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
             </div>
             <div style={{ display:'flex', gap:6, marginTop:8 }}>
               {ppiWallet ? (
                 <>
-                  <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
-                  <span style={{ fontSize:10, background:'#0A84FF18', color:'#0A84FF', padding:'2px 8px', borderRadius:10 }}>KYC: {ppiWallet.kycStatus}</span>
-                  <span style={{ fontSize:10, background:'#BF5AF218', color:'#BF5AF2', padding:'2px 8px', borderRadius:10 }}>{ppiWallet.walletNumber}</span>
+                  <span style={{ fontSize:10, background:'color-mix(in srgb, var(--success) 9%, transparent)', color:'var(--success)', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
+                  <span style={{ fontSize:10, background:'color-mix(in srgb, var(--accent) 9%, transparent)', color:'var(--accent)', padding:'2px 8px', borderRadius:10 }}>KYC: {ppiWallet.kycStatus}</span>
+                  <span style={{ fontSize:10, background:'color-mix(in srgb, var(--purple) 9%, transparent)', color:'var(--purple)', padding:'2px 8px', borderRadius:10 }}>{ppiWallet.walletNumber}</span>
                 </>
               ) : (
-                <span style={{ fontSize:10, background:'#30D15818', color:'#30D158', padding:'2px 8px', borderRadius:10 }}>● Active</span>
+                <span style={{ fontSize:10, background:'color-mix(in srgb, var(--success) 9%, transparent)', color:'var(--success)', padding:'2px 8px', borderRadius:10 }}>● Active</span>
               )}
             </div>
           </div>
           {ppiWallet && (
             <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:10, color:'var(--text-muted, #888)' }}>Expires</div>
-              <div style={{ fontSize:13, color:'var(--text-body, #E2E2E8)', fontWeight:500 }}>{ppiWallet.expiryDate || '-'}</div>
+              <div style={{ fontSize:10, color:'var(--text-muted, var(--text-faint))' }}>Expires</div>
+              <div style={{ fontSize:13, color:'var(--text-body, var(--text-body))', fontWeight:500 }}>{ppiWallet.expiryDate || '-'}</div>
             </div>
           )}
         </div>
         {/* Limits + Stats */}
         <div style={{ display:'grid', gridTemplateColumns: ppiWallet ? 'repeat(6,1fr)' : 'repeat(2,1fr)', gap:10 }}>
           {ppiWallet && [
-            ['Max Balance',      ppiWallet.maxBalanceLimit,  '#0A84FF'],
-            ['Monthly Load',     ppiWallet.monthlyLoadLimit, '#30D158'],
-            ['Daily Txn Limit',  ppiWallet.dailyTxnLimit,   '#FFD60A'],
-            ['Monthly Txn Limit',ppiWallet.monthlyTxnLimit,  '#BF5AF2'],
+            ['Max Balance',      ppiWallet.maxBalanceLimit,  'var(--accent)'],
+            ['Monthly Load',     ppiWallet.monthlyLoadLimit, 'var(--success)'],
+            ['Daily Txn Limit',  ppiWallet.dailyTxnLimit,   'var(--warning)'],
+            ['Monthly Txn Limit',ppiWallet.monthlyTxnLimit,  'var(--purple)'],
           ].map(([label, value, color]) => (
-            <div key={label} style={{ background:'var(--bg-card, #111118)', border:'1px solid #1A1A24', borderRadius:10, padding:'12px 14px' }}>
-              <div style={{ fontSize:9, color:'var(--text-dim, #444)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>{label}</div>
+            <div key={label} style={{ background:'var(--bg-card, var(--bg-card))', border:'1px solid var(--bg-input)', borderRadius:10, padding:'12px 14px' }}>
+              <div style={{ fontSize:9, color:'var(--text-dim, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>{label}</div>
               <div className="syne" style={{ fontSize:15, fontWeight:700, color }}>
                 ₹{Number(value||0).toLocaleString('en-IN')}
               </div>
             </div>
           ))}
-          <div style={{ background:'var(--bg-card, #111118)', border:'1px solid #1A1A24', borderRadius:10, padding:'12px 14px' }}>
-            <div style={{ fontSize:9, color:'var(--text-dim, #444)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Credited</div>
-            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'#30D158' }}>
+          <div style={{ background:'var(--bg-card, var(--bg-card))', border:'1px solid var(--bg-input)', borderRadius:10, padding:'12px 14px' }}>
+            <div style={{ fontSize:9, color:'var(--text-dim, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Credited</div>
+            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'var(--success)' }}>
               ₹{Number(wallet?.total_credited||0).toLocaleString('en-IN')}
             </div>
           </div>
-          <div style={{ background:'var(--bg-card, #111118)', border:'1px solid #1A1A24', borderRadius:10, padding:'12px 14px' }}>
-            <div style={{ fontSize:9, color:'var(--text-dim, #444)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Spent</div>
-            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'#FF453A' }}>
+          <div style={{ background:'var(--bg-card, var(--bg-card))', border:'1px solid var(--bg-input)', borderRadius:10, padding:'12px 14px' }}>
+            <div style={{ fontSize:9, color:'var(--text-dim, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Spent</div>
+            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'var(--danger)' }}>
               ₹{Number(wallet?.total_debited||0).toLocaleString('en-IN')}
             </div>
           </div>
@@ -144,58 +144,58 @@ export default function WalletPage() {
       {/* Log expense — blocked if wallet not ACTIVE */}
       {requests.length > 0 && (!ppiWallet || (ppiWallet.walletStatus || '').toUpperCase() === 'ACTIVE') && (
         <div style={{ marginBottom:20 }}>
-          <Button variant="primary" style={{ background:user.color||'#0A84FF' }} onClick={() => { setModal(true); setError('') }}>
+          <Button variant="primary" style={{ background:user.color||'var(--accent)' }} onClick={() => { setModal(true); setError('') }}>
             + Log Expense (Self Booking)
           </Button>
-          <span style={{ fontSize:11, color:'var(--text-faint, #555)', marginLeft:10 }}>For self-booking requests only</span>
+          <span style={{ fontSize:11, color:'var(--text-faint, var(--text-dim))', marginLeft:10 }}>For self-booking requests only</span>
         </div>
       )}
 
       {/* Flow info */}
       <Card style={{ padding:18, marginBottom:20 }}>
-        <div style={{ fontSize:11, color:'var(--text-label, #3A3A4A)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>How Your Wallet Works</div>
+        <div style={{ fontSize:11, color:'var(--text-label, var(--border-strong))', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>How Your Wallet Works</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
           {['Request approved →','Travel + Hotel + Allowance credited separately','Self booking: log expenses yourself','Company booking: Admin deducts via booking panel','All transactions permanently logged'].map((s,i) => (
-            <span key={i} style={{ fontSize:11, background:'var(--bg-card, #1A1A22)', color:'#666', padding:'5px 10px', borderRadius:6 }}>{s}</span>
+            <span key={i} style={{ fontSize:11, background:'var(--bg-card, var(--bg-input))', color:'var(--text-faint)', padding:'5px 10px', borderRadius:6 }}>{s}</span>
           ))}
         </div>
       </Card>
 
       {/* Transaction history */}
       <Card style={{ padding:22 }}>
-        <div style={{ fontSize:13, color:'var(--text-muted, #888)', fontWeight:500, marginBottom:16 }}>Transaction History</div>
+        <div style={{ fontSize:13, color:'var(--text-muted, var(--text-faint))', fontWeight:500, marginBottom:16 }}>Transaction History</div>
         {txns.length === 0 ? (
-          <div style={{ textAlign:'center', padding:40, color:'#666', fontSize:13 }}>No transactions yet</div>
+          <div style={{ textAlign:'center', padding:40, color:'var(--text-faint)', fontSize:13 }}>No transactions yet</div>
         ) : (
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr style={{ borderBottom:'1px solid #1E1E2A' }}>
+            <thead><tr style={{ borderBottom:'1px solid var(--border)' }}>
               {['Date','Description','Category','Type','Amount','Balance After'].map(h=>(
-                <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10, color:'var(--text-label, #3A3A4A)', fontWeight:500, textTransform:'uppercase', letterSpacing:'.05em' }}>{h}</th>
+                <th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:10, color:'var(--text-label, var(--border-strong))', fontWeight:500, textTransform:'uppercase', letterSpacing:'.05em' }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {txns.map((t,i) => (
-                <tr key={t.id} style={{ borderBottom: i<txns.length-1?'1px solid var(--border-soft, #14141E)':'none' }}>
-                  <td style={{ padding:'10px 12px', fontSize:10, color:'var(--text-faint, #555)' }}>{new Date(t.created_at).toLocaleDateString('en-IN')}</td>
-                  <td style={{ padding:'10px 12px', fontSize:12, color:'var(--text-body, #ccc)', maxWidth:220 }}>
+                <tr key={t.id} style={{ borderBottom: i<txns.length-1?'1px solid var(--border-soft, var(--bg-card))':'none' }}>
+                  <td style={{ padding:'10px 12px', fontSize:10, color:'var(--text-faint, var(--text-dim))' }}>{new Date(t.created_at).toLocaleDateString('en-IN')}</td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'var(--text-body, var(--text-body))', maxWidth:220 }}>
                     <div>{t.description}</div>
-                    {t.reference && <div style={{ fontSize:10, color:'var(--text-dim, #444)', marginTop:2 }}>Ref: {t.reference}</div>}
+                    {t.reference && <div style={{ fontSize:10, color:'var(--text-dim, var(--text-dim))', marginTop:2 }}>Ref: {t.reference}</div>}
                   </td>
                   <td style={{ padding:'10px 12px' }}>
                     <span style={{ fontSize:12 }}>{CAT_ICONS[t.category]||'📋'}</span>
-                    <span style={{ fontSize:11, color:'var(--text-faint, #777)', marginLeft:5, textTransform:'capitalize' }}>{t.category}</span>
+                    <span style={{ fontSize:11, color:'var(--text-faint, var(--text-faint))', marginLeft:5, textTransform:'capitalize' }}>{t.category}</span>
                   </td>
                   <td style={{ padding:'10px 12px' }}>
-                    <span style={{ fontSize:10, padding:'3px 8px', borderRadius:20, background:t.txn_type==='credit'?'#30D15818':'#FF453A18', color:t.txn_type==='credit'?'#30D158':'#FF453A' }}>
+                    <span style={{ fontSize:10, padding:'3px 8px', borderRadius:20, background:t.txn_type==='credit'?'color-mix(in srgb, var(--success) 9%, transparent)':'color-mix(in srgb, var(--danger) 9%, transparent)', color:t.txn_type==='credit'?'var(--success)':'var(--danger)' }}>
                       {t.txn_type}
                     </span>
                   </td>
                   <td style={{ padding:'10px 12px' }}>
-                    <span style={{ fontSize:13, fontWeight:500, color:t.txn_type==='credit'?'#30D158':'#FF453A' }}>
+                    <span style={{ fontSize:13, fontWeight:500, color:t.txn_type==='credit'?'var(--success)':'var(--danger)' }}>
                       {t.txn_type==='credit'?'+':'−'}₹{Number(t.amount).toLocaleString('en-IN')}
                     </span>
                   </td>
-                  <td style={{ padding:'10px 12px', fontSize:12, color:'var(--text-muted, #888)' }}>₹{Number(t.balance_after).toLocaleString('en-IN')}</td>
+                  <td style={{ padding:'10px 12px', fontSize:12, color:'var(--text-muted, var(--text-faint))' }}>₹{Number(t.balance_after).toLocaleString('en-IN')}</td>
                 </tr>
               ))}
             </tbody>
@@ -216,16 +216,16 @@ export default function WalletPage() {
 
             {/* Category selection */}
             <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:11, color:'var(--text-faint, #555)', textTransform:'uppercase', letterSpacing:'.04em', display:'block', marginBottom:10 }}>Category</label>
+              <label style={{ fontSize:11, color:'var(--text-faint, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.04em', display:'block', marginBottom:10 }}>Category</label>
               <div style={{ display:'flex', gap:8 }}>
                 {['travel','hotel','allowance','other'].map(cat => (
                   <button type="button" key={cat} onClick={() => setForm(p=>({...p,category:cat}))} style={{
                     flex:1, padding:'12px 8px', borderRadius:9, textAlign:'center', cursor:'pointer',
-                    background:form.category===cat?(user.color||'#0A84FF')+'22':'var(--bg-card, #1A1A22)',
-                    border:`1px solid ${form.category===cat?(user.color||'#0A84FF')+'55':'var(--border, #2A2A35)'}`,
+                    background:form.category===cat?(user.color||'var(--accent)')+'22':'var(--bg-card, var(--bg-input))',
+                    border:`1px solid ${form.category===cat?(user.color||'var(--accent)')+'55':'var(--border, var(--border-input))'}`,
                   }}>
                     <div style={{ fontSize:20, marginBottom:4 }}>{CAT_ICONS[cat]}</div>
-                    <div style={{ fontSize:10, color:form.category===cat?(user.color||'#0A84FF'):'#777', textTransform:'capitalize' }}>{cat}</div>
+                    <div style={{ fontSize:10, color:form.category===cat?(user.color||'var(--accent)'):'var(--text-faint)', textTransform:'capitalize' }}>{cat}</div>
                   </button>
                 ))}
               </div>
@@ -235,15 +235,15 @@ export default function WalletPage() {
             <Input label="Description" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="e.g. Rapido to station, lunch" />
             <Input label="Reference / Receipt No. (optional)" value={form.reference} onChange={e=>setForm(p=>({...p,reference:e.target.value}))} placeholder="e.g. UPI ref, receipt number" />
 
-            <div style={{ background:'var(--bg-card, #1A1A22)', borderRadius:8, padding:'10px 14px', marginBottom:14, fontSize:12, color:'var(--text-faint, #555)' }}>
-              Current balance: <span style={{ color:user.color||'#0A84FF', fontWeight:600 }}>₹{Number(wallet?.balance||0).toLocaleString('en-IN')}</span>
+            <div style={{ background:'var(--bg-card, var(--bg-input))', borderRadius:8, padding:'10px 14px', marginBottom:14, fontSize:12, color:'var(--text-faint, var(--text-dim))' }}>
+              Current balance: <span style={{ color:user.color||'var(--accent)', fontWeight:600 }}>₹{Number(wallet?.balance||0).toLocaleString('en-IN')}</span>
             </div>
 
             {error && <Alert type="error">{error}</Alert>}
 
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
               <Button variant="ghost" onClick={() => { setModal(false); setError('') }}>Cancel</Button>
-              <Button type="submit" variant="primary" style={{ background:user.color||'#0A84FF' }} disabled={submitting}>
+              <Button type="submit" variant="primary" style={{ background:user.color||'var(--accent)' }} disabled={submitting}>
                 {submitting ? 'Processing...' : 'Deduct from Wallet'}
               </Button>
             </div>

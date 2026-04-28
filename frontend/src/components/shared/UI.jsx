@@ -133,22 +133,28 @@ export function Modal({ children, onClose, title, width = 520 }) {
 }
 
 // ── StatusPill ────────────────────────────────────────────────
+// Uses semantic CSS variables so colours adapt to dark/light themes.
 const STATUS_MAP = {
-  pending:         { label: 'Pending',          c: '#FFD60A' },
-  pending_finance: { label: 'Awaiting Finance', c: '#FF9F0A' },
-  approved:        { label: 'Approved',         c: '#30D158' },
-  rejected:        { label: 'Rejected',         c: '#FF453A' },
-  cancelled:       { label: 'Cancelled',        c: '#888'    },
-  booked:          { label: 'Booked',           c: '#40C8E0' },
-  draft:           { label: 'Draft',            c: '#666'    },
-  confirmed:       { label: 'Confirmed',        c: '#30D158' },
-  completed:       { label: 'Completed',        c: '#BF5AF2' },
+  pending:         { label: 'Pending',          token: '--warning' },
+  pending_finance: { label: 'Awaiting Finance', token: '--warning' },
+  approved:        { label: 'Approved',         token: '--success' },
+  rejected:        { label: 'Rejected',         token: '--danger'  },
+  cancelled:       { label: 'Cancelled',        token: '--text-faint' },
+  booked:          { label: 'Booked',           token: '--info'    },
+  draft:           { label: 'Draft',            token: '--text-faint' },
+  confirmed:       { label: 'Confirmed',        token: '--success' },
+  completed:       { label: 'Completed',        token: '--purple'  },
 }
 
 export function StatusPill({ status }) {
-  const m = STATUS_MAP[status] || { label: status, c: '#888' }
+  const m = STATUS_MAP[status] || { label: status, token: '--text-faint' }
+  const c = `var(${m.token})`
   return (
-    <span className="pill" style={{ background: m.c + '14', borderColor: m.c + '40', color: m.c }}>
+    <span className="pill" style={{
+      background: `color-mix(in srgb, ${c} 14%, transparent)`,
+      borderColor: `color-mix(in srgb, ${c} 35%, transparent)`,
+      color: c,
+    }}>
       {m.label}
     </span>
   )
@@ -160,8 +166,8 @@ export function BookingBadge({ type }) {
   const c = isSelf ? 'var(--accent)' : 'var(--purple)'
   return (
     <span className="pill" style={{
-      background: isSelf ? 'rgba(10,132,255,0.10)' : 'rgba(191,90,242,0.10)',
-      borderColor: isSelf ? 'rgba(10,132,255,0.35)' : 'rgba(191,90,242,0.35)',
+      background: `color-mix(in srgb, ${c} 14%, transparent)`,
+      borderColor: `color-mix(in srgb, ${c} 35%, transparent)`,
       color: c,
     }}>
       {isSelf ? 'Self' : 'Company'}
@@ -203,7 +209,6 @@ export function Spinner({ size = 28, color = 'var(--accent)' }) {
         width: size,
         height: size,
         borderTopColor: color,
-        boxShadow: `0 0 12px ${color === 'var(--accent)' ? 'rgba(10,132,255,0.4)' : color + '66'}`,
       }}
     />
   )

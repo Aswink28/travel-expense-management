@@ -11,17 +11,17 @@ import TicketCard from "../booking/TicketCard";
 
 /* ─── Color tokens ─── */
 const C = {
-  bg:          "var(--bg-app, #0B0B14)",
-  card:        "var(--bg-card, #12121E)",
+  bg:          "var(--bg-app, var(--bg-app))",
+  card:        "var(--bg-card, var(--bg-card))",
   cardBorder:  "var(--border, #1E1E30)",
   cardHover:   "var(--bg-row-hover, #171728)",
-  accent:      "var(--accent, #7C6FFF)",
+  accent:      "var(--accent, var(--accent-2))",
   accentGlow:  "var(--accent-glow, rgba(124,111,255,0.18))",
   accentSoft:  "rgba(124,111,255,0.08)",
-  green:       "var(--success, #30D158)",
-  amber:       "var(--warning, #FF9F0A)",
-  red:         "var(--danger, #FF453A)",
-  text:        "var(--text-primary, #F0F0F6)",
+  green:       "var(--success, var(--success))",
+  amber:       "var(--warning, var(--warning))",
+  red:         "var(--danger, var(--danger))",
+  text:        "var(--text-primary, var(--text-primary))",
   sub:         "var(--text-muted, #9090A8)",
   muted:       "var(--text-dim, #454560)",
   divider:     "var(--border-soft, #1C1C2E)",
@@ -40,12 +40,12 @@ const AIRLINE_META = {
   'IndiGo':      { grad: ['#1A1FCC', '#5C60F5'], abbr: '6E' },
   'Air India':   { grad: ['#8B0000', '#CC2929'], abbr: 'AI' },
   'Vistara':     { grad: ['#4B006E', '#9B1FCC'], abbr: 'UK' },
-  'Akasa Air':   { grad: ['#BB4100', '#FF6B00'], abbr: 'QP' },
-  'SpiceJet':    { grad: ['#CC0000', '#FF4444'], abbr: 'SG' },
-  'AI Express':  { grad: ['#D44000', '#FF6B2B'], abbr: 'IX' },
-  'Air India Express': { grad: ['#D44000', '#FF6B2B'], abbr: 'IX' },
-  'GoFirst':     { grad: ['#006B3C', '#00B864'], abbr: 'G8' },
-  'Go First':    { grad: ['#006B3C', '#00B864'], abbr: 'G8' },
+  'Akasa Air':   { grad: ['#BB4100', 'var(--warning)'], abbr: 'QP' },
+  'SpiceJet':    { grad: ['#CC0000', 'var(--danger)'], abbr: 'SG' },
+  'AI Express':  { grad: ['var(--danger)', 'var(--warning)'], abbr: 'IX' },
+  'Air India Express': { grad: ['var(--danger)', 'var(--warning)'], abbr: 'IX' },
+  'GoFirst':     { grad: ['var(--success)', 'var(--success)'], abbr: 'G8' },
+  'Go First':    { grad: ['var(--success)', 'var(--success)'], abbr: 'G8' },
   'StarAir':     { grad: ['#1B3A5C', '#2E6BA4'], abbr: 'S5' },
   'Alliance Air': { grad: ['#B85C00', '#E08A30'], abbr: '9I' },
   'FlyBig':      { grad: ['#00506B', '#0088AA'], abbr: 'S9' },
@@ -127,8 +127,8 @@ const GLOBAL_CSS = `
   input[type=date]::-webkit-calendar-picker-indicator{ filter:invert(1) opacity(0.4); cursor:pointer }
   input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:4px; background:transparent; outline:none }
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:${C.accent}; border:2px solid ${C.bg}; box-shadow:0 0 8px ${C.accent}; cursor:pointer }
-  input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:2px; background:linear-gradient(90deg,${C.accent},#9B6BFF) }
-  select option{ background:#12121E; color:#F0F0F6 }
+  input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:2px; background:linear-gradient(90deg,${C.accent},var(--accent-2)) }
+  select option{ background:var(--bg-card); color:var(--text-primary) }
 `;
 
 /* ─── Depart time buckets ─── */
@@ -1172,7 +1172,7 @@ export default function BookingPanel() {
     const ssrTotal = ssrs.filter(s => selectedSSRs.includes(s.ssrKey)).reduce((sum, s) => sum + s.price, 0);
     // Group SSR items by type
     const typeIcons = { MEALS: '🍽', BAGGAGE: '🧳', ADDITIONALBAGGAGE: '🧳', SEAT: '💺', FASTFORWARD: '⚡', 'FREQUENT FLYER': '✈' };
-    const typeColors = { MEALS: C.amber, BAGGAGE: C.accent, ADDITIONALBAGGAGE: C.accent, SEAT: C.green, FASTFORWARD: '#BF5AF2', 'FREQUENT FLYER': C.sub };
+    const typeColors = { MEALS: C.amber, BAGGAGE: C.accent, ADDITIONALBAGGAGE: C.accent, SEAT: C.green, FASTFORWARD: 'var(--purple)', 'FREQUENT FLYER': C.sub };
     const grouped = {};
     ssrs.forEach(s => {
       const key = s.typeName || 'OTHER';
@@ -1243,7 +1243,7 @@ export default function BookingPanel() {
                 setConfirmedSSRs(confirmed);
                 setSsrData(null);
                 showToast(`${confirmed.length} add-on(s) selected — visible in fare card`, 'success');
-              }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
+              }} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Selection</button>
             )}
           </div>
         </div>
@@ -1316,7 +1316,7 @@ export default function BookingPanel() {
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             <button onClick={() => setSeatMapData(null)} style={{ flex: 1, background: C.divider, color: C.sub, border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Close</button>
             {selectedSeat && (
-              <button onClick={() => setSeatMapData(null)} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Seat</button>
+              <button onClick={() => setSeatMapData(null)} style={{ flex: 1, background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Confirm Seat</button>
             )}
           </div>
         </div>
@@ -1392,7 +1392,7 @@ export default function BookingPanel() {
               setTimeout(() => {
                 document.getElementById('booking-management')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }, 200);
-            }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, #FFB84D)`, color: '#0B0B14', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
+            }} style={{ flex: 1, background: `linear-gradient(135deg, ${C.amber}, var(--warning))`, color: 'var(--bg-app)', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>View Held Flights</button>
           </div>
         </div>
       </div>
@@ -1591,7 +1591,7 @@ export default function BookingPanel() {
                 padding: "13px 16px",
                 display: "flex",
                 justifyContent: "space-between",
-                background: sufficient ? "#30D15812" : "#FF453A12",
+                background: sufficient ? "color-mix(in srgb, var(--success) 7%, transparent)" : "color-mix(in srgb, var(--danger) 7%, transparent)",
               }}
             >
               <span
@@ -1619,8 +1619,8 @@ export default function BookingPanel() {
           {!sufficient && walletBal != null && (
             <div
               style={{
-                background: "#FF453A14",
-                border: "1px solid #FF453A30",
+                background: "color-mix(in srgb, var(--danger) 8%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
                 borderRadius: 10,
                 padding: "12px 16px",
                 marginBottom: 16,
@@ -1659,9 +1659,9 @@ export default function BookingPanel() {
               style={{
                 flex: 2,
                 background: sufficient
-                  ? `linear-gradient(135deg,${C.accent},#9B6BFF)`
+                  ? `linear-gradient(135deg,${C.accent},var(--accent-2))`
                   : `${C.red}30`,
-                color: sufficient ? "#fff" : C.red,
+                color: sufficient ? '#fff' : C.red,
                 border: sufficient ? "none" : `1px solid ${C.red}40`,
                 padding: "13px 0",
                 borderRadius: 12,
@@ -1838,7 +1838,7 @@ export default function BookingPanel() {
                 padding: "13px 16px",
                 display: "flex",
                 justifyContent: "space-between",
-                background: sufficient ? "#30D15812" : "#FF453A12",
+                background: sufficient ? "color-mix(in srgb, var(--success) 7%, transparent)" : "color-mix(in srgb, var(--danger) 7%, transparent)",
               }}
             >
               <span
@@ -1865,8 +1865,8 @@ export default function BookingPanel() {
           {!sufficient && (
             <div
               style={{
-                background: "#FF453A14",
-                border: "1px solid #FF453A30",
+                background: "color-mix(in srgb, var(--danger) 8%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
                 borderRadius: 10,
                 padding: "12px 16px",
                 marginBottom: 16,
@@ -1902,9 +1902,9 @@ export default function BookingPanel() {
               style={{
                 flex: 2,
                 background: sufficient
-                  ? `linear-gradient(135deg,${C.accent},#9B6BFF)`
+                  ? `linear-gradient(135deg,${C.accent},var(--accent-2))`
                   : `${C.red}30`,
-                color: sufficient ? "#fff" : C.red,
+                color: sufficient ? '#fff' : C.red,
                 border: sufficient ? "none" : `1px solid ${C.red}40`,
                 padding: "13px 0",
                 borderRadius: 12,
@@ -1984,8 +1984,8 @@ export default function BookingPanel() {
         {hotelBooked && (
           <div
             style={{
-              background: "#30D15812",
-              border: "1px solid #30D15830",
+              background: "color-mix(in srgb, var(--success) 7%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--success) 19%, transparent)",
               borderRadius: 10,
               padding: "14px 18px",
               marginBottom: 20,
@@ -2075,8 +2075,8 @@ export default function BookingPanel() {
                 setHotelBooked(null);
               }}
               style={{
-                background: `linear-gradient(135deg,${C.accent},#9B6BFF)`,
-                color: "#fff",
+                background: `linear-gradient(135deg,${C.accent},var(--accent-2))`,
+                color: '#fff',
                 border: "none",
                 padding: "12px 24px",
                 borderRadius: 12,
@@ -2180,7 +2180,7 @@ export default function BookingPanel() {
             {/* Map placeholder */}
             <div
               style={{
-                background: "#1a2235",
+                background: 'var(--bg-card-deep)',
                 borderRadius: 10,
                 height: 100,
                 marginBottom: 18,
@@ -2197,7 +2197,7 @@ export default function BookingPanel() {
                   position: "absolute",
                   inset: 0,
                   backgroundImage:
-                    "repeating-linear-gradient(0deg,transparent,transparent 19px,#1E2D4022 20px),repeating-linear-gradient(90deg,transparent,transparent 19px,#1E2D4022 20px)",
+                    "repeating-linear-gradient(0deg,transparent,transparent 19px,color-mix(in srgb, var(--bg-card-deep) 13%, transparent) 20px),repeating-linear-gradient(90deg,transparent,transparent 19px,color-mix(in srgb, var(--bg-card-deep) 13%, transparent) 20px)",
                   backgroundSize: "20px 20px",
                 }}
               />
@@ -2276,11 +2276,11 @@ export default function BookingPanel() {
                       style={{
                         padding: "5px 10px",
                         borderRadius: 6,
-                        border: `1px solid ${active ? "#FFD60A" : C.cardBorder}`,
-                        background: active ? "#FFD60A18" : "transparent",
+                        border: `1px solid ${active ? 'var(--warning)' : C.cardBorder}`,
+                        background: active ? "color-mix(in srgb, var(--warning) 9%, transparent)" : "transparent",
                         cursor: "pointer",
                         fontSize: 11,
-                        color: active ? "#FFD60A" : C.sub,
+                        color: active ? 'var(--warning)' : C.sub,
                         fontWeight: 600,
                       }}
                     >
@@ -2452,7 +2452,7 @@ export default function BookingPanel() {
                         style={{
                           width: 220,
                           minHeight: 160,
-                          background: `linear-gradient(135deg,#1a2235,#0d1520)`,
+                          background: `linear-gradient(135deg,var(--bg-card-deep),#0d1520)`,
                           flexShrink: 0,
                           position: "relative",
                           display: "flex",
@@ -2473,7 +2473,7 @@ export default function BookingPanel() {
                             height: 32,
                             cursor: "pointer",
                             fontSize: 16,
-                            color: "#fff",
+                            color: '#fff',
                           }}
                         >
                           ♡
@@ -2509,7 +2509,7 @@ export default function BookingPanel() {
                               >
                                 {hotel.name}{" "}
                                 <span
-                                  style={{ fontSize: 12, color: "#FFD60A" }}
+                                  style={{ fontSize: 12, color: 'var(--warning)' }}
                                 >
                                   {"★".repeat(hotel.stars)}
                                 </span>
@@ -2529,9 +2529,9 @@ export default function BookingPanel() {
                                 style={{
                                   fontSize: 10,
                                   fontWeight: 700,
-                                  color: "#FF453A",
-                                  background: "#FF453A14",
-                                  border: "1px solid #FF453A30",
+                                  color: 'var(--danger)',
+                                  background: "color-mix(in srgb, var(--danger) 8%, transparent)",
+                                  border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
                                   borderRadius: 6,
                                   padding: "3px 8px",
                                   whiteSpace: "nowrap",
@@ -2628,8 +2628,8 @@ export default function BookingPanel() {
                         <button
                           onClick={() => initiateHotelBook(hotel)}
                           style={{
-                            background: `linear-gradient(135deg,${C.accent},#9B6BFF)`,
-                            color: "#fff",
+                            background: `linear-gradient(135deg,${C.accent},var(--accent-2))`,
+                            color: '#fff',
                             border: "none",
                             padding: "10px 18px",
                             borderRadius: 10,
@@ -2768,8 +2768,8 @@ export default function BookingPanel() {
               setExpanded(null);
             }}
             style={{
-              background: `linear-gradient(135deg,${C.accent},#9B6BFF)`,
-              color: "#fff",
+              background: `linear-gradient(135deg,${C.accent},var(--accent-2))`,
+              color: '#fff',
               border: "none",
               padding: "12px 26px",
               borderRadius: 12,
@@ -2871,7 +2871,7 @@ export default function BookingPanel() {
                         justifyContent: "center",
                         fontSize: 8,
                         fontWeight: 900,
-                        color: "#fff",
+                        color: '#fff',
                         flexShrink: 0,
                       }}
                     >
@@ -3145,7 +3145,7 @@ export default function BookingPanel() {
                             justifyContent: "center",
                             fontSize: 13,
                             fontWeight: 900,
-                            color: "#fff",
+                            color: '#fff',
                             flexShrink: 0,
                             boxShadow: `0 4px 14px ${meta.grad[1]}55`,
                           }}
@@ -3330,8 +3330,8 @@ export default function BookingPanel() {
                           style={{
                             background: isOpen
                               ? C.accentSoft
-                              : `linear-gradient(135deg,${C.accent},#9B6BFF)`,
-                            color: isOpen ? C.accent : "#fff",
+                              : `linear-gradient(135deg,${C.accent},var(--accent-2))`,
+                            color: isOpen ? C.accent : '#fff',
                             border: isOpen ? `1px solid ${C.accent}40` : "none",
                             padding: "10px 20px",
                             borderRadius: 10,
@@ -3403,10 +3403,10 @@ export default function BookingPanel() {
                                   position: "absolute",
                                   top: -11,
                                   left: 16,
-                                  background: `linear-gradient(90deg,${C.accent},#9B6BFF)`,
+                                  background: `linear-gradient(90deg,${C.accent},var(--accent-2))`,
                                   fontSize: 9,
                                   fontWeight: 800,
-                                  color: "#fff",
+                                  color: '#fff',
                                   padding: "3px 12px",
                                   borderRadius: 20,
                                   letterSpacing: "1px",
@@ -3596,9 +3596,9 @@ export default function BookingPanel() {
                                 width: "100%",
                                 background:
                                   fi === 0
-                                    ? `linear-gradient(135deg,${C.accent},#9B6BFF)`
+                                    ? `linear-gradient(135deg,${C.accent},var(--accent-2))`
                                     : C.divider,
-                                color: fi === 0 ? "#fff" : C.sub,
+                                color: fi === 0 ? '#fff' : C.sub,
                                 border: "none",
                                 padding: "11px 0",
                                 borderRadius: 10,
@@ -3791,7 +3791,7 @@ export default function BookingPanel() {
                       setModeTab('Flight');
                     }}
                     style={{
-                      background: `linear-gradient(135deg, ${C.accent}, #9B6BFF)`,
+                      background: `linear-gradient(135deg, ${C.accent}, var(--accent-2))`,
                       color: '#fff', border: 'none', padding: '9px 18px',
                       borderRadius: 10, fontWeight: 700, cursor: 'pointer',
                       fontSize: 12, boxShadow: `0 4px 14px ${C.accentGlow}`,
@@ -4021,8 +4021,8 @@ export default function BookingPanel() {
                     style={{
                       background: searching
                         ? C.muted
-                        : `linear-gradient(135deg,${C.accent},#9B6BFF)`,
-                      color: "#fff",
+                        : `linear-gradient(135deg,${C.accent},var(--accent-2))`,
+                      color: '#fff',
                       border: "none",
                       borderRadius: 10,
                       padding: "0 28px",
@@ -4077,9 +4077,9 @@ export default function BookingPanel() {
                       fontWeight: 600,
                       background:
                         tripType === t
-                          ? `linear-gradient(135deg,${C.accent},#9B6BFF)`
+                          ? `linear-gradient(135deg,${C.accent},var(--accent-2))`
                           : "transparent",
-                      color: tripType === t ? "#fff" : C.muted,
+                      color: tripType === t ? '#fff' : C.muted,
                       transition: "all .2s",
                       boxShadow:
                         tripType === t ? `0 2px 10px ${C.accentGlow}` : "none",
@@ -4307,8 +4307,8 @@ export default function BookingPanel() {
                   style={{
                     background: searching
                       ? C.muted
-                      : `linear-gradient(135deg,${C.accent},#9B6BFF)`,
-                    color: "#fff",
+                      : `linear-gradient(135deg,${C.accent},var(--accent-2))`,
+                    color: '#fff',
                     border: "none",
                     borderRadius: 10,
                     padding: "0 28px",
@@ -4675,7 +4675,7 @@ export default function BookingPanel() {
                             <div key={h.bookingRefNo || i} style={{
                               background: C.bg,
                               borderRadius: 12,
-                              border: `1px solid ${isActive ? statusBg + '40' : C.divider}`,
+                              border: `1px solid ${isActive ? `color-mix(in srgb, ${statusBg} 25%, transparent)` : C.divider}`,
                               overflow: 'hidden',
                               transition: 'all .2s',
                             }}>
@@ -4807,7 +4807,7 @@ export default function BookingPanel() {
                                       onClick={() => payAndTicketHeld(h)}
                                       disabled={payingHeld === h.bookingRefNo}
                                       style={{
-                                        flex: 2, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: '#0B0B14',
+                                        flex: 2, background: `linear-gradient(135deg, ${C.green}, #50E878)`, color: 'var(--bg-app)',
                                         border: 'none', padding: '11px 0', borderRadius: 8, fontWeight: 700,
                                         cursor: payingHeld ? 'wait' : 'pointer', fontSize: 12,
                                         opacity: payingHeld === h.bookingRefNo ? 0.6 : 1,
@@ -4883,7 +4883,7 @@ export default function BookingPanel() {
                     <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                       <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No (e.g. FBB6WM7R)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
                       <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR (optional)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
-                      <button onClick={() => fetchReprint(refNo, pnr)} disabled={reprintLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                      <button onClick={() => fetchReprint(refNo, pnr)} disabled={reprintLoading} style={{ background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
                         {reprintLoading ? '⏳ Fetching...' : '🔍 Fetch'}
                       </button>
                     </div>
@@ -5127,7 +5127,7 @@ export default function BookingPanel() {
                       <button onClick={() => {
                         const fmtD = d => { const p = d.split('-'); return `${p[1]}/${p[2]}/${p[0]}`; };
                         fetchAirHistory(fmtD(from), fmtD(to));
-                      }} disabled={airHistoryLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                      }} disabled={airHistoryLoading} style={{ background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
                         {airHistoryLoading ? '⏳' : '📋 Fetch'}
                       </button>
                     </div>
@@ -5155,7 +5155,7 @@ export default function BookingPanel() {
                       <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
                     </div>
                     <input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Cancellation remarks (optional)" style={{ width: '100%', background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }} />
-                    <button onClick={() => executeCancellation(refNo, pnr, [], remarks)} style={{ background: `linear-gradient(135deg,${C.red},#FF6B6B)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                    <button onClick={() => executeCancellation(refNo, pnr, [], remarks)} style={{ background: `linear-gradient(135deg,${C.red},var(--danger))`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
                       ❌ Submit Cancellation
                     </button>
                     {cancelResult && (
@@ -5180,7 +5180,7 @@ export default function BookingPanel() {
                     <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                       <input value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Booking Ref No" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
                       <input value={pnr} onChange={e => setPnr(e.target.value)} placeholder="Airline PNR (optional)" style={{ flex: 1, background: C.bg, border: `1px solid ${C.divider}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 13, outline: 'none' }} />
-                      <button onClick={() => fetchPostSSR(refNo, pnr)} disabled={postSSRLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                      <button onClick={() => fetchPostSSR(refNo, pnr)} disabled={postSSRLoading} style={{ background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
                         {postSSRLoading ? '⏳' : '🍽 Load Services'}
                       </button>
                     </div>
@@ -5206,7 +5206,7 @@ export default function BookingPanel() {
                               );
                             })}
                             {selectedPostSSRs.length > 0 && (
-                              <button onClick={confirmPostSSR} style={{ marginTop: 12, background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                              <button onClick={confirmPostSSR} style={{ marginTop: 12, background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '12px 0', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
                                 Confirm {selectedPostSSRs.length} Service(s) & Pay
                               </button>
                             )}
@@ -5230,7 +5230,7 @@ export default function BookingPanel() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Agency Wallet Balance</div>
                     <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>Live balance from the supplier</div>
                   </div>
-                  <button onClick={fetchAgencyBalance} disabled={agencyBalLoading} style={{ background: `linear-gradient(135deg,${C.accent},#9B6BFF)`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: agencyBalLoading ? 'wait' : 'pointer', fontSize: 12, opacity: agencyBalLoading ? 0.6 : 1 }}>
+                  <button onClick={fetchAgencyBalance} disabled={agencyBalLoading} style={{ background: `linear-gradient(135deg,${C.accent},var(--accent-2))`, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 700, cursor: agencyBalLoading ? 'wait' : 'pointer', fontSize: 12, opacity: agencyBalLoading ? 0.6 : 1 }}>
                     {agencyBalLoading ? '⏳ Checking...' : '💰 Check Balance'}
                   </button>
                 </div>
@@ -5347,8 +5347,8 @@ function ErrBar({ children }) {
   return (
     <div
       style={{
-        background: "#FF453A14",
-        border: "1px solid #FF453A30",
+        background: "color-mix(in srgb, var(--danger) 8%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
         borderRadius: 10,
         padding: "12px 16px",
         color: C.red,

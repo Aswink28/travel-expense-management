@@ -2,10 +2,12 @@ import { createContext, useContext, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'td3_theme'
 
+// Two themes only. `dark` is default; `light` is the new clean theme.
+// Migration: any saved value other than these (e.g. legacy "neon" / "royal" /
+// "glass") falls back to "dark" so existing sessions don't show an empty UI.
 export const THEMES = [
-  { id: 'neon',  label: 'Neon Glow',       icon: '⚡', desc: 'Electric blue + purple' },
-  { id: 'royal', label: 'Royal Gradient',  icon: '👑', desc: 'Gold and royal purple' },
-  { id: 'glass', label: 'Glassmorphism',   icon: '✦',  desc: 'Frosted glass aqua' },
+  { id: 'dark',  label: 'Dark',  icon: '◐', desc: 'Default — deep neutral surfaces' },
+  { id: 'light', label: 'Light', icon: '◑', desc: 'Clean, professional light' },
 ]
 
 const ThemeContext = createContext(null)
@@ -14,7 +16,7 @@ export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved && THEMES.some(t => t.id === saved)) return saved
-    return 'neon'
+    return 'dark'
   })
 
   useEffect(() => {

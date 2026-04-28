@@ -12,13 +12,13 @@ export default function RoleManagement() {
   const [success, setSuccess]       = useState('')
   const [showModal, setShowModal]   = useState(false)
   const [editRole, setEditRole]     = useState(null)
-  const [form, setForm]             = useState({ name: '', description: '', color: '#0A84FF' })
+  const [form, setForm]             = useState({ name: '', description: '', color: 'var(--accent)' })
   const [selectedPages, setSelectedPages] = useState([])
   const [formError, setFormError]   = useState('')
   const [saving, setSaving]         = useState(false)
   const [expandedRole, setExpandedRole] = useState(null)
 
-  const accent = user.color || '#30D158'
+  const accent = user.color || 'var(--success)'
 
   useEffect(() => { load() }, [])
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t) } }, [success])
@@ -35,7 +35,7 @@ export default function RoleManagement() {
 
   function openCreate() {
     setEditRole(null)
-    setForm({ name: '', description: '', color: '#0A84FF' })
+    setForm({ name: '', description: '', color: 'var(--accent)' })
     setSelectedPages([])
     setFormError('')
     setShowModal(true)
@@ -43,7 +43,7 @@ export default function RoleManagement() {
 
   function openEdit(role) {
     setEditRole(role)
-    setForm({ name: role.name, description: role.description || '', color: role.color || '#888' })
+    setForm({ name: role.name, description: role.description || '', color: role.color || 'var(--text-faint)' })
     setSelectedPages(role.pages.map(p => p.page_id))
     setFormError('')
     setShowModal(true)
@@ -125,7 +125,7 @@ export default function RoleManagement() {
 
       {/* Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontSize: 13, color: '#555' }}>{roles.length} role{roles.length !== 1 ? 's' : ''} configured</div>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{roles.length} role{roles.length !== 1 ? 's' : ''} configured</div>
         <Button onClick={openCreate}>+ New Role</Button>
       </div>
 
@@ -146,7 +146,7 @@ export default function RoleManagement() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%',
-                    background: role.color + '22', border: `2px solid ${role.color}44`,
+                    background: `color-mix(in srgb, ${role.color} 13%, transparent)`, border: `2px solid ${role.color}44`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 14, fontWeight: 700, color: role.color,
                   }}>
@@ -154,18 +154,18 @@ export default function RoleManagement() {
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#E2E2E8' }}>{role.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-body)' }}>{role.name}</span>
                       {role.is_system && (
-                        <span style={{ fontSize: 9, background: '#FFD60A18', color: '#FFD60A', padding: '1px 7px', borderRadius: 10, fontWeight: 500 }}>SYSTEM</span>
+                        <span style={{ fontSize: 9, background: 'color-mix(in srgb, var(--warning) 9%, transparent)', color: 'var(--warning)', padding: '1px 7px', borderRadius: 10, fontWeight: 500 }}>SYSTEM</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{role.description || 'No description'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{role.description || 'No description'}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{
                     fontSize: 11, padding: '3px 10px', borderRadius: 20,
-                    background: role.color + '14', color: role.color, fontWeight: 500,
+                    background: `color-mix(in srgb, ${role.color} 8%, transparent)`, color: role.color, fontWeight: 500,
                   }}>
                     {role.pages?.length || 0} page{role.pages?.length !== 1 ? 's' : ''}
                   </span>
@@ -176,31 +176,31 @@ export default function RoleManagement() {
                   }}>
                     {role.linked_designations?.length || 0} designation{role.linked_designations?.length === 1 ? '' : 's'}
                   </span>
-                  <span style={{ color: '#444', fontSize: 16, transition: 'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none', marginLeft: 4 }}>▾</span>
+                  <span style={{ color: 'var(--text-dim)', fontSize: 16, transition: 'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none', marginLeft: 4 }}>▾</span>
                 </div>
               </div>
 
               {/* Expanded: page list + used-by panel + actions */}
               {isExpanded && (
-                <div style={{ borderTop: '1px solid #1E1E2A', padding: '16px 20px' }}>
+                <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px' }}>
                   {/* Pages grid */}
-                  <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Allowed Pages</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Allowed Pages</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
                     {role.pages?.length ? role.pages.map(p => (
                       <span key={p.page_id} style={{
                         fontSize: 11, padding: '4px 12px', borderRadius: 8,
-                        background: '#1A1A22', color: '#ccc', display: 'flex', alignItems: 'center', gap: 6,
+                        background: 'var(--bg-input)', color: 'var(--text-body)', display: 'flex', alignItems: 'center', gap: 6,
                       }}>
                         <span style={{ fontSize: 12 }}>{p.page_icon}</span> {p.page_label}
                       </span>
                     )) : (
-                      <span style={{ fontSize: 12, color: '#444' }}>No pages assigned</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>No pages assigned</span>
                     )}
                   </div>
 
                   {/* Linked designations — populated when an admin maps a designation
                       to this role on the Designations page. */}
-                  <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
                     Linked Designations
                     {role.linked_designations?.length > 0 && (
                       <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
@@ -212,9 +212,9 @@ export default function RoleManagement() {
                     {role.linked_designations?.length ? role.linked_designations.map(d => (
                       <span key={d.id} style={{
                         fontSize: 11, padding:'4px 10px', borderRadius: 999,
-                        background: (role.color || '#0A84FF') + '14',
-                        color:      role.color || '#0A84FF',
-                        border: `1px solid ${(role.color || '#0A84FF')}30`,
+                        background: (role.color || 'var(--accent)') + '14',
+                        color:      role.color || 'var(--accent)',
+                        border: `1px solid ${(role.color || 'var(--accent)')}30`,
                         display:'inline-flex', alignItems:'center', gap: 6,
                       }}>
                         {d.designation}
@@ -225,7 +225,7 @@ export default function RoleManagement() {
                         )}
                       </span>
                     )) : (
-                      <span style={{ fontSize: 12, color: '#FF9F0A' }}>
+                      <span style={{ fontSize: 12, color: 'var(--warning)' }}>
                         ⚠ No designations linked yet — add one on the Designations page and pick this role.
                       </span>
                     )}
@@ -257,9 +257,9 @@ export default function RoleManagement() {
             <Input label="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description of this role" />
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 6 }}>Role Color</label>
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 6 }}>Role Color</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {['#0A84FF', '#BF5AF2', '#FF9F0A', '#40C8E0', '#FF6B6B', '#30D158', '#FFD60A', '#FF453A', '#5E5CE6', '#AC8E68'].map(c => (
+                {['var(--accent)', 'var(--purple)', 'var(--warning)', 'var(--info)', 'var(--danger)', 'var(--success)', 'var(--warning)', 'var(--danger)', '#5E5CE6', '#AC8E68'].map(c => (
                   <div
                     key={c}
                     onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -275,7 +275,7 @@ export default function RoleManagement() {
 
             {/* Page selection */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 10 }}>
                 Page Access ({selectedPages.length} selected)
               </label>
 
@@ -294,14 +294,14 @@ export default function RoleManagement() {
                     >
                       <div style={{
                         width: 16, height: 16, borderRadius: 4,
-                        border: `2px solid ${allInGroup ? accent : '#3A3A4A'}`,
-                        background: allInGroup ? accent : someInGroup ? accent + '44' : 'transparent',
+                        border: `2px solid ${allInGroup ? accent : 'var(--border-strong)'}`,
+                        background: allInGroup ? accent : someInGroup ? `color-mix(in srgb, ${accent} 27%, transparent)` : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 10, color: '#fff', fontWeight: 700,
                       }}>
                         {allInGroup ? '✓' : someInGroup ? '—' : ''}
                       </div>
-                      <span style={{ fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{group}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{group}</span>
                     </div>
 
                     {/* Page checkboxes */}
@@ -322,7 +322,7 @@ export default function RoleManagement() {
                           >
                             <div style={{
                               width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                              border: `2px solid ${checked ? (form.color || accent) : '#3A3A4A'}`,
+                              border: `2px solid ${checked ? (form.color || accent) : 'var(--border-strong)'}`,
                               background: checked ? (form.color || accent) : 'transparent',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontSize: 9, color: '#fff', fontWeight: 700,
@@ -330,7 +330,7 @@ export default function RoleManagement() {
                               {checked ? '✓' : ''}
                             </div>
                             <span style={{ fontSize: 13 }}>{page.icon}</span>
-                            <span style={{ fontSize: 12, color: checked ? '#E2E2E8' : '#666' }}>{page.label}</span>
+                            <span style={{ fontSize: 12, color: checked ? 'var(--text-body)' : 'var(--text-faint)' }}>{page.label}</span>
                           </div>
                         )
                       })}

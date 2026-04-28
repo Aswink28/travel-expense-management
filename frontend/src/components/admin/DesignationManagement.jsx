@@ -234,10 +234,10 @@ export default function DesignationManagement() {
                       {dt.role ? (
                         <span style={{
                           fontSize: 11, fontWeight: 600, padding:'3px 9px', borderRadius: 999,
-                          background: roleColor + '18', color: roleColor, border: `1px solid ${roleColor}40`,
+                          background: `color-mix(in srgb, ${roleColor} 9%, transparent)`, color: roleColor, border: `1px solid ${roleColor}40`,
                         }}>{dt.role}</span>
                       ) : (
-                        <span style={{ fontSize: 11, color:'#FF9F0A' }}>⚠ Not set</span>
+                        <span style={{ fontSize: 11, color:'var(--warning)' }}>⚠ Not set</span>
                       )}
                     </td>
                     <td style={tdStyle}>
@@ -247,7 +247,7 @@ export default function DesignationManagement() {
                           color:'var(--accent)', background:'color-mix(in srgb, var(--accent) 14%, transparent)',
                           border:'1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                         }}>{dt.tier_name} · rank {dt.tier_rank}</span>
-                      ) : <span style={{ fontSize: 11, color:'#FF9F0A' }}>⚠ Not set</span>}
+                      ) : <span style={{ fontSize: 11, color:'var(--warning)' }}>⚠ Not set</span>}
                     </td>
                     <td style={tdStyle}>
                       {approverChain.length === 0
@@ -266,9 +266,9 @@ export default function DesignationManagement() {
                     <td style={tdStyle}>
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding:'3px 9px', borderRadius: 999,
-                        background: dt.employee_count > 0 ? '#30D15818' : 'var(--bg-input)',
-                        color:      dt.employee_count > 0 ? '#30D158'   : 'var(--text-muted)',
-                        border: `1px solid ${dt.employee_count > 0 ? '#30D15840' : 'var(--border)'}`,
+                        background: dt.employee_count > 0 ? 'color-mix(in srgb, var(--success) 9%, transparent)' : 'var(--bg-input)',
+                        color:      dt.employee_count > 0 ? 'var(--success)'   : 'var(--text-muted)',
+                        border: `1px solid ${dt.employee_count > 0 ? 'color-mix(in srgb, var(--success) 25%, transparent)' : 'var(--border)'}`,
                       }}>{dt.employee_count ?? 0}</span>
                     </td>
                     {canEdit && (
@@ -276,7 +276,7 @@ export default function DesignationManagement() {
                         <div style={{ display:'flex', gap: 6 }}>
                           <Button size="sm" variant="ghost" onClick={() => openEdit(dt)}>Edit</Button>
                           <Button size="sm"
-                            style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }}
+                            style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color:'var(--danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
                             title="Delete this designation mapping"
                             onClick={() => requestDelete(dt)}>
                             Delete
@@ -363,19 +363,19 @@ export default function DesignationManagement() {
 
             {confirmRow.blocked ? (
               <>
-                <div style={{ fontSize: 13, color:'#FF9F0A', lineHeight: 1.5, marginBottom: 12 }}>
+                <div style={{ fontSize: 13, color:'var(--warning)', lineHeight: 1.5, marginBottom: 12 }}>
                   This designation cannot be deleted yet — it's still referenced elsewhere:
                 </div>
                 <div style={{
-                  background:'color-mix(in srgb, #FF453A 8%, transparent)',
-                  border:'1px solid color-mix(in srgb, #FF453A 25%, transparent)',
+                  background:'color-mix(in srgb, var(--danger) 8%, transparent)',
+                  border:'1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
                   borderRadius: 8, padding:'10px 12px', marginBottom: 14,
                 }}>
                   {confirmRow.blockers.map((b, i) => (
                     <div key={i} style={{ display:'flex', gap: 10, alignItems:'flex-start', padding:'4px 0' }}>
                       <span style={{
                         fontSize: 11, fontWeight: 700, padding:'2px 8px', borderRadius: 999,
-                        background:'#FF453A20', color:'#FF453A', minWidth: 32, textAlign:'center',
+                        background:'color-mix(in srgb, var(--danger) 13%, transparent)', color:'var(--danger)', minWidth: 32, textAlign:'center',
                       }}>{b.count}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color:'var(--text-primary)' }}>{b.label}</div>
@@ -397,7 +397,7 @@ export default function DesignationManagement() {
               </Button>
               <Button
                 style={{
-                  background: confirmRow.blocked ? '#FF453A55' : '#FF453A',
+                  background: confirmRow.blocked ? 'color-mix(in srgb, var(--danger) 33%, transparent)' : 'var(--danger)',
                   color:'#fff', border:'none',
                   cursor: confirmRow.blocked ? 'not-allowed' : 'pointer',
                 }}
