@@ -155,13 +155,34 @@ export const rolesAPI = {
   remove:     id           => api.delete(`/roles/${id}`),
 }
 
+// Authed file download — fetches with Bearer token, then triggers a save dialog.
+// Needed because <a href> downloads can't carry custom headers (so 401 on protected routes).
+async function downloadFile(path, filename) {
+  const token = getToken()
+  const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) {
+    let msg
+    try { msg = (await res.json()).message } catch { msg = `Download failed (${res.status})` }
+    const e = new Error(msg); e.status = res.status; throw e
+  }
+  const blob = await res.blob()
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); a.remove()
+  URL.revokeObjectURL(url)
+}
+
 export const bulkEmployeesAPI = {
   upload:       formData   => uploadFile('/employees/bulk/upload', formData),
   listJobs:     ()         => api.get('/employees/bulk/jobs'),
   jobDetail:    (id, params={}) => api.get(`/employees/bulk/jobs/${id}?${new URLSearchParams(params)}`),
-  exportErrors: id         => `${BASE}/employees/bulk/jobs/${id}/export-errors`,
+  // Authed (PII inside) — fetched as blob via downloadFile.
+  exportErrors: (id, filename = `bulk_errors_${id.slice(0, 8)}.xlsx`) =>
+                  downloadFile(`/employees/bulk/jobs/${id}/export-errors`, filename),
   retryFailed:  id         => api.post(`/employees/bulk/jobs/${id}/retry-failed`),
   deleteJob:    id         => api.delete(`/employees/bulk/jobs/${id}`),
+  // Public on the backend (no PII) — plain URL works with <a href download>.
   template:     ()         => `${BASE}/employees/bulk/template`,
 }
 

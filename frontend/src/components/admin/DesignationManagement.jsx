@@ -110,17 +110,31 @@ export default function DesignationManagement() {
   }
 
   function requestDelete(dt) {
+    const employees  = Number(dt.employee_count   || 0)
+    const chainSteps = Number(dt.chain_step_count || 0)
+    const blockers   = []
+    if (employees  > 0) blockers.push({ label: 'Employees on this designation', count: employees,  fixHint: 'Reassign them in Employee Management first.' })
+    if (chainSteps > 0) blockers.push({ label: 'Approval-chain steps using this name', count: chainSteps, fixHint: 'Edit each affected employee\'s approver chain to remove this step.' })
+
     setConfirmRow({
       title: `Delete "${dt.designation}"?`,
-      message: dt.employee_count > 0
-        ? `⚠️ ${dt.employee_count} employee(s) currently use this designation. You must reassign them first.`
-        : 'This removes the designation → role → tier mapping. Employees using this designation will lose their tier link.',
-      blocked: dt.employee_count > 0,
+      designation: dt.designation,
+      blockers, // [] = clear to delete
+      blocked: blockers.length > 0,
       onConfirm: async () => {
         setSaving(true)
-        try { await tiersAPI.deleteDesignation(dt.designation); setSuccess(`Designation "${dt.designation}" deleted`); await load() }
-        catch (e) { setError(e.message) }
-        finally   { setSaving(false); setConfirmRow(null) }
+        try {
+          await tiersAPI.deleteDesignation(dt.designation)
+          setSuccess(`Designation "${dt.designation}" deleted`)
+          setConfirmRow(null)
+          await load()
+        } catch (e) {
+          // Backend may have caught a race condition (someone added a user/chain step
+          // between our list load and the delete). Surface the precise blockers.
+          if (e.status === 409 && e.message) setError(e.message)
+          else setError(e.message || 'Delete failed')
+          await load() // refresh counts so the dialog reflects truth
+        } finally { setSaving(false) }
       },
     })
   }
@@ -263,8 +277,7 @@ export default function DesignationManagement() {
                           <Button size="sm" variant="ghost" onClick={() => openEdit(dt)}>Edit</Button>
                           <Button size="sm"
                             style={{ background:'#FF453A18', color:'#FF453A', border:'1px solid #FF453A30' }}
-                            disabled={dt.employee_count > 0}
-                            title={dt.employee_count > 0 ? 'Reassign employees before deleting' : undefined}
+                            title="Delete this designation mapping"
                             onClick={() => requestDelete(dt)}>
                             Delete
                           </Button>
@@ -343,14 +356,55 @@ export default function DesignationManagement() {
       {/* Confirm delete dialog */}
       {confirmRow && createPortal(
         <div style={{ position:'fixed', inset: 0, background:'rgba(0,0,0,.55)', zIndex: 9999, display:'flex', alignItems:'center', justifyContent:'center', padding: 20 }}>
-          <div style={{ width:'100%', maxWidth: 440, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 12, padding: 20, boxShadow:'0 20px 50px rgba(0,0,0,.5)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color:'var(--text-primary)', marginBottom: 8 }}>{confirmRow.title}</div>
-            <div style={{ fontSize: 13, color:'var(--text-muted)', lineHeight: 1.5, marginBottom: 16 }}>{confirmRow.message}</div>
+          <div style={{ width:'100%', maxWidth: 480, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius: 12, padding: 22, boxShadow:'0 20px 50px rgba(0,0,0,.5)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color:'var(--text-primary)', marginBottom: 10 }}>
+              {confirmRow.title}
+            </div>
+
+            {confirmRow.blocked ? (
+              <>
+                <div style={{ fontSize: 13, color:'#FF9F0A', lineHeight: 1.5, marginBottom: 12 }}>
+                  This designation cannot be deleted yet — it's still referenced elsewhere:
+                </div>
+                <div style={{
+                  background:'color-mix(in srgb, #FF453A 8%, transparent)',
+                  border:'1px solid color-mix(in srgb, #FF453A 25%, transparent)',
+                  borderRadius: 8, padding:'10px 12px', marginBottom: 14,
+                }}>
+                  {confirmRow.blockers.map((b, i) => (
+                    <div key={i} style={{ display:'flex', gap: 10, alignItems:'flex-start', padding:'4px 0' }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding:'2px 8px', borderRadius: 999,
+                        background:'#FF453A20', color:'#FF453A', minWidth: 32, textAlign:'center',
+                      }}>{b.count}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color:'var(--text-primary)' }}>{b.label}</div>
+                        <div style={{ fontSize: 11, color:'var(--text-muted)', marginTop: 2 }}>{b.fixHint}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color:'var(--text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
+                This will remove the designation → role → tier mapping. No employees or approval chain steps reference it, so the delete is safe.
+              </div>
+            )}
+
             <div style={{ display:'flex', justifyContent:'flex-end', gap: 8 }}>
-              <Button variant="ghost" onClick={() => setConfirmRow(null)} disabled={saving}>Cancel</Button>
+              <Button variant="ghost" onClick={() => setConfirmRow(null)} disabled={saving}>
+                {confirmRow.blocked ? 'Close' : 'Cancel'}
+              </Button>
               <Button
-                style={{ background: confirmRow.blocked ? '#FF453A88' : '#FF453A', color:'#fff', border:'none' }}
-                onClick={confirmRow.onConfirm} disabled={saving || confirmRow.blocked}>
+                style={{
+                  background: confirmRow.blocked ? '#FF453A55' : '#FF453A',
+                  color:'#fff', border:'none',
+                  cursor: confirmRow.blocked ? 'not-allowed' : 'pointer',
+                }}
+                onClick={confirmRow.onConfirm}
+                disabled={saving || confirmRow.blocked}
+                title={confirmRow.blocked ? 'Resolve the blockers above first' : 'Permanently delete this mapping'}
+              >
                 {saving ? 'Working…' : confirmRow.blocked ? 'Blocked' : 'Confirm Delete'}
               </Button>
             </div>

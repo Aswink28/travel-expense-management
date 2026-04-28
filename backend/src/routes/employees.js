@@ -3,42 +3,11 @@ const bcrypt   = require('bcryptjs')
 const pool     = require('../config/db')
 const { authenticate, authorise } = require('../middleware')
 const { createPpiWallet, suspendPpiWallet, closePpiWallet } = require('../services/ppiWallet')
+const { normaliseApprovalConfig, resolveTierForDesignation, deriveApprovalFromTier } = require('../services/employeeApproval')
 const router   = express.Router()
 
 router.use(authenticate)
 router.use(authorise('Super Admin'))
-
-// ── Helper: validate + normalise per-employee approval config ──
-// Only two rules are supported: ANY_ONE and ALL. required_approval_count is derived
-// automatically: ANY_ONE → 1, ALL → number of selected approvers.
-function normaliseApprovalConfig({ approver_roles, approval_type }) {
-  if (approver_roles === undefined && approval_type === undefined) {
-    return { provided: false }
-  }
-  const list = Array.isArray(approver_roles) ? approver_roles.filter(Boolean) : []
-  const type = approval_type || 'ALL'
-  if (!['ANY_ONE','ALL'].includes(type)) {
-    return { error: 'approval_type must be ANY_ONE or ALL' }
-  }
-  if (list.length === 0) {
-    return { error: 'At least one approver role must be selected' }
-  }
-  const count = type === 'ANY_ONE' ? 1 : list.length
-  return { provided: true, approver_roles: list, approval_type: type, required_approval_count: count }
-}
-
-// ── Helper: resolve tier + default approval config from designation ──
-async function resolveTierForDesignation(client, designation) {
-  if (!designation) return null
-  const { rows } = await client.query(`
-    SELECT t.*
-    FROM designation_tiers dt
-    JOIN tiers t ON t.id = dt.tier_id
-    WHERE LOWER(dt.designation) = LOWER($1)
-    LIMIT 1
-  `, [designation])
-  return rows[0] || null
-}
 
 // ── Helper: load an employee's approver chain (ordered) ──────────
 async function fetchApproverChain(client, employeeId) {
@@ -240,11 +209,8 @@ router.post('/', async (req, res, next) => {
 
     // If caller didn't supply an approval config, inherit from the resolved tier.
     if (!approvalCfg.provided && tierRow) {
-      const roles = Array.isArray(tierRow.approver_roles) ? tierRow.approver_roles : []
-      if (roles.length) {
-        const type  = tierRow.approval_type === 'ANY_ONE' ? 'ANY_ONE' : 'ALL'
-        approvalCfg = { provided: true, approver_roles: roles, approval_type: type, required_approval_count: type === 'ANY_ONE' ? 1 : roles.length }
-      }
+      const fromTier = deriveApprovalFromTier(tierRow)
+      if (fromTier) approvalCfg = fromTier
     }
 
     // Every new employee must have at least one approver — either directly supplied

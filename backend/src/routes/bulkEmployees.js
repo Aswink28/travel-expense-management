@@ -4,13 +4,45 @@ const bcrypt  = require('bcryptjs')
 const XLSX    = require('xlsx')
 const pool    = require('../config/db')
 const { authenticate, authorise } = require('../middleware')
-const { parseFile } = require('../services/bulkParseService')
+const { parseFile, formatErrors } = require('../services/bulkParseService')
 const { createPpiWallet } = require('../services/ppiWallet')
+const { resolveTierForDesignation, deriveApprovalFromTier } = require('../services/employeeApproval')
 const router  = express.Router()
 
 // PPI defaults now come from PPI_PRODUCT_IDS / PPI_PROGRAM_ID in env.
 // Per-row override is still possible via the CSV's productId column.
 const bulkUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
+
+// ── PUBLIC: GET /template ────────────────────────────────────
+// Registered BEFORE auth middleware so a plain <a href> download works.
+// Template contains only column names + dummy rows — no PII, safe to expose.
+router.get('/template', (req, res) => {
+  const data = [
+    {
+      name: 'Rahul Sharma', email: 'rahul@company.in', password: 'Pass@123',
+      mobile_number: '9876543210', date_of_birth: '1995-03-15', gender: 'Male',
+      pan_number: 'ABCDE1234F', aadhaar_number: '123456789012',
+      designation: 'Software Engineer', role: 'Employee', department: 'Engineering', tier_id: '',
+    },
+    {
+      name: 'Priya Nair', email: 'priya@company.in', password: 'Pass@123',
+      mobile_number: '9876543211', date_of_birth: '1992-08-22', gender: 'Female',
+      pan_number: 'FGHIJ5678K', aadhaar_number: '234567890123',
+      designation: 'Manager', role: 'Request Approver', department: 'Design', tier_id: '',
+    },
+  ]
+  const ws = XLSX.utils.json_to_sheet(data)
+  ws['!cols'] = [
+    { wch: 18 }, { wch: 32 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
+    { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 8 },
+  ]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Employees')
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.setHeader('Content-Disposition', 'attachment; filename=bulk_employee_template.xlsx')
+  res.send(buf)
+})
 
 router.use(authenticate)
 router.use(authorise('Super Admin'))
@@ -18,7 +50,7 @@ router.use(authorise('Super Admin'))
 // ── In-memory job tracker for background processing ──────────
 const activeJobs = new Map()
 
-// ── Background processor (no Redis needed) ───────────────────
+// ── Background processor ─────────────────────────────────────
 async function processJob(jobId) {
   const { rows: pendingRows } = await pool.query(
     `SELECT id, row_number, raw_data FROM bulk_job_rows WHERE job_id=$1 AND status='pending' ORDER BY row_number`,
@@ -31,61 +63,118 @@ async function processJob(jobId) {
     const data = row.raw_data
     const client = await pool.connect()
     try {
-      // Mark processing
       await client.query(`UPDATE bulk_job_rows SET status='processing', updated_at=NOW() WHERE id=$1`, [row.id])
 
-      // Idempotency — check duplicates
+      // ── Duplicate checks (same as POST /api/employees) ────
       const { rows: dupEmail } = await client.query('SELECT id FROM users WHERE LOWER(email)=LOWER($1)', [data.email])
       if (dupEmail.length) {
-        await markRow(client, jobId, row.id, 'skipped', 'Email already exists')
+        await markRow(client, jobId, row.id, 'skipped', `[email] Email already exists`)
         continue
       }
       const { rows: dupMob } = await client.query('SELECT id FROM users WHERE mobile_number=$1', [data.mobile_number])
       if (dupMob.length) {
-        await markRow(client, jobId, row.id, 'skipped', 'Mobile number already exists')
+        await markRow(client, jobId, row.id, 'skipped', `[mobile_number] Mobile number already exists`)
+        continue
+      }
+
+      // ── Master-data: role must exist in `roles` table ─────
+      const { rows: roleRow } = await client.query('SELECT name, color FROM roles WHERE name=$1', [data.role])
+      if (!roleRow.length) {
+        await markRow(client, jobId, row.id, 'failed', `[role] Role "${data.role}" does not exist in master data`)
+        continue
+      }
+
+      // ── Master-data: designation → tier mapping ───────────
+      let resolvedTierId = null
+      let tierRow = null
+      if (data.tier_id !== undefined && data.tier_id !== '') {
+        // Caller supplied an explicit tier_id — use it as-is, validate it exists.
+        const tid = parseInt(data.tier_id, 10)
+        if (!Number.isInteger(tid)) {
+          await markRow(client, jobId, row.id, 'failed', `[tier_id] tier_id must be an integer`)
+          continue
+        }
+        const { rows: t } = await client.query('SELECT * FROM tiers WHERE id=$1', [tid])
+        if (!t.length) {
+          await markRow(client, jobId, row.id, 'failed', `[tier_id] Tier id ${tid} does not exist`)
+          continue
+        }
+        tierRow = t[0]
+        resolvedTierId = tierRow.id
+      } else {
+        tierRow = await resolveTierForDesignation(client, data.designation)
+        if (!tierRow) {
+          await markRow(client, jobId, row.id, 'failed',
+            `[designation] Designation "${data.designation}" is not mapped to any tier — set the mapping in Tier Config first`)
+          continue
+        }
+        resolvedTierId = tierRow.id
+      }
+
+      // ── Approval flow: every employee must have approvers ─
+      const approvalCfg = deriveApprovalFromTier(tierRow)
+      if (!approvalCfg) {
+        await markRow(client, jobId, row.id, 'failed',
+          `[designation] Tier "${tierRow.name}" has no approver_roles configured — assign approvers in Tier Config`)
         continue
       }
 
       await client.query('BEGIN')
 
-      // Generate emp_id
+      // ── Generate emp_id (server sequence — concurrent-safe) ─
       const { rows: [seqRow] } = await client.query("SELECT nextval('emp_id_seq') AS num")
       const emp_id = `EMP-${String(seqRow.num).padStart(3, '0')}`
 
       const parts = data.name.trim().split(/\s+/)
-      const avatar = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : data.name.slice(0, 2).toUpperCase()
-      const { rows: roleRow } = await client.query('SELECT color FROM roles WHERE name=$1', [data.role || 'Employee'])
-      const color = roleRow[0]?.color || '#0A84FF'
+      const avatar = parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : data.name.slice(0, 2).toUpperCase()
+      const color = roleRow[0].color || '#0A84FF'
       const password_hash = await bcrypt.hash(data.password, 10)
 
-      // Call PPI wallet API
+      // ── PPI wallet creation (same as single create) ───────
       let ppiWallet
       try {
         ppiWallet = await createPpiWallet({
           productId: data.productId || undefined,
-          name: data.name.trim(), mobile_number: data.mobile_number,
-          email: data.email, date_of_birth: data.date_of_birth, gender: data.gender,
-          pan_number: data.pan_number, aadhaar_number: data.aadhaar_number,
+          name: data.name.trim(),
+          mobile_number: data.mobile_number,
+          email: data.email,
+          date_of_birth: data.date_of_birth,
+          gender: data.gender,
+          pan_number: data.pan_number,
+          aadhaar_number: data.aadhaar_number,
         })
       } catch (ppiErr) {
         await client.query('ROLLBACK')
-        await markRow(client, jobId, row.id, 'failed', `PPI: ${ppiErr.message}`)
+        await markRow(client, jobId, row.id, 'failed', `[wallet] PPI: ${ppiErr.message}`)
         continue
       }
 
-      // Insert user
+      // ── Insert user — column set matches POST /api/employees ─
+      // (reporting_to is intentionally omitted; the Employee Creation form
+      // strips it before submitting, so bulk does the same.)
       const { rows: [user] } = await client.query(
-        `INSERT INTO users (emp_id, name, email, password_hash, role, department, avatar, color, reporting_to,
+        `INSERT INTO users (emp_id, name, email, password_hash, role, department, avatar, color,
                             mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
-                            ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id, ppi_wallet_id`,
-        [emp_id, data.name.trim(), data.email, password_hash, data.role || 'Employee',
-         data.department || 'Engineering', avatar, color, data.reporting_to || null,
-         data.mobile_number, data.date_of_birth, data.gender, data.pan_number, data.aadhaar_number,
-         ppiWallet.walletId, ppiWallet.walletNumber, ppiWallet.customerId, ppiWallet.walletStatus, ppiWallet.kycStatus]
+                            ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status,
+                            approver_roles, approval_type, required_approval_count,
+                            designation, tier_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+         RETURNING id, ppi_wallet_id`,
+        [
+          emp_id, data.name.trim(), data.email, password_hash, data.role,
+          data.department || 'Engineering', avatar, color,
+          data.mobile_number, data.date_of_birth, data.gender,
+          data.pan_number, data.aadhaar_number,
+          ppiWallet.walletId, ppiWallet.walletNumber, ppiWallet.customerId,
+          ppiWallet.walletStatus, ppiWallet.kycStatus,
+          approvalCfg.approver_roles, approvalCfg.approval_type, approvalCfg.required_approval_count,
+          data.designation, resolvedTierId,
+        ]
       )
 
-      // Create internal wallet
+      // Internal wallet
       await client.query(
         `INSERT INTO wallets (user_id, balance, total_credited, total_debited, travel_balance, hotel_balance, allowance_balance)
          VALUES ($1, 0, 0, 0, 0, 0, 0)`, [user.id]
@@ -93,9 +182,8 @@ async function processJob(jobId) {
 
       await client.query('COMMIT')
 
-      // Mark success
       await client.query(
-        `UPDATE bulk_job_rows SET status='success', employee_id=$1, ppi_wallet_id=$2, updated_at=NOW() WHERE id=$3`,
+        `UPDATE bulk_job_rows SET status='success', employee_id=$1, ppi_wallet_id=$2, error_message=NULL, updated_at=NOW() WHERE id=$3`,
         [user.id, ppiWallet.walletId, row.id]
       )
       await client.query(`UPDATE bulk_jobs SET processed=processed+1, succeeded=succeeded+1 WHERE id=$1`, [jobId])
@@ -103,7 +191,7 @@ async function processJob(jobId) {
       console.log(`[BULK] Row ${row.row_number} OK — ${emp_id} / ${data.email}`)
     } catch (err) {
       try { await client.query('ROLLBACK') } catch {}
-      await markRow(client, jobId, row.id, 'failed', err.message)
+      await markRow(client, jobId, row.id, 'failed', `[error] ${err.message}`)
       console.error(`[BULK] Row ${row.row_number} FAILED — ${data.email}: ${err.message}`)
     } finally {
       client.release()
@@ -157,18 +245,17 @@ router.post('/upload', bulkUpload.single('file'), async (req, res, next) => {
 
     // Insert valid rows
     for (const row of validRows) {
-      const { rows: [inserted] } = await pool.query(
+      await pool.query(
         `INSERT INTO bulk_job_rows (job_id, row_number, raw_data, idempotency_key, status) VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
         [job.id, row.rowNumber, JSON.stringify(row.data), row.data._idempotencyKey]
       )
-      row.rowId = inserted.id
     }
 
-    // Insert invalid rows as failed
+    // Insert invalid rows as failed (validation errors, structured)
     for (const row of invalidRows) {
       await pool.query(
         `INSERT INTO bulk_job_rows (job_id, row_number, raw_data, status, error_message) VALUES ($1, $2, $3, 'failed', $4)`,
-        [job.id, row.rowNumber, JSON.stringify(row.data), row.errors.join('; ')]
+        [job.id, row.rowNumber, JSON.stringify(row.data), formatErrors(row.errors)]
       )
     }
 
@@ -176,7 +263,7 @@ router.post('/upload', bulkUpload.single('file'), async (req, res, next) => {
       await pool.query('UPDATE bulk_jobs SET failed=$1, processed=$1 WHERE id=$2', [invalidRows.length, job.id])
     }
 
-    // Start processing in background (no Redis needed)
+    // Start processing in background
     if (validRows.length) {
       activeJobs.set(job.id, true)
       processJob(job.id).catch(err => console.error(`[BULK] Job ${job.id} crashed:`, err.message))
@@ -266,7 +353,6 @@ router.post('/jobs/:jobId/retry-failed', async (req, res, next) => {
       [rowCount, jobId]
     )
 
-    // Process in background
     activeJobs.set(jobId, true)
     processJob(jobId).catch(err => console.error(`[BULK] Retry job ${jobId} crashed:`, err.message))
 
@@ -274,33 +360,15 @@ router.post('/jobs/:jobId/retry-failed', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
-// ── DELETE /api/employees/bulk/jobs/:jobId — delete job + rows from DB ──
+// ── DELETE /api/employees/bulk/jobs/:jobId ───────────────────
 router.delete('/jobs/:jobId', async (req, res, next) => {
   try {
     const jobId = req.params.jobId
     activeJobs.delete(jobId)
-    // bulk_job_rows deleted via ON DELETE CASCADE
     const { rowCount } = await pool.query('DELETE FROM bulk_jobs WHERE id=$1 AND created_by=$2', [jobId, req.user.id])
     if (!rowCount) return res.status(404).json({ success: false, message: 'Job not found' })
     res.json({ success: true, message: 'Job deleted successfully' })
   } catch (e) { next(e) }
-})
-
-// ── GET /api/employees/bulk/template ─────────────────────────
-router.get('/template', (req, res) => {
-  const data = [
-    { name: 'Rahul Sharma', email: 'rahul@company.in', password: 'Pass@123', mobile_number: '9876543210', date_of_birth: '1995-03-15',
-      gender: 'Male', pan_number: 'ABCDE1234F', aadhaar_number: '123456789012', role: 'Employee', department: 'Engineering', reporting_to: 'Manager Name' },
-    { name: 'Priya Nair', email: 'priya@company.in', password: 'Pass@123', mobile_number: '9876543211', date_of_birth: '1992-08-22',
-      gender: 'Female', pan_number: 'FGHIJ5678K', aadhaar_number: '234567890123', role: 'Request Approver', department: 'Design', reporting_to: 'Ravi Kumar' },
-  ]
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Employees')
-  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-  res.setHeader('Content-Disposition', 'attachment; filename=bulk_employee_template.xlsx')
-  res.send(buf)
 })
 
 module.exports = router

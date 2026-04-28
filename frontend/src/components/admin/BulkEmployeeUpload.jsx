@@ -9,7 +9,21 @@ const STATUS_COLORS = {
   completed_with_errors: '#FF9F0A', cancelled: '#888',
 }
 
-// ── Friendly error messages ──────────────────────────────────
+// ── Parse a row error_message into structured { field, message } parts. ──
+// Backend stores errors as `[field] message; [field2] message2`. Anything
+// without the [field] tag is rendered as a generic message.
+function parseRowErrors(msg) {
+  if (!msg) return []
+  return msg.split(';')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => {
+      const m = s.match(/^\[([^\]]+)\]\s*(.+)$/)
+      return m ? { field: m[1], message: m[2] } : { field: null, message: s }
+    })
+}
+
+// ── Friendly error messages for top-level upload errors ──────
 function friendlyError(msg) {
   if (!msg) return 'Something went wrong. Please try again.'
   const m = msg.toLowerCase()
@@ -169,13 +183,18 @@ export default function BulkEmployeeUpload() {
       {/* Required columns */}
       <Card style={{ padding: 16, marginBottom: 20 }}>
         <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>Required Columns</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {['name', 'email', 'password', 'mobile_number', 'date_of_birth', 'gender', 'pan_number', 'aadhaar_number'].map(c => (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {['name', 'email', 'password', 'mobile_number', 'date_of_birth', 'gender', 'pan_number', 'aadhaar_number', 'designation'].map(c => (
             <span key={c} style={{ fontSize: 11, background: '#FF453A12', color: '#FF453A', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c} *</span>
           ))}
-          {['role', 'department', 'reporting_to'].map(c => (
+          {['role', 'department', 'tier_id'].map(c => (
             <span key={c} style={{ fontSize: 11, background: '#1A1A22', color: '#666', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c}</span>
           ))}
+        </div>
+        <div style={{ fontSize: 11, color: '#666', lineHeight: 1.5 }}>
+          <span style={{ color: '#888' }}>Note:</span>{' '}
+          <code style={{ color: '#FFD60A' }}>designation</code> must be mapped to a tier in Tier Config (it drives the approval flow).{' '}
+          <code style={{ color: '#FFD60A' }}>role</code> defaults to <code>Employee</code> and must exist in master data.
         </div>
       </Card>
 
@@ -285,9 +304,19 @@ export default function BulkEmployeeUpload() {
             ))}
             <div style={{ flex: 1 }} />
             {detailJob.failed > 0 && (
-              <a href={bulkEmployeesAPI.exportErrors(detailJob.id)} download style={{ textDecoration: 'none' }}>
-                <Button size="sm" variant="ghost"><Download size={12} /> Export Errors</Button>
-              </a>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    await bulkEmployeesAPI.exportErrors(detailJob.id, `bulk_errors_${detailJob.file_name.replace(/\.[^.]+$/, '')}.xlsx`)
+                  } catch (e) {
+                    setPopup({ type: 'error', title: 'Export Failed', message: friendlyError(e.message) })
+                  }
+                }}
+              >
+                <Download size={12} /> Export Errors
+              </Button>
             )}
           </div>
 
@@ -317,8 +346,20 @@ export default function BulkEmployeeUpload() {
                       }}>{r.status}</span>
                     </td>
                     <td style={{ padding: '6px 10px', fontSize: 11 }}>
-                      {r.status === 'failed' || r.status === 'skipped' ? (
-                        <span style={{ color: '#FF9F0A' }}>{friendlyError(r.error_message)}</span>
+                      {(r.status === 'failed' || r.status === 'skipped') ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {parseRowErrors(r.error_message).map((err, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                              {err.field && (
+                                <span style={{
+                                  fontSize: 10, padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace',
+                                  background: '#FF453A14', color: '#FF453A', flexShrink: 0,
+                                }}>{err.field}</span>
+                              )}
+                              <span style={{ color: '#FF9F0A' }}>{err.message}</span>
+                            </div>
+                          ))}
+                        </div>
                       ) : r.ppi_wallet_id ? (
                         <span style={{ color: '#0A84FF', fontFamily: 'monospace', fontSize: 10 }}>{r.ppi_wallet_id.slice(0, 12)}...</span>
                       ) : '—'}

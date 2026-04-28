@@ -102,6 +102,7 @@ export default function EmployeeManagement({ setTab }) {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [editLoading, setEditLoading] = useState(false); // detail-fetch in flight
   const [form, setForm] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -284,16 +285,29 @@ export default function EmployeeManagement({ setTab }) {
   }
 
   async function openEdit(emp) {
+    if (!emp?.id) {
+      setPopup({ type: 'error', title: 'Cannot Edit', message: 'Missing employee id — refresh the list and try again.' });
+      return;
+    }
     setEditId(emp.id);
     setFieldErrors({});
     setShowPw(false);
-    populateForm(emp); // immediate fill from row data so the modal opens populated
+    populateForm(emp); // optimistic fill from row data so the modal opens populated
     setShowModal(true);
+    setEditLoading(true);
     try {
       const fresh = await employeesAPI.get(emp.id);
       if (fresh?.data) populateForm(fresh.data);
-    } catch (_) {
-      /* fall back to row data — already populated */
+    } catch (err) {
+      // Don't close the modal — keep what we have from the list, but tell the user
+      // why the latest values couldn't be pulled.
+      setPopup({
+        type: 'error',
+        title: 'Could not refresh latest details',
+        message: `Showing cached values for ${emp.name}. Refresh failed: ${err?.message || 'unknown error'}`,
+      });
+    } finally {
+      setEditLoading(false);
     }
   }
 
@@ -720,6 +734,15 @@ export default function EmployeeManagement({ setTab }) {
           ))}
         </select>
         <Button
+          variant="ghost"
+          onClick={load}
+          disabled={loading}
+          style={{ whiteSpace: "nowrap" }}
+          title="Re-fetch all employees from the server"
+        >
+          {loading ? "Refreshing…" : "↻ Refresh"}
+        </Button>
+        <Button
           variant="purple"
           onClick={() => setTab?.("bulk-employees")}
           style={{ whiteSpace: "nowrap" }}
@@ -1138,8 +1161,13 @@ export default function EmployeeManagement({ setTab }) {
               ←
             </button>
             <div style={{ flex: 1 }}>
-              <h2 className="syne" style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
-                {editId ? `Edit Employee — ${form.name || ''}` : 'Create New Employee'}
+              <h2 className="syne" style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span>{editId ? `Edit Employee — ${form.name || ''}` : 'Create New Employee'}</span>
+                {editLoading && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, background: 'var(--bg-card-deep)', padding: '3px 10px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                    Refreshing latest details…
+                  </span>
+                )}
               </h2>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                 {editId

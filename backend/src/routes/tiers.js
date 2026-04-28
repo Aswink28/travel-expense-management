@@ -44,7 +44,10 @@ function normaliseTier(body) {
 }
 
 // ── GET /api/tiers ───────────────────────────────────────────
-// Returns tiers (sorted by rank) plus designation mappings with role + employee counts.
+// Returns tiers (sorted by rank) plus designation mappings with:
+//   - employee_count        : users.designation references
+//   - chain_step_count      : employee_approvers.step_designation references
+// Both are blockers for deletion.
 router.get('/', async (req, res, next) => {
   try {
     const [{ rows: tiers }, { rows: designations }] = await Promise.all([
@@ -53,7 +56,8 @@ router.get('/', async (req, res, next) => {
         SELECT dt.id, dt.designation, dt.tier_id, dt.role,
                t.name AS tier_name, t.rank AS tier_rank,
                t.approver_roles AS tier_approver_roles,
-               (SELECT COUNT(*)::int FROM users u WHERE LOWER(u.designation) = LOWER(dt.designation)) AS employee_count
+               (SELECT COUNT(*)::int FROM users u WHERE LOWER(u.designation) = LOWER(dt.designation)) AS employee_count,
+               (SELECT COUNT(*)::int FROM employee_approvers ea WHERE LOWER(ea.step_designation) = LOWER(dt.designation)) AS chain_step_count
         FROM designation_tiers dt
         LEFT JOIN tiers t ON t.id = dt.tier_id
         ORDER BY t.rank ASC NULLS LAST, dt.designation ASC
@@ -248,25 +252,38 @@ router.put('/designations/:id', async (req, res, next) => {
 })
 
 // ── DELETE /api/tiers/designations/:designation ──────────────
-// Blocked when employees are still mapped to the designation.
+// Blocked if anything still references the designation:
+//   - users.designation (employees on this designation)
+//   - employee_approvers.step_designation (approval-chain steps)
+// Returns 409 with a structured `blockers` object so the UI can render
+// a precise "you can't delete this because…" message.
 router.delete('/designations/:designation', async (req, res, next) => {
   try {
-    const { rows: inUse } = await pool.query(
-      'SELECT COUNT(*)::int AS n FROM users WHERE LOWER(designation) = LOWER($1)',
-      [req.params.designation]
-    )
-    if (inUse[0].n > 0) {
+    const designation = req.params.designation
+    const [{ rows: u }, { rows: c }] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int AS n FROM users WHERE LOWER(designation) = LOWER($1)', [designation]),
+      pool.query('SELECT COUNT(*)::int AS n FROM employee_approvers WHERE LOWER(step_designation) = LOWER($1)', [designation]),
+    ])
+    const employees   = u[0].n
+    const chainSteps  = c[0].n
+
+    if (employees > 0 || chainSteps > 0) {
+      const parts = []
+      if (employees  > 0) parts.push(`${employees} employee(s)`)
+      if (chainSteps > 0) parts.push(`${chainSteps} approval-chain step(s)`)
       return res.status(409).json({
         success: false,
-        message: `Cannot delete — ${inUse[0].n} employee(s) still use this designation. Reassign them first.`,
+        message: `Cannot delete "${designation}" — still in use by ${parts.join(' and ')}. Reassign them first.`,
+        blockers: { employees, chain_steps: chainSteps },
       })
     }
+
     const { rowCount } = await pool.query(
       'DELETE FROM designation_tiers WHERE LOWER(designation) = LOWER($1)',
-      [req.params.designation]
+      [designation]
     )
     if (!rowCount) return res.status(404).json({ success: false, message: 'Mapping not found' })
-    res.json({ success: true, message: 'Mapping deleted' })
+    res.json({ success: true, message: `Designation "${designation}" deleted` })
   } catch (e) { next(e) }
 })
 
