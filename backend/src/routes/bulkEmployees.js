@@ -8,7 +8,8 @@ const { parseFile } = require('../services/bulkParseService')
 const { createPpiWallet } = require('../services/ppiWallet')
 const router  = express.Router()
 
-const PRODUCT_ID = 'cbad7cad-5bef-4289-9150-15d613fcb89b'
+// PPI defaults now come from PPI_PRODUCT_IDS / PPI_PROGRAM_ID in env.
+// Per-row override is still possible via the CSV's productId column.
 const bulkUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
 
 router.use(authenticate)
@@ -61,7 +62,8 @@ async function processJob(jobId) {
       let ppiWallet
       try {
         ppiWallet = await createPpiWallet({
-          productId: PRODUCT_ID, name: data.name.trim(), mobile_number: data.mobile_number,
+          productId: data.productId || undefined,
+          name: data.name.trim(), mobile_number: data.mobile_number,
           email: data.email, date_of_birth: data.date_of_birth, gender: data.gender,
           pan_number: data.pan_number, aadhaar_number: data.aadhaar_number,
         })

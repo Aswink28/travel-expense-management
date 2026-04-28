@@ -263,7 +263,10 @@ router.post('/', async (req, res, next) => {
     let ppiWallet
     try {
       ppiWallet = await createPpiWallet({
-        productId:      productId || 'cbad7cad-5bef-4289-9150-15d613fcb89b',
+        // Optional overrides — when omitted, defaults come from PPI_PRODUCT_IDS / PPI_PROGRAM_ID in env.
+        productId:      productId || undefined,
+        productIds:     Array.isArray(req.body.productIds) ? req.body.productIds : undefined,
+        programId:      req.body.programId || undefined,
         name:           name.trim(),
         mobile_number,
         email:          email.trim().toLowerCase(),

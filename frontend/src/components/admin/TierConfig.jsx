@@ -31,7 +31,6 @@ const EMPTY_TIER = {
   budget_period: 'trip',
   approver_roles: [],
   approval_type: 'ALL',
-  intl_flight_class_upgrade: false,
   max_hotel_per_night: 0,
   meal_daily_limit: 0,
   cab_daily_limit: 0,
@@ -99,7 +98,6 @@ export default function TierConfig() {
         budget_period:  t.budget_period || 'trip',
         approver_roles: Array.isArray(t.approver_roles) ? t.approver_roles : [],
         approval_type:  t.approval_type || 'ALL',
-        intl_flight_class_upgrade: !!t.intl_flight_class_upgrade,
         max_hotel_per_night:  Number(t.max_hotel_per_night)  || 0,
         meal_daily_limit:     Number(t.meal_daily_limit)     || 0,
         cab_daily_limit:      Number(t.cab_daily_limit)      || 0,
@@ -229,7 +227,10 @@ export default function TierConfig() {
                     value={(t.approver_roles || []).length
                       ? [...t.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join(' → ')
                       : 'No approval required'} />
-                  <InfoCell label="Intl flight upgrade" value={t.intl_flight_class_upgrade ? 'Enabled' : 'Off'} />
+                  <InfoCell label="Flight access"
+                    value={Array.isArray(t.flight_classes) && t.flight_classes.length
+                      ? t.flight_classes.join(', ')
+                      : 'Not allowed'} />
                 </div>
               </div>
             )
@@ -362,14 +363,6 @@ function TierForm({ data, setData, errors, activeRoleNames }) {
         </div>
       </div>
 
-      <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'flex-end', gap: 10, paddingBottom: 6 }}>
-        <label style={{ display:'flex', alignItems:'center', gap: 8, fontSize: 13, color:'var(--text-primary)', cursor:'pointer' }}>
-          <input type="checkbox" checked={!!data.intl_flight_class_upgrade}
-            onChange={e => field('intl_flight_class_upgrade', e.target.checked)}
-            style={{ accentColor:'var(--accent)', cursor:'pointer' }} />
-          Upgrade flight class by 1 level for International trips
-        </label>
-      </div>
     </div>
   )
 }

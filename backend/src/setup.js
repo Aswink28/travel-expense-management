@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('./config/env')
 const { Pool } = require('pg')
 const bcrypt   = require('bcryptjs')
 const fs       = require('fs')
@@ -48,7 +48,7 @@ async function run() {
   if (!tablesExist || forceReset) {
     // Fresh install or forced reset — run full schema (DROP + CREATE)
     console.log('\n2. Running schema (fresh install)...')
-    const sql = fs.readFileSync(path.join(__dirname,'..','sql','schema.sql'),'utf8')
+    const sql = fs.readFileSync(path.join(process.cwd(),'sql','schema.sql'),'utf8')
     await pool.query(sql)
     console.log('   ✓ All tables, triggers, views created')
   } else {
@@ -58,31 +58,31 @@ async function run() {
 
   // 2b. Run roles migration (safe — uses IF NOT EXISTS + ON CONFLICT DO NOTHING)
   console.log('\n2b. Running roles migration...')
-  const rolesSql = fs.readFileSync(path.join(__dirname,'..','sql','roles_migration.sql'),'utf8')
+  const rolesSql = fs.readFileSync(path.join(process.cwd(),'sql','roles_migration.sql'),'utf8')
   await pool.query(rolesSql)
   console.log('   ✓ Roles and page access seeded')
 
   // 2c. Run bulk onboarding migration (safe — uses IF NOT EXISTS)
   console.log('\n2c. Running bulk onboarding migration...')
-  const bulkSql = fs.readFileSync(path.join(__dirname,'..','sql','bulk_onboarding_migration.sql'),'utf8')
+  const bulkSql = fs.readFileSync(path.join(process.cwd(),'sql','bulk_onboarding_migration.sql'),'utf8')
   await pool.query(bulkSql)
   console.log('   ✓ Bulk onboarding tables and sequence created')
 
   // 2d. Run employee approval config migration (safe — uses IF NOT EXISTS)
   console.log('\n2d. Running employee approval config migration...')
-  const approvalSql = fs.readFileSync(path.join(__dirname,'..','sql','employee_approval_config_migration.sql'),'utf8')
+  const approvalSql = fs.readFileSync(path.join(process.cwd(),'sql','employee_approval_config_migration.sql'),'utf8')
   await pool.query(approvalSql)
   console.log('   ✓ Per-employee approval config columns added')
 
   // 2e. Run tier system migration (safe — uses IF NOT EXISTS)
   console.log('\n2e. Running tier system migration...')
-  const tierSql = fs.readFileSync(path.join(__dirname,'..','sql','tier_system_migration.sql'),'utf8')
+  const tierSql = fs.readFileSync(path.join(process.cwd(),'sql','tier_system_migration.sql'),'utf8')
   await pool.query(tierSql)
   console.log('   ✓ Tiers and designation mappings created')
 
   // 2f. Run tier system extension migration (hotel/meal/cab caps, advance-booking, is_active)
   console.log('\n2f. Running tier system extension migration...')
-  const tierExtSql = fs.readFileSync(path.join(__dirname,'..','sql','tier_system_extended_migration.sql'),'utf8')
+  const tierExtSql = fs.readFileSync(path.join(process.cwd(),'sql','tier_system_extended_migration.sql'),'utf8')
   await pool.query(tierExtSql)
   console.log('   ✓ Tier policy fields extended')
 
@@ -91,23 +91,23 @@ async function run() {
   //     Runs in two phases because Postgres won't let a newly-added enum value be
   //     used in the same transaction it was created in.
   console.log('\n2g. Running role consolidation migration (phase 1: enum)...')
-  const roleEnumSql = fs.readFileSync(path.join(__dirname,'..','sql','role_consolidation_enum.sql'),'utf8')
+  const roleEnumSql = fs.readFileSync(path.join(process.cwd(),'sql','role_consolidation_enum.sql'),'utf8')
   await pool.query(roleEnumSql)
   console.log('   ✓ Enum values added')
 
   console.log('\n2g. Running role consolidation migration (phase 2: data)...')
-  const roleConsSql = fs.readFileSync(path.join(__dirname,'..','sql','role_consolidation_migration.sql'),'utf8')
+  const roleConsSql = fs.readFileSync(path.join(process.cwd(),'sql','role_consolidation_migration.sql'),'utf8')
   await pool.query(roleConsSql)
   console.log('   ✓ Roles, users, and designations consolidated')
 
   // 2h. Per-employee primary + backup approvers + audit log
   console.log('\n2h. Running employee approvers migration...')
-  const empApproversSql = fs.readFileSync(path.join(__dirname,'..','sql','employee_approvers_migration.sql'),'utf8')
+  const empApproversSql = fs.readFileSync(path.join(process.cwd(),'sql','employee_approvers_migration.sql'),'utf8')
   await pool.query(empApproversSql)
   console.log('   ✓ employee_approvers + approver_audit_log tables ready')
 
   // 3. Create uploads directory
-  const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')
+  const uploadsDir = path.join(process.cwd(), process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })
   console.log('\n3. Created uploads directory')
 

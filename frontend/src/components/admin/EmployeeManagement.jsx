@@ -13,7 +13,8 @@ import {
 } from "../shared/UI";
 import { Eye, EyeOff } from "lucide-react";
 
-const PRODUCT_ID = "cbad7cad-5bef-4289-9150-15d613fcb89b";
+// PPI productId is configured server-side via PPI_PRODUCT_IDS env var.
+// The frontend no longer sends it on Create Employee.
 
 // Authority ranks used to order the approval sequence (lowest authority first).
 const ROLE_RANK = {
@@ -67,7 +68,6 @@ const INITIAL_FORM = {
   password: "",
   role: "Employee",
   department: "",
-  reporting_to: "",
   mobile_number: "",
   date_of_birth: "",
   gender: "",
@@ -260,7 +260,6 @@ export default function EmployeeManagement({ setTab }) {
       password: "",
       role: emp.role || "Employee",
       department: emp.department || "",
-      reporting_to: emp.reporting_to || "",
       mobile_number: emp.mobile_number || "",
       date_of_birth: toDateInput(emp.date_of_birth),
       gender: emp.gender || "",
@@ -343,7 +342,6 @@ export default function EmployeeManagement({ setTab }) {
         : [];
       const payload = {
         ...form,
-        productId: PRODUCT_ID,
         approver_roles: selected,
         approval_type: form.approval_type,
         designation: form.designation || null,
@@ -352,7 +350,7 @@ export default function EmployeeManagement({ setTab }) {
       };
       if (editId && !payload.password) delete payload.password;
       if (!payload.department) delete payload.department;
-      if (!payload.reporting_to) delete payload.reporting_to;
+      delete payload.reporting_to;
 
       let result;
       if (editId) {
@@ -495,14 +493,43 @@ export default function EmployeeManagement({ setTab }) {
       const list = Array.isArray(prev.approver_roles)
         ? prev.approver_roles
         : [];
-      const next = list.includes(roleName)
+      const isRemoving = list.includes(roleName);
+      const nextRoles = isRemoving
         ? list.filter((x) => x !== roleName)
         : [...list, roleName];
-      return { ...prev, approver_roles: next };
+
+      // Rebuild approver_chain so the Primary & Backup card mirrors the toggle.
+      // Drop the step for a deselected role; add an empty step for a newly selected one.
+      // Steps stay ordered lowest-authority-first by ROLE_RANK.
+      const existingChain = Array.isArray(prev.approver_chain)
+        ? prev.approver_chain
+        : [];
+      const byStep = new Map(
+        existingChain.map((s) => [s.step_designation?.toLowerCase(), s])
+      );
+      const orderedSteps = [...nextRoles].sort(
+        (a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99)
+      );
+      const nextChain = orderedSteps.map((stepDesg, i) => {
+        const prior = byStep.get(stepDesg.toLowerCase());
+        return {
+          step_designation: stepDesg,
+          step_order: i + 1,
+          primary_user_id: prior?.primary_user_id || null,
+          backup_user_id:  prior?.backup_user_id  || null,
+        };
+      });
+
+      return {
+        ...prev,
+        approver_roles: nextRoles,
+        approver_chain: nextChain,
+      };
     });
     setFieldErrors((prev) => {
       const n = { ...prev };
       delete n.approver_roles;
+      delete n.approver_chain;
       return n;
     });
   }
@@ -566,7 +593,6 @@ export default function EmployeeManagement({ setTab }) {
       "Sales",
       "Support",
     ];
-    const managers = ["Ravi Kumar", "Deepa Krishnan", "Anil Menon"];
     const panLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const first = pick(firstNames);
     const last = pick(lastNames);
@@ -581,7 +607,6 @@ export default function EmployeeManagement({ setTab }) {
       password: "pass123",
       role: demoRole,
       department: pick(depts),
-      reporting_to: pick(managers),
       mobile_number: `9${rDigits(9)}`,
       date_of_birth: `${year}-${month}-${day}`,
       gender: pick(["Male", "Female"]),
@@ -1297,36 +1322,21 @@ export default function EmployeeManagement({ setTab }) {
               error={fieldErrors.aadhaar_number}
             />
 
-            {/* Row 5: Designation (real), Reporting To
-                Picking a designation auto-fills Role and Tier from Tier Config. */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "0 12px",
-              }}
+            {/* Row 5: Designation — picking it auto-fills Role and Tier from Tier Config. */}
+            <Select
+              label={<MLabel text="Designation" required />}
+              value={form.designation}
+              onChange={(e) => applyDesignation(e.target.value)}
+              error={fieldErrors.designation}
             >
-              <Select
-                label={<MLabel text="Designation" required />}
-                value={form.designation}
-                onChange={(e) => applyDesignation(e.target.value)}
-                error={fieldErrors.designation}
-              >
-                <option value="">Select a designation</option>
-                {designations.map((d) => (
-                  <option key={d.id} value={d.designation}>
-                    {d.designation}
-                    {d.tier_name ? ` · ${d.tier_name}` : ""}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Reporting To"
-                value={form.reporting_to}
-                onChange={(e) => f("reporting_to", e.target.value)}
-                placeholder="e.g. Manager name"
-              />
-            </div>
+              <option value="">Select a designation</option>
+              {designations.map((d) => (
+                <option key={d.id} value={d.designation}>
+                  {d.designation}
+                  {d.tier_name ? ` · ${d.tier_name}` : ""}
+                </option>
+              ))}
+            </Select>
 
             {/* Auto-derived Role + Tier (read-only, from the selected designation) */}
             <div

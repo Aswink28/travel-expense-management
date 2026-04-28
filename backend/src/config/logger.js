@@ -14,13 +14,13 @@
  *  • Child loggers per module via logger.child({ module: 'name' })
  *  • Environment-driven log level (LOG_LEVEL env var)
  */
-require('dotenv').config()
+require('./env')
 const winston     = require('winston')
 const path        = require('path')
 const fs          = require('fs')
 
 // ── Ensure log directory exists ──────────────────────────────
-const LOG_DIR = path.join(__dirname, '..', '..', 'logs')
+const LOG_DIR = path.join(process.cwd(), 'logs')
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true })
 
 // ── Sensitive field redaction ────────────────────────────────

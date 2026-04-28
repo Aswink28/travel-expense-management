@@ -5,7 +5,7 @@
  * be hard-coded or logged. The auth-header builder produces a fresh object
  * per request so callers cannot accidentally mutate shared state.
  */
-require('dotenv').config()
+require('../../config/env')
 
 function normaliseBaseUrl (raw) {
   const trimmed = (raw || '').trim().replace(/\/+$/, '')

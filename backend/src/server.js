@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('./config/env')
 const express    = require('express')
 const cors       = require('cors')
 const path       = require('path')
@@ -12,17 +12,44 @@ const app  = express()
 const PORT = process.env.PORT || 5000
 
 // ── CORS ──────────────────────────────────────────────────────
+// Allow:
+//   1. Same-origin / non-browser requests (no Origin header)
+//   2. localhost / 127.0.0.1 and private LAN ranges (10.x, 192.168.x, 172.16–31.x)
+//   3. Any origin listed in FRONTEND_URL (comma-separated, e.g. public domains
+//      reverse-proxied via nginx). Trailing slashes and case are normalised.
+const normaliseOrigin = (s) => (s || '').trim().toLowerCase().replace(/\/+$/, '')
+
+const allowedOrigins = new Set(
+  (process.env.FRONTEND_URL || '').split(',').map(normaliseOrigin).filter(Boolean)
+)
+
+const lanOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true)
-    if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return cb(null, true)
+    if (!origin) return cb(null, true)
+    const o = normaliseOrigin(origin)
+    if (lanOriginRegex.test(o)) return cb(null, true)
+    if (allowedOrigins.has(o)) return cb(null, true)
+    logger.warn('CORS blocked', { module: 'http', origin })
     cb(new Error('CORS blocked'))
   },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','X-Correlation-Id','X-Request-Id'],
+  allowedHeaders: ['Content-Type','Authorization','X-Correlation-Id','X-Request-Id','Access-Control-Request-Private-Network'],
   optionsSuccessStatus: 200,
 }))
+// Chrome's Private Network Access: when a public-origin page (HTTPS) calls a
+// private-IP backend, Chrome sends `Access-Control-Request-Private-Network: true`
+// on the preflight. We must echo `Access-Control-Allow-Private-Network: true`
+// or it blocks the request. (Note: the page must still be on a secure context
+// — HTTPS — for this to work.)
+app.use((req, res, next) => {
+  if (req.headers['access-control-request-private-network']) {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true')
+  }
+  next()
+})
 app.options('*', cors())
 
 app.use(express.json({ limit:'10mb' }))
@@ -32,7 +59,7 @@ app.use(express.urlencoded({ extended:true }))
 app.use(httpLogger)
 
 // ── Static uploads (for file serving) ────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads')))
+app.use('/uploads', express.static(path.join(process.cwd(), process.env.UPLOAD_DIR || 'uploads')))
 
 // ── Swagger API Docs ─────────────────────────────────────────
 setupSwagger(app)

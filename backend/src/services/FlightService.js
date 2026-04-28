@@ -15,7 +15,7 @@ const Amadeus  = require('amadeus')
 const airApi   = require('./airApi')
 const { resolveAirportCode } = require('./airApi/airportCodes')
 const logger   = require('../config/logger').child({ module: 'FlightService' })
-require('dotenv').config()
+require('../config/env')
 
 class FlightService {
   constructor () {

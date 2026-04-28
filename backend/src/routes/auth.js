@@ -6,6 +6,43 @@ const { authenticate } = require('../middleware')
 const { fetchPpiBalance } = require('../services/ppiWallet')
 const router  = express.Router()
 
+// Build a tier_policy object for the user's tier — used by the New Request form to
+// gate which travel modes/classes/types the user is allowed to select. Empty array
+// for any of {flight_classes, train_classes, bus_types, hotel_types} means that
+// mode is BLOCKED for this tier.
+async function fetchTierPolicy(tierId) {
+  if (!tierId) return null
+  const { rows } = await pool.query(
+    `SELECT id, name, rank, flight_classes, train_classes, bus_types, hotel_types,
+            budget_limit, intl_budget_limit, max_hotel_per_night, meal_daily_limit,
+            cab_daily_limit, advance_booking_days, intl_flight_class_upgrade
+       FROM tiers WHERE id = $1`,
+    [tierId]
+  )
+  if (!rows.length) return null
+  const t = rows[0]
+  const arr = (a) => Array.isArray(a) ? a : []
+  return {
+    tier_id: t.id,
+    tier_name: t.name,
+    tier_rank: t.rank,
+    flight_classes: arr(t.flight_classes),
+    train_classes: arr(t.train_classes),
+    bus_types: arr(t.bus_types),
+    hotel_types: arr(t.hotel_types),
+    allowed_modes: {
+      Flight: arr(t.flight_classes).length > 0,
+      Train:  arr(t.train_classes).length > 0,
+      Bus:    arr(t.bus_types).length > 0,
+      Hotel:  arr(t.hotel_types).length > 0,
+    },
+    budget_limit: t.budget_limit, intl_budget_limit: t.intl_budget_limit,
+    max_hotel_per_night: t.max_hotel_per_night, meal_daily_limit: t.meal_daily_limit,
+    cab_daily_limit: t.cab_daily_limit, advance_booking_days: t.advance_booking_days,
+    intl_flight_class_upgrade: t.intl_flight_class_upgrade,
+  }
+}
+
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body
@@ -29,6 +66,7 @@ router.post('/login', async (req, res, next) => {
     } catch (_) { /* role_pages table may not exist yet */ }
     // Fetch live PPI wallet balance (non-blocking — don't fail login if PPI is down)
     const ppiWallet = await fetchPpiBalance(rows[0].ppi_wallet_id)
+    const tierPolicy = await fetchTierPolicy(rows[0].tier_id)
     res.json({ success:true, token, user: {
       id:rows[0].id, empId:rows[0].emp_id, name:rows[0].name, email:rows[0].email,
       role:rows[0].role, dept:rows[0].department, avatar:rows[0].avatar, color:rows[0].color,
@@ -40,6 +78,7 @@ router.post('/login', async (req, res, next) => {
       approval_type: rows[0].approval_type || 'ALL',
       designation: rows[0].designation || null,
       tier_id: rows[0].tier_id || null,
+      tier_policy: tierPolicy,
     }})
   } catch(e) { next(e) }
 })
@@ -83,6 +122,7 @@ router.get('/me', authenticate, async (req, res, next) => {
     } catch (_) { /* role_pages table may not exist yet */ }
     const u = req.user
     const ppiWallet = await fetchPpiBalance(u.ppi_wallet_id)
+    const tierPolicy = await fetchTierPolicy(u.tier_id)
     res.json({ success:true, user: {
       id:u.id, empId:u.emp_id, name:u.name, email:u.email, role:u.role,
       dept:u.department, avatar:u.avatar, color:u.color, reportingTo:u.reporting_to,
@@ -94,6 +134,7 @@ router.get('/me', authenticate, async (req, res, next) => {
       approval_type: u.approval_type || 'ALL',
       designation: u.designation || null,
       tier_id: u.tier_id || null,
+      tier_policy: tierPolicy,
     }})
   } catch(e) { next(e) }
 })

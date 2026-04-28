@@ -3,12 +3,12 @@ import { useAuth } from '../../context/AuthContext'
 import ThemeSwitcher from './ThemeSwitcher'
 
 const DEMO = [
-  { name: 'Arjun Sharma',   email: 'arjun@company.in',  role: 'Employee',         color: '#5BAEFF', avatar: 'AS', password: 'pass123' },
-  { name: 'Deepa Krishnan', email: 'deepa@company.in',  role: 'Request Approver', color: '#B868FF', avatar: 'DK', password: 'pass123' },
-  { name: 'Ravi Kumar',     email: 'ravi@company.in',   role: 'Request Approver', color: '#FFA84A', avatar: 'RK', password: 'pass123' },
-  { name: 'Anil Menon',     email: 'anil@company.in',   role: 'Finance',       color: '#5EE9DD', avatar: 'AM', password: 'pass123' },
-  { name: 'Meena Iyer',     email: 'meena@company.in',  role: 'Booking Admin', color: '#FF6B8A', avatar: 'MI', password: 'pass123' },
-  { name: 'Super Admin',    email: 'admin@company.in',  role: 'Super Admin',   color: '#5EE9B5', avatar: 'SA', password: 'admin123' },
+  { name: 'Rohan Kapoor',   email: 'rohan.kapoor@company.in', role: 'Employee',         designation: 'SE',      color: '#5BAEFF', avatar: 'RK', password: 'pass123' },
+  { name: 'John Murphy',    email: 'john.murphy@company.in',  role: 'Request Approver', designation: 'TL',      color: '#B868FF', avatar: 'JM', password: 'pass123' },
+  { name: 'Priya Mehta',    email: 'priya.mehta@company.in',  role: 'Request Approver', designation: 'Manager', color: '#FFA84A', avatar: 'PM', password: 'pass123' },
+  { name: 'Anjali Rao',     email: 'anjali.rao@company.in',   role: 'Finance',          designation: 'Finance', color: '#5EE9DD', avatar: 'AR', password: 'pass123' },
+  { name: 'Meena Iyer',     email: 'meena.iyer@company.in',   role: 'Booking Admin',    designation: 'Booking', color: '#FF6B8A', avatar: 'MI', password: 'pass123' },
+  { name: 'System Admin',   email: 'admin@company.in',        role: 'Super Admin',      designation: 'Admin',   color: '#5EE9B5', avatar: 'SA', password: 'admin123' },
 ]
 
 // ── Inline icons (Lucide-style) ──────────────────────────────
@@ -227,7 +227,7 @@ export default function LoginPage() {
                     boxShadow: selected?.email === u.email ? `0 0 14px ${u.color}66` : 'none',
                   }}
                 >
-                  {u.role}
+                  {u.designation || u.role}
                 </button>
               ))}
             </div>

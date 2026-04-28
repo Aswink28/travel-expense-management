@@ -4,7 +4,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "setup": "node src/setup.js"
+    "setup": "node src/setup.js",
+    "build": "ncc build src/server.js -o dist --minify --source-map && node -e \"const fs=require('fs'),path=require('path');for(const f of fs.readdirSync('dist')){if(f.endsWith('.log')||f==='logs')fs.rmSync(path.join('dist',f),{recursive:true,force:true})}\"",
+    "build:setup": "ncc build src/setup.js -o dist-setup --minify",
+    "start:dist": "node dist/index.js"
   },
   "dependencies": {
     "amadeus": "^11.0.0",
@@ -22,5 +25,8 @@
     "winston": "^3.19.0",
     "winston-seq": "^0.1.0",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.4"
   }
 }

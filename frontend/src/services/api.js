@@ -10,11 +10,23 @@ async function request(path, options = {}) {
     ...options,
     headers: { 'Content-Type':'application/json', ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers },
   })
-  const data = await res.json()
+  const data = await safeJson(res)
   if (res.status === 401 && token) { removeToken(); window.location.href = '/'; return }
   if (res.status === 401) { const e = new Error(data.message || 'Invalid credentials'); e.status = 401; throw e }
-  if (!res.ok) { const e = new Error(data.message || 'Request failed'); e.status = res.status; throw e }
+  if (!res.ok) { const e = new Error(data.message || `Request failed (${res.status})`); e.status = res.status; throw e }
   return data
+}
+
+// Safely parse a response body. If the server returns HTML (e.g. nginx 404
+// because /api isn't proxied) or any non-JSON, surface a clear message
+// instead of "Unexpected token '<' is not valid JSON".
+async function safeJson(res) {
+  const text = await res.text()
+  if (!text) return {}
+  try { return JSON.parse(text) }
+  catch {
+    return { message: `Server returned ${res.status} ${res.statusText || ''} (non-JSON response — is the API proxy configured?)`.trim() }
+  }
 }
 
 // Multipart upload helper
@@ -25,8 +37,8 @@ async function uploadFile(path, formData) {
     headers: token ? { Authorization:`Bearer ${token}` } : {},
     body: formData,
   })
-  const data = await res.json()
-  if (!res.ok) { const e = new Error(data.message || 'Upload failed'); e.status = res.status; throw e }
+  const data = await safeJson(res)
+  if (!res.ok) { const e = new Error(data.message || `Upload failed (${res.status})`); e.status = res.status; throw e }
   return data
 }
 

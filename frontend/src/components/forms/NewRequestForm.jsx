@@ -33,10 +33,27 @@ export default function NewRequestForm({ onSuccess }) {
   })
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
+  // ----- Tier Policy (gate travel modes by the user's tier) -----
+  // tier_policy.allowed_modes is { Flight: bool, Train: bool, Bus: bool, Hotel: bool }
+  // and the *_classes / *_types arrays restrict the class/type dropdowns within each
+  // mode. Falls back to "everything allowed" if the policy hasn't loaded.
+  const tierPolicy = user?.tier_policy || null
+  const modeAllowed = (mode) => {
+    if (!tierPolicy?.allowed_modes) return true
+    return !!tierPolicy.allowed_modes[mode]
+  }
+  const allowedFlightClasses = tierPolicy?.flight_classes || ['Economy', 'Premium Economy', 'Business', 'First Class']
+  const allowedTrainClasses  = tierPolicy?.train_classes  || ['Sleeper', '3AC', '2AC', '1AC', 'Executive']
+  const allowedBusTypes      = tierPolicy?.bus_types      || ['Volvo', 'Luxury', 'Sleeper', 'AC Sleeper', 'AC Seater', 'Non-AC Seater']
+
   // ----- Itinerary State -----
-  const [activeTab, setActiveTab] = useState('Flight')
+  // Pick the first allowed mode as the default tab so a tier without Flight doesn't
+  // start on a locked tab.
+  const firstAllowed = ['Flight', 'Train', 'Bus', 'Hotel'].find(modeAllowed) || 'Flight'
+  const [activeTab, setActiveTab] = useState(firstAllowed)
   const [itinerary, setItinerary] = useState({
     Flight: { origin: '', destination: '', travel_type: '', departure_date: '', time_pref: '', class_pref: '', meals_pref: '', remarks: '' },
+    Train:  { origin: '', destination: '', travel_type: '', departure_date: '', time_pref: '', class_pref: '', remarks: '' },
     Bus:    { from_city: '', to_city: '', date: '', bus_type: '', departure_time_pref: '', remarks: '' },
     Hotel:  { city: '', check_in: '', check_out: '', remarks: '' },
   })
@@ -80,11 +97,22 @@ export default function NewRequestForm({ onSuccess }) {
     if (!form.contact_email.trim())   errs.push('Contact Email is required')
 
     // Itinerary — per active tab
+    // Block submit if the active tab is not allowed by the user's tier
+    if (!modeAllowed(activeTab)) {
+      errs.push(`${activeTab} is not allowed for your tier. Pick a different mode.`)
+    }
     if (activeTab === 'Flight') {
       if (!itin.origin.trim())         errs.push('Flight: Origin is required')
       if (!itin.destination.trim())    errs.push('Flight: Destination is required')
       if (!itin.travel_type)           errs.push('Flight: Travel Type is required')
       if (!itin.departure_date)        errs.push('Flight: Departure Date is required')
+    }
+    if (activeTab === 'Train') {
+      if (!itin.origin.trim())         errs.push('Train: Origin is required')
+      if (!itin.destination.trim())    errs.push('Train: Destination is required')
+      if (!itin.travel_type)           errs.push('Train: Travel Type is required')
+      if (!itin.departure_date)        errs.push('Train: Departure Date is required')
+      if (!itin.class_pref)            errs.push('Train: Class is required')
     }
     if (activeTab === 'Bus') {
       if (!itin.from_city.trim())      errs.push('Bus: From City is required')
@@ -101,7 +129,10 @@ export default function NewRequestForm({ onSuccess }) {
     }
 
     // Passengers — first name + last name required for every row
-    const paxList = activeTab === 'Bus' ? busPassengers : activeTab === 'Hotel' ? hotelPassengers : passengers
+    // Train reuses Bus passenger shape (name + age, no passport).
+    const paxList = (activeTab === 'Bus' || activeTab === 'Train') ? busPassengers
+                  : activeTab === 'Hotel' ? hotelPassengers
+                  : passengers
     paxList.forEach((p, i) => {
       if (!p.firstname?.trim()) errs.push(`Passenger ${i + 1}: First Name is required`)
       if (!p.lastname?.trim())  errs.push(`Passenger ${i + 1}: Last Name is required`)
@@ -133,7 +164,10 @@ export default function NewRequestForm({ onSuccess }) {
       const start = activeItin.departure_date || activeItin.date || activeItin.check_in || new Date().toISOString().split('T')[0]
       const end = activeItin.check_out || start
       const purpose = form.trip_name || 'Business Travel'
-      const paxList = activeTab === 'Bus' ? busPassengers : activeTab === 'Hotel' ? hotelPassengers : passengers
+      // Train reuses Bus passenger shape (name + age, no passport).
+    const paxList = (activeTab === 'Bus' || activeTab === 'Train') ? busPassengers
+                  : activeTab === 'Hotel' ? hotelPassengers
+                  : passengers
 
       const payload = {
         from_location: from_loc,
@@ -188,15 +222,24 @@ export default function NewRequestForm({ onSuccess }) {
         travel_type:    'One Way',
         departure_date: fmt(tomorrow),
         time_pref:      'Morning',
-        class_pref:     'Economy',
+        class_pref:     allowedFlightClasses[0] || 'Economy',
         meals_pref:     'Veg',
         remarks:        'Window seat preferred',
+      },
+      Train: {
+        origin:         'Chennai (MAS)',
+        destination:    'Bangalore (SBC)',
+        travel_type:    'One Way',
+        departure_date: fmt(tomorrow),
+        time_pref:      'Night',
+        class_pref:     allowedTrainClasses[0] || 'Sleeper',
+        remarks:        'Lower berth preferred',
       },
       Bus: {
         from_city:            'Chennai',
         to_city:              'Bangalore',
         date:                 fmt(tomorrow),
-        bus_type:             'Volvo AC',
+        bus_type:             allowedBusTypes[0] || 'Volvo AC',
         departure_time_pref:  'Night (10PM–6AM)',
         remarks:              'Lower berth preferred',
       },
@@ -388,22 +431,33 @@ export default function NewRequestForm({ onSuccess }) {
       {/* ITINERARY TABS */}
       <div style={{ ...cardStyle, marginBottom: 24, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid #2A2A35', padding: '0 16px', background: 'var(--bg-input, #13131A)' }}>
-          {['Flight', 'Bus', 'Hotel'].map(mode => (
-            <div 
-              key={mode} 
-              onClick={() => setActiveTab(mode)}
-              style={{ 
-                padding: '16px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                borderBottom: activeTab === mode ? `3px solid ${accent}` : '3px solid transparent',
-                color: activeTab === mode ? accent : 'var(--text-faint, #666)',
-                fontWeight: activeTab === mode ? 600 : 500,
-                transition: 'all .2s'
-              }}
-            >
-              <div style={{ fontSize: 16 }}>{mode==='Flight'?'✈️':mode==='Bus'?'🚌':'🏨'}</div>
-              <div>Add {mode}</div>
-            </div>
-          ))}
+          {['Flight', 'Train', 'Bus', 'Hotel'].map(mode => {
+            const allowed = modeAllowed(mode)
+            const isActive = activeTab === mode
+            const icon = mode==='Flight'?'✈️': mode==='Train'?'🚆': mode==='Bus'?'🚌':'🏨'
+            return (
+              <div
+                key={mode}
+                onClick={() => allowed && setActiveTab(mode)}
+                title={allowed ? '' : `${mode} is not allowed for your tier (${tierPolicy?.tier_name || 'current tier'}).`}
+                style={{
+                  padding: '16px 24px',
+                  cursor: allowed ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  borderBottom: isActive && allowed ? `3px solid ${accent}` : '3px solid transparent',
+                  color: !allowed ? 'var(--text-faint, #555)' : isActive ? accent : 'var(--text-faint, #666)',
+                  fontWeight: isActive ? 600 : 500,
+                  opacity: allowed ? 1 : 0.45,
+                  transition: 'all .2s',
+                  position: 'relative',
+                }}
+              >
+                <div style={{ fontSize: 16, filter: allowed ? 'none' : 'grayscale(1)' }}>{icon}</div>
+                <div>Add {mode}</div>
+                {!allowed && <span style={{ fontSize: 11, marginLeft: 4 }}>🔒</span>}
+              </div>
+            )
+          })}
         </div>
 
         {/* DYNAMIC ITINERARY FORM */}
@@ -435,8 +489,8 @@ export default function NewRequestForm({ onSuccess }) {
                 <div>
                   <label style={labelStyle}>Class</label>
                   <select style={inputStyle} value={itinerary.Flight.class_pref} onChange={e=>setItin('Flight', 'class_pref', e.target.value)}>
-                    <option value="">Economy</option>
-                    <option value="Business">Business</option>
+                    <option value="">— Any allowed —</option>
+                    {allowedFlightClasses.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -448,6 +502,44 @@ export default function NewRequestForm({ onSuccess }) {
                   </select>
                 </div>
                 <div><label style={labelStyle}>Remarks</label><input style={inputStyle} placeholder="Seat preferences..." value={itinerary.Flight.remarks} onChange={e=>setItin('Flight', 'remarks', e.target.value)} /></div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'Train' && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+                <div><label style={labelStyle}>Origin *</label><input style={req(itinerary.Train.origin)} placeholder="MAS" value={itinerary.Train.origin} onChange={e=>setItin('Train', 'origin', e.target.value)} /></div>
+                <div><label style={labelStyle}>Destination *</label><input style={req(itinerary.Train.destination)} placeholder="SBC" value={itinerary.Train.destination} onChange={e=>setItin('Train', 'destination', e.target.value)} /></div>
+                <div>
+                  <label style={labelStyle}>Travel Type *</label>
+                  <select style={req(itinerary.Train.travel_type)} value={itinerary.Train.travel_type} onChange={e=>setItin('Train', 'travel_type', e.target.value)}>
+                    <option value="">-- Select --</option>
+                    <option value="One Way">One Way</option>
+                    <option value="Round Trip">Round Trip</option>
+                  </select>
+                </div>
+                <div><label style={labelStyle}>Departure Date *</label><input type="date" style={{...req(itinerary.Train.departure_date), colorScheme: 'dark'}} value={itinerary.Train.departure_date} onChange={e=>setItin('Train', 'departure_date', e.target.value)} /></div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                <div>
+                  <label style={labelStyle}>Class *</label>
+                  <select style={req(itinerary.Train.class_pref)} value={itinerary.Train.class_pref} onChange={e=>setItin('Train', 'class_pref', e.target.value)}>
+                    <option value="">-- Select --</option>
+                    {allowedTrainClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Time Preference</label>
+                  <select style={inputStyle} value={itinerary.Train.time_pref} onChange={e=>setItin('Train', 'time_pref', e.target.value)}>
+                    <option value="">Any Time</option>
+                    <option value="Morning">Morning</option>
+                    <option value="Afternoon">Afternoon</option>
+                    <option value="Evening">Evening</option>
+                    <option value="Night">Night</option>
+                  </select>
+                </div>
+                <div><label style={labelStyle}>Remarks</label><input style={inputStyle} placeholder="Berth preferences..." value={itinerary.Train.remarks} onChange={e=>setItin('Train', 'remarks', e.target.value)} /></div>
               </div>
             </>
           )}
@@ -464,13 +556,7 @@ export default function NewRequestForm({ onSuccess }) {
                   <label style={labelStyle}>Bus Types *</label>
                   <select style={req(itinerary.Bus.bus_type)} value={itinerary.Bus.bus_type} onChange={e=>setItin('Bus', 'bus_type', e.target.value)}>
                     <option value="">-- Select --</option>
-                    <option value="AC Sleeper">AC Sleeper</option>
-                    <option value="AC Semi-Sleeper">AC Semi-Sleeper</option>
-                    <option value="AC Seater">AC Seater</option>
-                    <option value="Non-AC Sleeper">Non-AC Sleeper</option>
-                    <option value="Non-AC Semi-Sleeper">Non-AC Semi-Sleeper</option>
-                    <option value="Non-AC Seater">Non-AC Seater</option>
-                    <option value="Volvo AC">Volvo AC</option>
+                    {allowedBusTypes.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
@@ -506,7 +592,7 @@ export default function NewRequestForm({ onSuccess }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={sectionTitleStyle}>Passenger Roster</div>
           <button
-            onClick={(e) => { e.preventDefault(); activeTab === 'Bus' ? addBusPax() : activeTab === 'Hotel' ? addHotelPax() : addPassenger() }}
+            onClick={(e) => { e.preventDefault(); (activeTab === 'Bus' || activeTab === 'Train') ? addBusPax() : activeTab === 'Hotel' ? addHotelPax() : addPassenger() }}
             style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}55`, borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
           >
             + Add Passenger
@@ -545,8 +631,8 @@ export default function NewRequestForm({ onSuccess }) {
           </div>
         )}
 
-        {/* ── BUS passengers ── */}
-        {activeTab === 'Bus' && (
+        {/* ── BUS / TRAIN passengers (shared shape — name + age) ── */}
+        {(activeTab === 'Bus' || activeTab === 'Train') && (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>

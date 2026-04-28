@@ -1,9 +1,25 @@
 const { v4: uuidv4 } = require('uuid')
 
 // ── Create PPI wallet for a new employee ─────────────────────
+// PPI requires `productIds` (array) — the singular `productId` alone is rejected.
+// Defaults are picked up from env so we never hard-code issuer UUIDs:
+//   PPI_PRODUCT_IDS  — comma-separated list (e.g. "917e8079-7e5a-4ebd-a1f1-4be637daf0a5")
+//   PPI_PROGRAM_ID   — optional program UUID
+//   PPI_PRODUCT_ID   — optional primary product UUID (kept for back-compat)
 async function createPpiWallet(employeeData) {
   const requestId = uuidv4()
   const timestamp = new Date().toISOString()
+
+  const envProductIds = (process.env.PPI_PRODUCT_IDS || '')
+    .split(',').map(s => s.trim()).filter(Boolean)
+  const productIds =
+    Array.isArray(employeeData.productIds) && employeeData.productIds.length
+      ? employeeData.productIds
+      : envProductIds
+
+  if (!productIds.length) {
+    throw new Error('PPI productIds not configured — set PPI_PRODUCT_IDS in env (comma-separated UUIDs)')
+  }
 
   const body = {
     customerMobile: employeeData.mobile_number,
@@ -13,12 +29,15 @@ async function createPpiWallet(employeeData) {
     panNumber:      employeeData.pan_number,
     dateOfBirth:    employeeData.date_of_birth,
     gender:         employeeData.gender?.toUpperCase(),
-    productId:      employeeData.productId,
+    productId:      employeeData.productId  || process.env.PPI_PRODUCT_ID  || productIds[0],
+    productIds,
+    programId:      employeeData.programId  || process.env.PPI_PROGRAM_ID || undefined,
   }
 
-  console.log(`[PPI] Creating wallet — requestId: ${requestId}, mobile: ${employeeData.mobile_number}`)
+  console.log(`[PPI] Creating wallet — requestId: ${requestId}, mobile: ${employeeData.mobile_number}, url: ${process.env.PPI_API_URL}`)
+  console.log(`[PPI] Request body:`, JSON.stringify(body))
 
-  let res, data
+  let res, data, rawText
   try {
     res = await fetch(process.env.PPI_API_URL, {
       method: 'POST',
@@ -31,20 +50,26 @@ async function createPpiWallet(employeeData) {
       },
       body: JSON.stringify(body),
     })
-    data = await res.json()
+    rawText = await res.text()
+    try { data = JSON.parse(rawText) } catch { data = null }
   } catch (networkErr) {
-    console.error(`[PPI] Network error — requestId: ${requestId}`, networkErr.message)
-    const err = new Error('Unable to connect to wallet service. Please try again later.')
+    console.error(`[PPI] Network error — requestId: ${requestId}, url: ${process.env.PPI_API_URL}`, networkErr.message)
+    const err = new Error(`Unable to connect to wallet service (${networkErr.message})`)
     err.requestId = requestId
     throw err
   }
 
-  if (!res.ok || !data.success || !data.data?.walletId) {
-    console.error(`[PPI] Wallet creation failed — requestId: ${requestId}, status: ${res.status}, response:`, JSON.stringify(data))
-    const errMsg = data.message || data.error || `Wallet service returned status ${res.status}`
+  if (!res.ok || !data || !data.success || !data.data?.walletId) {
+    console.error(`[PPI] Wallet creation failed — requestId: ${requestId}, status: ${res.status} ${res.statusText}`)
+    console.error(`[PPI] Raw response:`, rawText)
+    const errMsg =
+      (data && (data.message || data.error)) ||
+      (rawText && rawText.length < 500 ? rawText : null) ||
+      `Wallet service returned ${res.status} ${res.statusText}`
     const err = new Error(errMsg)
-    err.ppiResponse = data
-    err.requestId = data.traceId || requestId
+    err.ppiResponse = data || rawText
+    err.ppiStatus   = res.status
+    err.requestId   = (data && data.traceId) || requestId
     throw err
   }
 

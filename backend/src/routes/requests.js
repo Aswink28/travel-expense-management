@@ -310,11 +310,31 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success:false, message:`${distInfo.dist_type} distance route requires ${distInfo.required_mode}. You selected ${travel_mode}.` })
     }
 
-    // Tier eligibility
-    const { rows: tier } = await client.query('SELECT * FROM tier_config WHERE role=$1', [u.role])
-    if (tier.length && !tier[0].allowed_modes.includes(travel_mode)) {
-      return res.status(400).json({ success:false, message:`Travel mode "${travel_mode}" not allowed for ${u.role}` })
+    // Tier eligibility — gate travel_mode against the user's tier policy. Empty array
+    // for the relevant column means the mode is BLOCKED for this tier.
+    const { rows: tierRows } = await client.query(
+      `SELECT flight_classes, train_classes, bus_types, hotel_types
+         FROM tiers WHERE id = $1`,
+      [u.tier_id]
+    )
+    if (tierRows.length) {
+      const tp = tierRows[0]
+      const arr = (a) => Array.isArray(a) ? a : []
+      const allowedByMode = {
+        Flight: arr(tp.flight_classes).length > 0,
+        Train:  arr(tp.train_classes).length  > 0,
+        Bus:    arr(tp.bus_types).length      > 0,
+        Hotel:  arr(tp.hotel_types).length    > 0,
+      }
+      if (Object.prototype.hasOwnProperty.call(allowedByMode, travel_mode) && !allowedByMode[travel_mode]) {
+        return res.status(403).json({
+          success:false,
+          message:`Travel mode "${travel_mode}" is not allowed for your tier. Allowed: ${Object.entries(allowedByMode).filter(([,v])=>v).map(([k])=>k).join(', ') || 'none'}.`,
+        })
+      }
     }
+    // Legacy daily-allowance lookup retained for the calculation below.
+    const { rows: tier } = await client.query('SELECT * FROM tier_config WHERE role=$1', [u.role])
 
     // Calculate daily allowance: days × daily_allowance
     const days = Math.ceil((new Date(end_date)-new Date(start_date))/(1000*60*60*24)) + 1
