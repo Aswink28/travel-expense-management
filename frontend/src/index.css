@@ -132,10 +132,10 @@
   --success:       #10B981;
   --success-soft:  rgba(16, 185, 129, 0.14);
   --success-glow:  0 0 0 3px rgba(16, 185, 129, 0.18);
-  /* --text-success is a calmer green for inline text — desaturated &
-     softer-luminance variant of --success so green-on-dark stops
-     "shouting" at the rest of the UI. */
-  --text-success:  #34D39A;
+  /* --text-success: muted, desaturated green for inline text. Lower chroma
+     so figures like "+₹34,900" sit alongside body copy instead of fighting
+     for attention. Solid badges still use --success for urgency. */
+  --text-success:  #94D9B5;
   --danger:        #EF4444;
   --danger-soft:   rgba(239, 68, 68, 0.14);
   --danger-glow:   0 0 0 3px rgba(239, 68, 68, 0.18);
@@ -284,7 +284,8 @@
   --success:      #34D399;
   --success-soft: rgba(52, 211, 153, 0.14);
   --success-glow: 0 0 0 3px rgba(52, 211, 153, 0.18);
-  --text-success: #6EE7B7;  /* slightly lifted for legibility on deep navy */
+  /* Calmer mint for inline text on navy — visible without shouting. */
+  --text-success: #9AE3C0;
   --danger:       #F87171;
   --danger-soft:  rgba(248, 113, 113, 0.14);
   --danger-glow:  0 0 0 3px rgba(248, 113, 113, 0.18);
@@ -475,48 +476,62 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
   color: var(--text-primary);
 }
 
-/* ── Brand block ───────────────────────────────────────────── */
+/* ── Brand block — bigger logo in accent-tinted container, wordmark
+   centered vertically with the icon, no "hanging" text ───────────── */
 .brand-mark {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 14px;
   min-width: 0;
 }
 .brand-mark img {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  width: 40px;            /* bumped from 32 — now reads as a real wordmark */
+  height: 40px;
+  border-radius: 10px;
   flex-shrink: 0;
   object-fit: contain;
+  padding: 6px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: 0 0 0 1px var(--bg-card-deep) inset;
+  transition: transform var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+}
+.brand-mark:hover img {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 1px var(--bg-card-deep) inset, 0 0 0 3px var(--accent-ring);
 }
 .brand-text {
   display: flex;
   flex-direction: column;
-  line-height: var(--lh-tight);
+  justify-content: center;
+  line-height: 1.15;
   min-width: 0;
   flex: 1;
+  gap: 2px;
 }
 .brand-highlight {
   font-family: var(--font-display);
-  font-weight: var(--fw-black);  /* extra-bold for clear brand presence */
-  font-size: var(--fs-md);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-lg);            /* was --fs-md (14) → 17 */
   color: var(--text-primary);
-  letter-spacing: var(--ls-tight);
+  letter-spacing: -0.025em;            /* tighter — reads as a wordmark */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 .brand-highlight .brand-accent {
   color: var(--accent);
   font-weight: var(--fw-black);
+  /* Solid accent — no opacity, no gradient, no fade. */
 }
 .brand-sub {
   font-size: var(--fs-2xs);
   color: var(--text-faint);
-  letter-spacing: var(--ls-wide);
+  letter-spacing: 0.08em;              /* slightly wider for the eyebrow look */
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 0;
+  font-weight: var(--fw-semi);
 }
 
 /* Role pill that sits under the brand-mark */
@@ -574,26 +589,32 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
 
 .sidebar-nav button,
 .sidebar-nav a {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 0 var(--space-3);
-  height: 36px;
+  gap: 10px;
+  padding: 0 12px 0 16px;
+  height: 40px;                          /* was 36 — better tap target */
   background: transparent;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: 10px;
   color: var(--text-muted);
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+  transition:
+    background var(--duration-fast) var(--ease),
+    color      var(--duration-fast) var(--ease),
+    transform  var(--duration-fast) var(--ease),
+    padding    var(--duration-fast) var(--ease);
 }
 .sidebar-nav button:hover,
 .sidebar-nav a:hover {
   background: var(--bg-row-hover);
   color: var(--text-primary);
+  padding-left: 18px;                    /* subtle slide-on-hover */
 }
 .sidebar-nav button.active,
 .sidebar-nav a.active,
@@ -601,6 +622,23 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
 .sidebar-nav a[aria-current="page"] {
   background: var(--accent-soft);
   color: var(--accent);
+  font-weight: var(--fw-semi);
+}
+/* LEFT ACCENT STRIPE — visible indicator that the row is active.
+   Replaces the easy-to-miss colour change with a 3px coloured bar. */
+.sidebar-nav button.active::before,
+.sidebar-nav a.active::before,
+.sidebar-nav button[aria-current="page"]::before,
+.sidebar-nav a[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-ring);
 }
 
 .sidebar-item-icon {
@@ -722,12 +760,20 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  transition: box-shadow var(--duration-normal) var(--ease), border-color var(--duration-normal) var(--ease);
+  transition:
+    box-shadow var(--duration-normal) var(--ease),
+    border-color var(--duration-normal) var(--ease),
+    transform var(--duration-normal) var(--ease);
 }
-.card-hover { transition: box-shadow var(--duration-normal) var(--ease), border-color var(--duration-normal) var(--ease), transform var(--duration-normal) var(--ease); }
+/* Stronger, visibly noticeable hover: -3px lift + accent border + soft accent halo */
+.card-hover { will-change: transform; }
 .card-hover:hover {
-  box-shadow: var(--shadow-card-hover);
-  border-color: var(--border-strong);
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .card-deep {
   background: var(--bg-card-deep);
@@ -807,22 +853,29 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
   transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
 }
 .btn:focus-visible { box-shadow: var(--accent-glow); outline: none; }
-.btn:not(:disabled):active { transform: translateY(1px); }
+/* Stronger press feedback so it's perceptible. */
+.btn:not(:disabled):active { transform: translateY(1px) scale(0.98); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-sm { height: 30px; padding: 0 var(--space-3); font-size: var(--fs-xs); border-radius: var(--radius-sm); }
 .btn-md { height: 36px; padding: 0 var(--space-4); font-size: var(--fs-sm); }
 .btn-lg { height: 44px; padding: 0 var(--space-5); font-size: var(--fs-base); }
 
-/* Variants */
+/* Variants — every variant lifts -1px and gains a soft ring on hover so
+   the interaction is unmistakable. */
 .btn-primary {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 0 var(--accent-ring);
 }
 .btn-primary:not(:disabled):hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 0 0 4px var(--accent-ring);
 }
 
 .btn-ghost {
@@ -832,8 +885,9 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
 }
 .btn-ghost:not(:disabled):hover {
   background: var(--bg-card-deep);
-  border-color: var(--border-strong);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .btn-success {
@@ -1084,19 +1138,26 @@ tbody tr:last-child td { border-bottom: 0; }
 /* ============================================================
    16. PAGE TITLE
    ============================================================ */
-.page-title-wrap { margin-bottom: var(--space-6); }
+.page-title-wrap {
+  margin-bottom: var(--space-7);   /* was --space-6 — more breathing room before content */
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
 .page-title {
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-bold);
+  font-size: var(--fs-3xl);         /* was --fs-2xl (24) → 30 */
+  font-weight: var(--fw-black);
   color: var(--text-primary);
-  letter-spacing: var(--ls-tight);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   margin: 0;
 }
 .page-sub {
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
   font-size: var(--fs-sm);
   color: var(--text-muted);
+  line-height: var(--lh-relaxed);
+  max-width: 720px;
 }
 
 /* ============================================================
@@ -1131,25 +1192,39 @@ tbody tr:last-child td { border-bottom: 0; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
+  gap: var(--space-6);
   flex-wrap: wrap;
-  padding: var(--space-6);
+  padding: var(--space-7) var(--space-7);     /* roomier */
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-5);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle accent wash on the left edge so the banner has presence
+   instead of being a flat box. */
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--accent-grad);
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
 }
 .welcome-greeting {
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-bold);
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: var(--fw-black);
   color: var(--text-primary);
-  letter-spacing: var(--ls-tight);
+  letter-spacing: -0.022em;
+  line-height: 1.2;
 }
 .welcome-sub {
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
   font-size: var(--fs-sm);
   color: var(--text-muted);
+  line-height: var(--lh-relaxed);
+  max-width: 640px;
 }
 .welcome-badge {
   display: inline-flex;
@@ -1806,8 +1881,8 @@ tbody tr:last-child td { border-bottom: 0; }
   width: 100%;
 }
 
-/* Card hover — subtle, not jumpy */
-.card-hover:hover { transform: translateY(-1px); }
+/* (Card hover is defined in section 8 — bigger -3px lift + accent halo so
+   the elevation is unmistakable. Don't override here.) */
 
 /* Table row alignment + density */
 table th:first-child, table td:first-child { padding-left: var(--space-5); }
@@ -2304,11 +2379,73 @@ img { object-fit: cover; }
 .landing-footer-links a:hover { color: var(--text-primary); }
 
 /* ============================================================
-   23. BENTO GRID — used by NewRequestForm and any "registration"
-   style page. Cards sit on a responsive grid; size hints
-   (.bento-card-tall / -wide / -xl) let designers compose without
-   touching JSX. All cards share the same border, shadow, hover.
+   23. FORM CARD + BENTO GRID — used by NewRequestForm and any
+   "registration"-style page. Visible hover lift + accent corner so
+   sections read as separate, tappable surfaces (not flat boxes).
    ============================================================ */
+
+/* Form section card — wraps the existing inline cardStyle on the
+   New Request page so each section has an accent-tinted top corner
+   and a clearly visible hover lift. Designed to layer on top of
+   inline styles (background/border come from JSX, hover from here). */
+.form-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--duration-normal) var(--ease),
+    box-shadow var(--duration-normal) var(--ease),
+    border-color var(--duration-normal) var(--ease) !important;
+}
+/* Subtle accent stripe on the top edge — visible identity per card. */
+.form-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent-grad);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease);
+}
+.form-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border)) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent) 14%, transparent) !important;
+}
+.form-card:hover::before { opacity: 1; }
+
+/* Form section title — bigger than body, with a leading accent dot
+   so each section has a strong visual anchor. */
+.form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 22px;
+}
+.form-section-title::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  flex-shrink: 0;
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-5);
+}
+@media (max-width: 900px) { .bento-grid { gap: var(--space-4); } }
+@media (max-width: 600px) { .bento-grid { grid-template-columns: 1fr; } }
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -2394,6 +2531,13 @@ img { object-fit: cover; }
 /* Buttons: gentle press feedback */
 .btn:not(:disabled):active { transform: translateY(1px) scale(0.995); }
 
-/* Cards used inline in pages — apply elevation on hover automatically.
+/* Cards used inline in pages — apply unified hover automatically.
    Avoids needing the consumer to add .lift everywhere. */
-.card:hover { box-shadow: var(--shadow-card-hover); }
+.card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 14%, transparent);
+}

@@ -300,7 +300,7 @@ export default function NewRequestForm({ onSuccess }) {
   const cardStyle = {
     background: 'var(--bg-card)',
     borderRadius: 16,                                    // matches --radius-xl
-    padding: 24,
+    padding: 28,                                          // roomier — visible breathing room
     border: '1px solid var(--border)',
     boxShadow: 'var(--shadow-card)',
     transition: 'border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease',
@@ -349,7 +349,7 @@ export default function NewRequestForm({ onSuccess }) {
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 24 }}>
         {/* LEFT: Trip Information */}
-        <div style={{ ...cardStyle, flex: 2 }}>
+        <div className="form-card" style={{ ...cardStyle, flex: 2 }}>
           <div style={sectionTitleStyle}>Trip Information</div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -439,7 +439,7 @@ export default function NewRequestForm({ onSuccess }) {
         </div>
 
         {/* RIGHT: Contact Information */}
-        <div style={{ ...cardStyle, flex: 1 }}>
+        <div className="form-card" style={{ ...cardStyle, flex: 1 }}>
           <div style={sectionTitleStyle}>Primary Contact</div>
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Contact Name *</label>
@@ -460,7 +460,7 @@ export default function NewRequestForm({ onSuccess }) {
       </div>
 
       {/* ITINERARY TABS */}
-      <div style={{ ...cardStyle, marginBottom: 24, padding: 0, overflow: 'hidden' }}>
+      <div className="form-card" style={{ ...cardStyle, marginBottom: 24, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-input)', padding: '0 16px', background: 'var(--bg-input, var(--bg-card))' }}>
           {['Flight', 'Train', 'Bus', 'Hotel'].map(mode => {
             const allowed = modeAllowed(mode)
@@ -619,7 +619,7 @@ export default function NewRequestForm({ onSuccess }) {
       </div>
 
       {/* PASSENGER DETAILS TABLE — switches by activeTab */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
+      <div className="form-card" style={{ ...cardStyle, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={sectionTitleStyle}>Passenger Roster</div>
           <button
