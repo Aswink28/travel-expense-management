@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import LandingPage    from './components/shared/LandingPage'
 import LoginPage      from './components/shared/LoginPage'
 import Sidebar        from './components/shared/Sidebar'
 import { Spinner }    from './components/shared/UI'
@@ -109,6 +110,9 @@ function InnerApp() {
 
 function AppRoot() {
   const { user, loading } = useAuth()
+  // Public flow: landing → login → app. `view` only matters when unauthed.
+  const [view, setView] = useState('landing') // 'landing' | 'login'
+
   if (loading) return (
     <div className="app-loading">
       <div className="app-loading-inner">
@@ -119,7 +123,9 @@ function AppRoot() {
       </div>
     </div>
   )
-  return user ? <InnerApp /> : <LoginPage />
+  if (user) return <InnerApp />
+  if (view === 'login') return <LoginPage />
+  return <LandingPage onSignIn={() => setView('login')} />
 }
 
 export default function App() {

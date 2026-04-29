@@ -3,12 +3,12 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const STORAGE_KEY = 'td3_theme'
 
 // Three themes. Migration: any saved value not in this list (e.g. legacy
-// "neon" / "royal" / "glass") falls back to "dark" so existing sessions
-// don't show an empty UI.
+// "neon" / "royal" / "glass" / "neutral") falls back to "dark" so existing
+// sessions don't show an empty UI.
 export const THEMES = [
-  { id: 'dark',    label: 'Dark',    icon: '◐', desc: 'Deep neutral, vibrant violet accent' },
-  { id: 'light',   label: 'Light',   icon: '◑', desc: 'Clean, crisp white surfaces' },
-  { id: 'neutral', label: 'Neutral', icon: '◍', desc: 'Soft warm professional — easy on the eyes' },
+  { id: 'dark',  label: 'Dark',  icon: '◐', desc: 'Deep neutral, vibrant violet accent' },
+  { id: 'light', label: 'Light', icon: '◑', desc: 'Clean, crisp white surfaces' },
+  { id: 'ocean', label: 'Ocean', icon: '◉', desc: 'Deep blue with sky-cyan accent' },
 ]
 
 const ThemeContext = createContext(null)
