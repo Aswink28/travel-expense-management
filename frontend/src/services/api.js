@@ -11,7 +11,7 @@ async function request(path, options = {}) {
     headers: { 'Content-Type':'application/json', ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers },
   })
   const data = await safeJson(res)
-  if (res.status === 401 && token) { removeToken(); window.location.href = '/'; return }
+  if (res.status === 401 && token) { removeToken(); window.location.href = import.meta.env.BASE_URL || '/'; return }
   if (res.status === 401) { const e = new Error(data.message || 'Invalid credentials'); e.status = 401; throw e }
   if (!res.ok) { const e = new Error(data.message || `Request failed (${res.status})`); e.status = res.status; throw e }
   return data

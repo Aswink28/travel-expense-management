@@ -5,34 +5,19 @@ export default function ThemeSwitcher({ compact = false }) {
 
   if (compact) {
     return (
-      <div style={{
-        display: 'inline-flex',
-        gap: 2,
-        padding: 3,
-        background: 'var(--bg-card-deep)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
-      }}>
+      <div className="theme-switch" role="tablist" aria-label="Theme">
         {themes.map(t => (
           <button
             key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={theme === t.id}
             onClick={() => setTheme(t.id)}
             title={`${t.label} — ${t.desc}`}
-            style={{
-              border: 0,
-              borderRadius: 'var(--radius-sm)',
-              padding: '5px 10px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              background: theme === t.id ? 'var(--bg-card)' : 'transparent',
-              color: theme === t.id ? 'var(--text-primary)' : 'var(--text-faint)',
-              boxShadow: theme === t.id ? 'var(--shadow-xs)' : 'none',
-              transition: 'all var(--duration-fast) var(--ease)',
-            }}
+            className={`theme-switch-btn${theme === t.id ? ' active' : ''}`}
           >
-            <span style={{ marginRight: 4 }}>{t.icon}</span>
-            {t.label}
+            <span className="theme-switch-btn-icon">{t.icon}</span>
+            <span>{t.label}</span>
           </button>
         ))}
       </div>
@@ -40,31 +25,22 @@ export default function ThemeSwitcher({ compact = false }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className="theme-stack" role="radiogroup" aria-label="Theme">
       {themes.map(t => (
         <button
           key={t.id}
+          type="button"
+          role="radio"
+          aria-checked={theme === t.id}
           onClick={() => setTheme(t.id)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '10px 12px',
-            border: `1px solid ${theme === t.id ? 'var(--accent)' : 'var(--border)'}`,
-            background: theme === t.id ? 'var(--accent-soft)' : 'var(--bg-card)',
-            borderRadius: 'var(--radius)',
-            cursor: 'pointer',
-            color: theme === t.id ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontSize: 13,
-            transition: 'all var(--duration-fast) var(--ease)',
-          }}
+          className={`theme-stack-btn${theme === t.id ? ' active' : ''}`}
         >
-          <span style={{ fontSize: 18 }}>{t.icon}</span>
-          <div style={{ flex: 1, textAlign: 'left' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{t.label}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{t.desc}</div>
-          </div>
-          {theme === t.id && <span style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 700 }}>✓</span>}
+          <span className="theme-stack-icon">{t.icon}</span>
+          <span className="theme-stack-main">
+            <span className="theme-stack-label">{t.label}</span>
+            <span className="theme-stack-desc">{t.desc}</span>
+          </span>
+          {theme === t.id && <span className="theme-stack-check">✓</span>}
         </button>
       ))}
     </div>

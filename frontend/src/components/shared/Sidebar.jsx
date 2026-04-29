@@ -12,18 +12,23 @@ export default function Sidebar({ active, setActive, pendingCount }) {
 
   return (
     <aside className="sidebar">
-      {/* Logo */}
+      {/* Logo block — brand on top row, role pill on second row */}
       <div className="sidebar-logo">
         <div className="brand-mark">
-          <img src={moiterLogo} alt="Moicorp" />
-          <div>
-            <div className="brand-text">
-              Moi<span className="brand-highlight">corp</span>
-            </div>
-            <div className="brand-sub">Travel Desk</div>
+          <img src={moiterLogo} alt="Moiter Workz" />
+          <div className="brand-text">
+            <span className="brand-highlight">
+              Moiter <span className="brand-accent">Workz</span>
+            </span>
+            <span className="brand-sub">Travel Desk</span>
           </div>
         </div>
-        <div className="sidebar-role">{user.role}</div>
+        <span
+          className="sidebar-role-pill"
+          style={{ color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)` }}
+        >
+          {user.role}
+        </span>
       </div>
 
       {/* Nav */}
@@ -35,24 +40,27 @@ export default function Sidebar({ active, setActive, pendingCount }) {
             <button
               key={item.id}
               onClick={() => setActive(item.id)}
-              className={`sidebar-item ${isActive ? 'active' : ''}`}
+              className={isActive ? 'active' : ''}
               style={isActive ? {
-                background: `linear-gradient(90deg, ${accent}22, ${accent}06)`,
-                borderLeftColor: accent,
-                boxShadow: `inset 0 0 18px ${accent}18, 0 0 0 1px ${accent}25`,
+                background: `color-mix(in srgb, ${accent} 12%, transparent)`,
+                color: accent,
               } : undefined}
             >
               <span className="sidebar-item-icon">{item.icon}</span>
               <span className="sidebar-item-label">{item.label}</span>
-              {hasBadge && <span className="sidebar-badge">{pendingCount}</span>}
+              {hasBadge && (
+                <span className="sidebar-badge" style={{ background: accent }}>
+                  {pendingCount}
+                </span>
+              )}
             </button>
           )
         })}
       </nav>
 
       {/* Theme switcher */}
-      <div style={{ padding: '12px 12px 0' }}>
-        <div className="sidebar-section-label" style={{ marginBottom: 7 }}>Theme</div>
+      <div className="sidebar-theme-block">
+        <div className="sidebar-section-label">Theme</div>
         <ThemeSwitcher compact />
       </div>
 
@@ -62,23 +70,22 @@ export default function Sidebar({ active, setActive, pendingCount }) {
           <div
             className="sidebar-user-avatar"
             style={{
-              background: `linear-gradient(135deg, ${accent}33, ${accent}11)`,
-              borderColor: `${accent}55`,
+              background: `color-mix(in srgb, ${accent} 18%, transparent)`,
               color: accent,
-              boxShadow: `0 0 12px ${accent}44`,
             }}
           >
             {user.avatar}
           </div>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div className="sidebar-user-name">{user.name}</div>
             <div className="sidebar-user-id" style={{ color: accent }}>{user.empId}</div>
           </div>
         </div>
         <div className="sidebar-status-row">
-          <span className="online">● Online</span>
-          <button className="sidebar-signout" onClick={logout}>Sign out</button>
+          <span className="online" />
+          <span>Online</span>
         </div>
+        <button className="sidebar-signout" onClick={logout}>Sign out</button>
       </div>
     </aside>
   )
