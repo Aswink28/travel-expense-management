@@ -23,6 +23,7 @@ frontend/build/
 frontend/dist/
 backend/build/
 backend/dist/
+backend/deploy/
 
 # ── Archives (zipped builds, snapshots) ───────────────────────
 *.zip
