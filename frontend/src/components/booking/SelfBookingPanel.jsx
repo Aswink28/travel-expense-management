@@ -217,7 +217,7 @@ export default function SelfBookingPanel() {
                     <option key={r.id} value={r.id}>{r.purpose} ({r.from_location} - {r.to_location})</option>
                   ))}
                 </select>
-                {wallet && <span style={{ color: 'var(--success)', fontWeight: 600 }}>Wallet: ₹{Number(wallet.balance).toLocaleString('en-IN')}</span>}
+                {wallet && <span style={{ color: 'var(--text-success)', fontWeight: 600 }}>Wallet: ₹{Number(wallet.balance).toLocaleString('en-IN')}</span>}
               </div>
             </div>
             
@@ -235,7 +235,7 @@ export default function SelfBookingPanel() {
                 <div style={{ flex: 1.2, padding: '8px 16px', borderRight: '1px solid var(--text-body)', position: 'relative' }}>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Select Origin City</div>
                   <input value={form.origin} onChange={e => setForm(p=>({...p, origin: e.target.value}))} style={{ width: '100%', border: 'none', fontSize: 15, fontWeight: 600, color: 'var(--border-input)', outline: 'none' }} placeholder="e.g. Delhi (DEL)" />
-                  <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid var(--text-body)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', zIndex: 2, cursor: 'pointer' }}>⇄</div>
+                  <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid var(--text-body)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-danger)', zIndex: 2, cursor: 'pointer' }}>⇄</div>
                 </div>
                 <div style={{ flex: 1.2, padding: '8px 16px', borderRight: '1px solid var(--text-body)', paddingLeft: 24 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Select Destination City</div>
@@ -286,7 +286,7 @@ export default function SelfBookingPanel() {
                 <div style={{ flex: 1.5, padding: '8px 16px', borderRight: '1px solid var(--text-body)', position: 'relative' }}>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>From</div>
                   <input value={form.origin} onChange={e => setForm(p=>({...p, origin: e.target.value}))} style={{ width: '100%', border: 'none', fontSize: 15, fontWeight: 600, color: 'var(--border-input)', outline: 'none' }} placeholder="e.g. Bangalore" />
-                  <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid var(--text-body)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', zIndex: 2, cursor: 'pointer' }}>⇄</div>
+                  <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid var(--text-body)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-danger)', zIndex: 2, cursor: 'pointer' }}>⇄</div>
                 </div>
                 <div style={{ flex: 1.5, padding: '8px 16px', borderRight: '1px solid var(--text-body)', paddingLeft: 24 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>To</div>
@@ -304,7 +304,7 @@ export default function SelfBookingPanel() {
                 <div style={{ flex: 1.5, padding: '8px 16px', borderRight: '1px solid var(--text-body)', position: 'relative' }}>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>From Station</div>
                   <input value={form.origin} onChange={e => setForm(p=>({...p, origin: e.target.value}))} style={{ width: '100%', border: 'none', fontSize: 15, fontWeight: 600, color: 'var(--border-input)', outline: 'none' }} placeholder="e.g. NDLS" />
-                  <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid var(--text-body)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', zIndex: 2, cursor: 'pointer' }}>⇄</div>
+                  <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid var(--text-body)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-danger)', zIndex: 2, cursor: 'pointer' }}>⇄</div>
                 </div>
                 <div style={{ flex: 1.5, padding: '8px 16px', borderRight: '1px solid var(--text-body)', paddingLeft: 24 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>To Station</div>
@@ -380,7 +380,7 @@ export default function SelfBookingPanel() {
 
       {viewTicket && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 14, color: 'var(--success)', fontWeight: 600, marginBottom: 12 }}>✓ Ticket Generated Successfully</div>
+          <div style={{ fontSize: 14, color: 'var(--text-success)', fontWeight: 600, marginBottom: 12 }}>✓ Ticket Generated Successfully</div>
           <TicketCard ticket={viewTicket} onClose={() => setViewTicket(null)} />
         </div>
       )}
@@ -481,7 +481,7 @@ export default function SelfBookingPanel() {
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 700 }}>{flight.airline}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>SG - {flight.flightId.slice(0, 6)}</div>
-                          <div style={{ fontSize: 11, color: 'var(--success)', marginTop: 12 }}>Refundable</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-success)', marginTop: 12 }}>Refundable</div>
                         </div>
                       </div>
                       
@@ -499,7 +499,7 @@ export default function SelfBookingPanel() {
                       </div>
                       
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 18, fontWeight: 700 }}>{flight.arrivalTime} <span style={{fontSize: 11, color: 'var(--danger)'}}>+1D</span></div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{flight.arrivalTime} <span style={{fontSize: 11, color: 'var(--text-danger)'}}>+1D</span></div>
                         <div style={{ fontSize: 13, color: 'var(--text-faint)', marginTop: 4 }}>IXB T</div>
                       </div>
                       
@@ -525,7 +525,7 @@ export default function SelfBookingPanel() {
                         <span style={{ background: 'var(--text-primary)', padding: '6px 10px', borderRadius: 4 }}>💺 1 Seat(s)</span>
                         <span style={{ background: 'var(--text-primary)', padding: '6px 10px', borderRadius: 4 }}>⏳ Long Layover</span>
                       </div>
-                      <div style={{ color: 'var(--danger)', display: 'flex', gap: 16, alignItems: 'center' }}>
+                      <div style={{ color: 'var(--text-danger)', display: 'flex', gap: 16, alignItems: 'center' }}>
                         <span style={{ fontWeight: 600 }}>👎 OUT OF POLICY</span>
                         <span style={{ color: 'var(--text-dim)', textDecoration: 'underline', cursor: 'pointer' }}>View Flight Details</span>
                       </div>
@@ -554,7 +554,7 @@ export default function SelfBookingPanel() {
                             
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                               <div>
-                                 <div style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 4 }}>👎 Out Policy</div>
+                                 <div style={{ fontSize: 11, color: 'var(--text-danger)', marginBottom: 4 }}>👎 Out Policy</div>
                                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--border-strong)' }}>INR {fare.price.toLocaleString('en-IN')}</div>
                               </div>
                               <button 

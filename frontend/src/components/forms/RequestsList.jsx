@@ -26,7 +26,7 @@ function TicketsPanel({ tickets = [], documents = [] }) {
               {t.vendor} · PNR: {t.pnr_number}
             </div>
           </div>
-          <div style={{ fontSize:11, background:'color-mix(in srgb, var(--success) 9%, transparent)', color:'var(--success)', border:'1px solid color-mix(in srgb, var(--success) 19%, transparent)', padding:'4px 10px', borderRadius:6 }}>
+          <div style={{ fontSize:11, background:'color-mix(in srgb, var(--success) 9%, transparent)', color: 'var(--text-success)', border:'1px solid color-mix(in srgb, var(--success) 19%, transparent)', padding:'4px 10px', borderRadius:6 }}>
             Confirmed
           </div>
         </div>
@@ -139,18 +139,18 @@ export default function RequestsList({ onNewRequest }) {
                   <td style={{ padding:'11px 13px', fontSize:11, color:'var(--text-faint)' }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</td>
                   <td style={{ padding:'11px 13px' }}>
                     {r.approved_total ? (
-                      <div style={{ fontSize:12, color:'var(--success)', fontWeight:500 }}>₹{Number(r.approved_total).toLocaleString('en-IN')}</div>
+                      <div style={{ fontSize:12, color: 'var(--text-success)', fontWeight:500 }}>₹{Number(r.approved_total).toLocaleString('en-IN')}</div>
                     ) : (
                       <div style={{ fontSize:11, color:'var(--text-faint, var(--text-dim))' }}>₹{Number(r.estimated_total).toLocaleString('en-IN')} est.</div>
                     )}
-                    {r.wallet_credited && <div style={{ fontSize:10, color:'var(--success)', marginTop:2 }}>💳 Wallet loaded</div>}
+                    {r.wallet_credited && <div style={{ fontSize:10, color: 'var(--text-success)', marginTop:2 }}>💳 Wallet loaded</div>}
                   </td>
                   <td style={{ padding:'11px 13px' }}>
                     <StatusPill status={r.status} />
                     {r.status === 'rejected' && (() => {
                       const rej = r.approvals?.find(a => a.action === 'rejected')
                       return rej?.note ? (
-                        <div style={{ fontSize:10, color:'var(--danger)', marginTop:4, maxWidth:160, lineHeight:1.4 }}>
+                        <div style={{ fontSize:10, color: 'var(--text-danger)', marginTop:4, maxWidth:160, lineHeight:1.4 }}>
                           ✗ {rej.note}
                         </div>
                       ) : null

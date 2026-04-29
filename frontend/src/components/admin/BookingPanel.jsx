@@ -2509,7 +2509,7 @@ export default function BookingPanel() {
                               >
                                 {hotel.name}{" "}
                                 <span
-                                  style={{ fontSize: 12, color: 'var(--warning)' }}
+                                  style={{ fontSize: 12, color: 'var(--text-warning)' }}
                                 >
                                   {"★".repeat(hotel.stars)}
                                 </span>
@@ -2529,7 +2529,7 @@ export default function BookingPanel() {
                                 style={{
                                   fontSize: 10,
                                   fontWeight: 700,
-                                  color: 'var(--danger)',
+                                  color: 'var(--text-danger)',
                                   background: "color-mix(in srgb, var(--danger) 8%, transparent)",
                                   border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
                                   borderRadius: 6,

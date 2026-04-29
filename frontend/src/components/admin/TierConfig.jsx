@@ -187,7 +187,7 @@ export default function TierConfig() {
                     {inactive && (
                       <span style={{
                         fontSize: 9, fontWeight: 800, letterSpacing:'0.08em', textTransform:'uppercase',
-                        color:'var(--warning)', background:'color-mix(in srgb, var(--warning) 9%, transparent)', border:'1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
+                        color: 'var(--text-warning)', background:'color-mix(in srgb, var(--warning) 9%, transparent)', border:'1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
                         padding:'2px 7px', borderRadius: 999,
                       }}>Inactive</span>
                     )}
@@ -197,7 +197,7 @@ export default function TierConfig() {
                     <div style={{ display:'flex', gap: 6 }}>
                       <Button size="sm" variant="ghost" onClick={() => openEditTier(t)}>Edit</Button>
                       <Button size="sm"
-                        style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color:'var(--danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
+                        style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color: 'var(--text-danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
                         onClick={() => requestDeleteTier(t)}>
                         Delete
                       </Button>
@@ -388,7 +388,7 @@ function PickerBlock({ label, options, selected, onToggle, error }) {
           )
         })}
       </div>
-      {error && <div style={{ fontSize: 11, color:'var(--danger)', marginTop: 4 }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color: 'var(--text-danger)', marginTop: 4 }}>{error}</div>}
     </div>
   )
 }

@@ -270,10 +270,41 @@ export default function NewRequestForm({ onSuccess }) {
 
   // --- VELOCITY DESIGN SYSTEM STYLES ---
   const accent = user?.color || 'var(--accent)'
-  const sectionTitleStyle = { fontSize: 16, fontWeight: 700, color: 'var(--text-primary, var(--text-primary))', marginBottom: 20 }
-  const labelStyle = { fontSize: 11, color: 'var(--text-muted, #9090A8)', marginBottom: 6, display: 'block', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }
-  const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border, var(--border-input))', background: 'var(--bg-input, var(--bg-card))', outline: 'none', fontSize: 14, color: 'var(--text-primary, var(--text-primary))', transition: 'border 0.2s' }
-  const cardStyle = { background: 'var(--bg-card, var(--bg-input))', borderRadius: 12, padding: 24, border: '1px solid var(--border, var(--border-input))' }
+  // Bento-style card visual language — tighter typography, gentle hover,
+  // larger radius, subtle shadow. Layout (which sections sit where) is
+  // unchanged so no business logic / inputs are touched.
+  const sectionTitleStyle = {
+    fontFamily: "'Inter', sans-serif",
+    fontSize: 17, fontWeight: 700,
+    color: 'var(--text-primary)',
+    letterSpacing: '-0.01em',
+    marginBottom: 20,
+    display: 'flex', alignItems: 'center', gap: 10,
+  }
+  const labelStyle = {
+    fontSize: 11, color: 'var(--text-muted)', marginBottom: 6,
+    display: 'block', fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.05em',
+  }
+  const inputStyle = {
+    width: '100%', padding: '11px 13px',
+    borderRadius: 8,
+    border: '1px solid var(--border-input)',
+    background: 'var(--bg-input)',
+    outline: 'none',
+    fontSize: 14,
+    color: 'var(--text-primary)',
+    fontFamily: "'Inter', sans-serif",
+    transition: 'border-color 0.18s, box-shadow 0.18s',
+  }
+  const cardStyle = {
+    background: 'var(--bg-card)',
+    borderRadius: 16,                                    // matches --radius-xl
+    padding: 24,
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-card)',
+    transition: 'border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease',
+  }
   // Returns red-border style when field is empty after a submit attempt
   const req = (val) => submitted && !String(val || '').trim()
     ? { ...inputStyle, border: '1px solid var(--danger)', boxShadow: '0 0 0 2px color-mix(in srgb, var(--danger) 13%, transparent)' }
@@ -282,7 +313,7 @@ export default function NewRequestForm({ onSuccess }) {
   if (success) return (
     <div style={{ ...cardStyle, textAlign: 'center', padding: 80, maxWidth: 600, margin: '40px auto' }}>
       <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success)', marginBottom: 8 }}>Success</div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-success)', marginBottom: 8 }}>Success</div>
       <div style={{ color: 'var(--text-muted, #9090A8)' }}>{success}</div>
     </div>
   )
@@ -308,7 +339,7 @@ export default function NewRequestForm({ onSuccess }) {
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'linear-gradient(135deg,color-mix(in srgb, var(--warning) 13%, transparent),color-mix(in srgb, var(--warning) 9%, transparent))',
             border: '1px solid color-mix(in srgb, var(--warning) 33%, transparent)', borderRadius: 8,
-            color: 'var(--warning)', padding: '9px 18px', fontSize: 12, fontWeight: 700,
+            color: 'var(--text-warning)', padding: '9px 18px', fontSize: 12, fontWeight: 700,
             cursor: 'pointer', letterSpacing: '0.3px', whiteSpace: 'nowrap'
           }}
         >
@@ -387,7 +418,7 @@ export default function NewRequestForm({ onSuccess }) {
                 ))}
               </div>
             ) : (
-              <div style={{ fontSize: 11, color: 'var(--warning)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-warning)' }}>
                 ⚠️ No approvers configured on your profile — contact your administrator.
               </div>
             )}
@@ -622,7 +653,7 @@ export default function NewRequestForm({ onSuccess }) {
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13}} placeholder="IN" value={p.nationality} onChange={e => updatePassenger(idx, 'nationality', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px' }}><input type="date" style={{...inputStyle, padding: '8px', fontSize: 13, colorScheme: 'dark'}} value={p.passport_expiry} onChange={e => updatePassenger(idx, 'passport_expiry', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px', textAlign: 'center' }}>
-                      {passengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removePassenger(idx) }} style={{ border: 'none', background: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, var(--text-faint))' }}>—</span>}
+                      {passengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removePassenger(idx) }} style={{ border: 'none', background: 'none', color: 'var(--text-danger)', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, var(--text-faint))' }}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -651,7 +682,7 @@ export default function NewRequestForm({ onSuccess }) {
                     <td style={{ padding: '12px 6px' }}><input style={{...req(p.lastname), padding: '8px', fontSize: 13}} placeholder="Doe" value={p.lastname} onChange={e => updateBusPax(idx, 'lastname', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13, width: 70}} placeholder="25" value={p.age} onChange={e => updateBusPax(idx, 'age', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px', textAlign: 'center' }}>
-                      {busPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeBusPax(idx) }} style={{ border: 'none', background: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, var(--text-faint))' }}>—</span>}
+                      {busPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeBusPax(idx) }} style={{ border: 'none', background: 'none', color: 'var(--text-danger)', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, var(--text-faint))' }}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -687,7 +718,7 @@ export default function NewRequestForm({ onSuccess }) {
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13}} placeholder="Anna Nagar" value={p.area} onChange={e => updateHotelPax(idx, 'area', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px' }}><input style={{...inputStyle, padding: '8px', fontSize: 13}} placeholder="ABCDE1234F" value={p.pan_number} onChange={e => updateHotelPax(idx, 'pan_number', e.target.value)} /></td>
                     <td style={{ padding: '12px 6px', textAlign: 'center' }}>
-                      {hotelPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeHotelPax(idx) }} style={{ border: 'none', background: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, var(--text-faint))' }}>—</span>}
+                      {hotelPassengers.length > 1 ? <button onClick={(e) => { e.preventDefault(); removeHotelPax(idx) }} style={{ border: 'none', background: 'none', color: 'var(--text-danger)', cursor: 'pointer', fontSize: 16 }}>×</button> : <span style={{ color: 'var(--text-dim, var(--text-faint))' }}>—</span>}
                     </td>
                   </tr>
                 ))}

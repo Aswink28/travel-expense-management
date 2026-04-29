@@ -85,11 +85,11 @@ export default function Dashboard({ setTab }) {
             <div className="wallet-stat-card-meta">
               {ppiBal ? (
                 <>
-                  <span className="wallet-stat-card-tag" style={{ background:'var(--success-soft)', color:'var(--success)' }}>● {ppiBal.walletStatus}</span>
+                  <span className="wallet-stat-card-tag" style={{ background:'var(--success-soft)', color: 'var(--text-success)' }}>● {ppiBal.walletStatus}</span>
                   <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)',  color:'var(--accent)'  }}>{ppiBal.walletNumber}</span>
                 </>
               ) : (
-                <span className="wallet-stat-card-tag" style={{ background:'var(--success-soft)', color:'var(--success)' }}>● Amount Loaded</span>
+                <span className="wallet-stat-card-tag" style={{ background:'var(--success-soft)', color: 'var(--text-success)' }}>● Amount Loaded</span>
               )}
             </div>
           </Card>
@@ -125,7 +125,7 @@ export default function Dashboard({ setTab }) {
                   <StatusPill status={r.status} />
                   <BookingBadge type={r.booking_type} />
                   {r.wallet_credited && (
-                    <span className="pill" style={{ background:'var(--success-soft)', color:'var(--success)' }}>💳 Wallet Loaded</span>
+                    <span className="pill" style={{ background:'var(--success-soft)', color: 'var(--text-success)' }}>💳 Wallet Loaded</span>
                   )}
                   {r.doc_count > 0 && (
                     <span className="pill" style={{ background:'var(--accent-soft)', color:'var(--accent)' }}>
@@ -146,7 +146,7 @@ export default function Dashboard({ setTab }) {
           const cats = [
             { key:'travel',    label:'Travel',    icon:'✈',  color:'var(--accent)',  spent:Number(expBreakdown.travel?.spent||0),    credited:Number(expBreakdown.travel?.credited||0),    remaining:Number(wallet?.travel_balance||0) },
             { key:'hotel',     label:'Hotel',     icon:'🏨', color:'var(--purple)',  spent:Number(expBreakdown.hotel?.spent||0),     credited:Number(expBreakdown.hotel?.credited||0),     remaining:Number(wallet?.hotel_balance||0) },
-            { key:'allowance', label:'Allowance', icon:'🎯', color:'var(--success)', spent:Number(expBreakdown.allowance?.spent||0), credited:Number(expBreakdown.allowance?.credited||0), remaining:Number(wallet?.allowance_balance||0) },
+            { key:'allowance', label:'Allowance', icon:'🎯', color: 'var(--text-success)', spent:Number(expBreakdown.allowance?.spent||0), credited:Number(expBreakdown.allowance?.credited||0), remaining:Number(wallet?.allowance_balance||0) },
           ]
           const totalSpent    = cats.reduce((s, c) => s + c.spent, 0)
           const totalCredited = cats.reduce((s, c) => s + c.credited, 0)

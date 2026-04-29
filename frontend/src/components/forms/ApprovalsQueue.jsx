@@ -197,7 +197,7 @@ export default function ApprovalsQueue() {
 
           <div style={{ marginBottom:14 }}>
             <label style={{ fontSize:11, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'.04em', display:'block', marginBottom:6 }}>
-              Note <span style={{ color:'var(--danger)' }}>* required to reject</span>
+              Note <span style={{ color: 'var(--text-danger)' }}>* required to reject</span>
             </label>
             <textarea rows={3} value={note} onChange={e=>{ setNote(e.target.value); setError('') }} placeholder="Add a rejection reason or approval note..."
               style={{ width:'100%', background:'var(--bg-input)', border: error && !note.trim() ? '1px solid var(--danger)' : '1px solid var(--border-input)', borderRadius:8, color:'var(--text-body)', fontSize:13, padding:'10px 12px', outline:'none', resize:'none', transition:'border 0.2s' }} />
@@ -223,7 +223,7 @@ export default function ApprovalsQueue() {
               background:'color-mix(in srgb, var(--warning) 8%, transparent)', border:'2px solid color-mix(in srgb, var(--warning) 19%, transparent)',
               display:'flex', alignItems:'center', justifyContent:'center', fontSize:28,
             }}>⚠</div>
-            <div className="syne" style={{ fontSize:18, fontWeight:700, marginBottom:8, color:'var(--warning)' }}>
+            <div className="syne" style={{ fontSize:18, fontWeight:700, marginBottom:8, color: 'var(--text-warning)' }}>
               Wallet Load Skipped
             </div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20, lineHeight:1.6, padding:'0 10px' }}>

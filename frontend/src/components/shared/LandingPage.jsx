@@ -99,7 +99,7 @@ export default function LandingPage({ onSignIn }) {
             </div>
             <div className="landing-preview-row" style={{ paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
               <span className="landing-preview-label" style={{ color: 'var(--text-primary)' }}>Wallet credited</span>
-              <span className="landing-preview-value" style={{ color: 'var(--success)' }}>₹ 34,900</span>
+              <span className="landing-preview-value" style={{ color: 'var(--text-success)' }}>₹ 34,900</span>
             </div>
           </div>
         </div>

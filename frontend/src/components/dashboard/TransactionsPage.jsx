@@ -106,11 +106,11 @@ export default function TransactionsPage() {
         </Card>
         <Card style={{ padding: 18 }}>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Total Credited</div>
-          <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)' }}>+{totalCredit.toLocaleString('en-IN')}</div>
+          <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-success)' }}>+{totalCredit.toLocaleString('en-IN')}</div>
         </Card>
         <Card style={{ padding: 18 }}>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Total Debited</div>
-          <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: 'var(--danger)' }}>-{totalDebit.toLocaleString('en-IN')}</div>
+          <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-danger)' }}>-{totalDebit.toLocaleString('en-IN')}</div>
         </Card>
       </div>
 

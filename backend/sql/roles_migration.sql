@@ -61,14 +61,22 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
   ('Super Admin', 'dashboard',          'Dashboard',      '▦',  1),
   ('Super Admin', 'new-request',        'New Request',    '+',  4),
   ('Super Admin', 'my-wallet',          'My Wallet',      '◉',  5),
-  ('Super Admin', 'transactions',       'Transactions',   '📊', 6),
-  ('Super Admin', 'my-tickets',         'My Tickets',     '🎟', 7),
+  ('Super Admin', 'transactions',       'Transactions',   '⊟',  6),
+  ('Super Admin', 'my-tickets',         'My Tickets',     '◰',  7),
   ('Super Admin', 'employees',          'Employees',      '◆',  8),
   ('Super Admin', 'roles',              'Role Manager',   '⚙',  9),
   ('Super Admin', 'tiers',              'Tier Config',    '◐', 10),
   ('Super Admin', 'designations',       'Designations',   '◇', 11),
-  ('Super Admin', 'audit-log',          'Approver Audit', '📋', 12)
+  ('Super Admin', 'audit-log',          'Approver Audit', '▤', 12)
 ON CONFLICT (role_name, page_id) DO NOTHING;
+
+-- Backfill icons for existing installs — INSERT above is idempotent
+-- (ON CONFLICT DO NOTHING) so we explicitly UPDATE the rows that need
+-- the new geometric icons. Keeps the sidebar visually consistent
+-- (no leftover emoji icons from earlier seeds).
+UPDATE role_pages SET page_icon = '▤' WHERE page_id = 'audit-log'    AND page_icon = '📋';
+UPDATE role_pages SET page_icon = '⊟' WHERE page_id = 'transactions' AND page_icon = '📊';
+UPDATE role_pages SET page_icon = '◰' WHERE page_id = 'my-tickets'   AND page_icon = '🎟';
 
 -- (The legacy "Employee → Software Engineer" rename block has been retired.
 --  Software Engineer is now a designation, not a role. The role consolidation

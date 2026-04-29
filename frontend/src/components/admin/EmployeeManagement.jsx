@@ -86,7 +86,7 @@ function MLabel({ text, required }) {
   return (
     <>
       {text}
-      {required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
+      {required && <span style={{ color: 'var(--text-danger)', marginLeft: 2 }}>*</span>}
     </>
   );
 }
@@ -1017,7 +1017,7 @@ export default function EmployeeManagement({ setTab }) {
                               size="sm"
                               style={{
                                 background: "color-mix(in srgb, var(--warning) 9%, transparent)",
-                                color: 'var(--warning)',
+                                color: 'var(--text-warning)',
                                 border: "1px solid color-mix(in srgb, var(--warning) 19%, transparent)",
                               }}
                               onClick={() => openWalletAction("suspend", emp)}
@@ -1034,7 +1034,7 @@ export default function EmployeeManagement({ setTab }) {
                               size="sm"
                               style={{
                                 background: "color-mix(in srgb, var(--danger) 9%, transparent)",
-                                color: 'var(--danger)',
+                                color: 'var(--text-danger)',
                                 border: "1px solid color-mix(in srgb, var(--danger) 19%, transparent)",
                               }}
                               onClick={() => openWalletAction("close", emp)}
@@ -1500,7 +1500,7 @@ export default function EmployeeManagement({ setTab }) {
                       <div
                         style={{
                           fontSize: 11,
-                          color: 'var(--warning)',
+                          color: 'var(--text-warning)',
                           padding: "4px 0",
                         }}
                       >
@@ -1511,7 +1511,7 @@ export default function EmployeeManagement({ setTab }) {
                         <div
                           style={{
                             fontSize: 11,
-                            color: 'var(--danger)',
+                            color: 'var(--text-danger)',
                             marginTop: 6,
                             fontWeight: 600,
                           }}
@@ -1611,7 +1611,7 @@ export default function EmployeeManagement({ setTab }) {
                         <div
                           style={{
                             fontSize: 11,
-                            color: 'var(--danger)',
+                            color: 'var(--text-danger)',
                             marginBottom: 10,
                           }}
                         >
@@ -1723,7 +1723,7 @@ export default function EmployeeManagement({ setTab }) {
                             {step.step_designation}
                           </span>
                           {candidates.length === 0 && (
-                            <span style={{ fontSize: 10, color: 'var(--warning)' }}>
+                            <span style={{ fontSize: 10, color: 'var(--text-warning)' }}>
                               ⚠ No approver-eligible employees yet — onboard a Request Approver or Finance user first.
                             </span>
                           )}
@@ -1759,7 +1759,7 @@ export default function EmployeeManagement({ setTab }) {
                                 ))}
                             </select>
                             {primaryInactive && (
-                              <div style={{ fontSize: 10, color: 'var(--warning)', marginTop: 4 }}>
+                              <div style={{ fontSize: 10, color: 'var(--text-warning)', marginTop: 4 }}>
                                 Primary is deactivated — backup will receive requests.
                               </div>
                             )}
@@ -1959,7 +1959,7 @@ export default function EmployeeManagement({ setTab }) {
                   marginBottom: 8,
                 }}
               >
-                Reason <span style={{ color: 'var(--danger)' }}>*</span>
+                Reason <span style={{ color: 'var(--text-danger)' }}>*</span>
               </label>
               <textarea
                 value={walletReason}
@@ -1995,7 +1995,7 @@ export default function EmployeeManagement({ setTab }) {
                   padding: "10px 14px",
                   marginBottom: 16,
                   fontSize: 12,
-                  color: 'var(--danger)',
+                  color: 'var(--text-danger)',
                 }}
               >
                 Warning: This action is permanent and cannot be reversed. The

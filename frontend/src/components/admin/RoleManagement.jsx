@@ -156,7 +156,7 @@ export default function RoleManagement() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-body)' }}>{role.name}</span>
                       {role.is_system && (
-                        <span style={{ fontSize: 9, background: 'color-mix(in srgb, var(--warning) 9%, transparent)', color: 'var(--warning)', padding: '1px 7px', borderRadius: 10, fontWeight: 500 }}>SYSTEM</span>
+                        <span style={{ fontSize: 9, background: 'color-mix(in srgb, var(--warning) 9%, transparent)', color: 'var(--text-warning)', padding: '1px 7px', borderRadius: 10, fontWeight: 500 }}>SYSTEM</span>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{role.description || 'No description'}</div>
@@ -225,7 +225,7 @@ export default function RoleManagement() {
                         )}
                       </span>
                     )) : (
-                      <span style={{ fontSize: 12, color: 'var(--warning)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-warning)' }}>
                         ⚠ No designations linked yet — add one on the Designations page and pick this role.
                       </span>
                     )}

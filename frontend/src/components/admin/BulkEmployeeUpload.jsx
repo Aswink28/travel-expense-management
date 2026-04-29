@@ -185,7 +185,7 @@ export default function BulkEmployeeUpload() {
         <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>Required Columns</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           {['name', 'email', 'password', 'mobile_number', 'date_of_birth', 'gender', 'pan_number', 'aadhaar_number', 'designation'].map(c => (
-            <span key={c} style={{ fontSize: 11, background: 'color-mix(in srgb, var(--danger) 7%, transparent)', color: 'var(--danger)', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c} *</span>
+            <span key={c} style={{ fontSize: 11, background: 'color-mix(in srgb, var(--danger) 7%, transparent)', color: 'var(--text-danger)', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c} *</span>
           ))}
           {['role', 'department', 'tier_id'].map(c => (
             <span key={c} style={{ fontSize: 11, background: 'var(--bg-input)', color: 'var(--text-faint)', padding: '3px 10px', borderRadius: 6, fontFamily: 'monospace' }}>{c}</span>
@@ -193,8 +193,8 @@ export default function BulkEmployeeUpload() {
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.5 }}>
           <span style={{ color: 'var(--text-faint)' }}>Note:</span>{' '}
-          <code style={{ color: 'var(--warning)' }}>designation</code> must be mapped to a tier in Tier Config (it drives the approval flow).{' '}
-          <code style={{ color: 'var(--warning)' }}>role</code> defaults to <code>Employee</code> and must exist in master data.
+          <code style={{ color: 'var(--text-warning)' }}>designation</code> must be mapped to a tier in Tier Config (it drives the approval flow).{' '}
+          <code style={{ color: 'var(--text-warning)' }}>role</code> defaults to <code>Employee</code> and must exist in master data.
         </div>
       </Card>
 
@@ -233,8 +233,8 @@ export default function BulkEmployeeUpload() {
                       <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 4 }}>{job.processed}/{job.total_rows}</div>
                       <ProgressBar pct={pct} color={STATUS_COLORS[job.status] || 'var(--text-faint)'} height={4} />
                     </td>
-                    <td style={{ padding: '10px 16px', color: 'var(--success)', fontWeight: 600 }}>{job.succeeded}</td>
-                    <td style={{ padding: '10px 16px', color: 'var(--danger)', fontWeight: 600 }}>{job.failed}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--text-success)', fontWeight: 600 }}>{job.succeeded}</td>
+                    <td style={{ padding: '10px 16px', color: 'var(--text-danger)', fontWeight: 600 }}>{job.failed}</td>
                     <td style={{ padding: '10px 16px', color: 'var(--text-faint)' }}>{job.skipped}</td>
                     <td style={{ padding: '10px 16px' }}>
                       <span style={{
@@ -353,10 +353,10 @@ export default function BulkEmployeeUpload() {
                               {err.field && (
                                 <span style={{
                                   fontSize: 10, padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace',
-                                  background: 'color-mix(in srgb, var(--danger) 8%, transparent)', color: 'var(--danger)', flexShrink: 0,
+                                  background: 'color-mix(in srgb, var(--danger) 8%, transparent)', color: 'var(--text-danger)', flexShrink: 0,
                                 }}>{err.field}</span>
                               )}
-                              <span style={{ color: 'var(--warning)' }}>{err.message}</span>
+                              <span style={{ color: 'var(--text-warning)' }}>{err.message}</span>
                             </div>
                           ))}
                         </div>

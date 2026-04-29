@@ -129,17 +129,23 @@
   --accent-glow:  0 0 0 3px rgba(139, 92, 246, 0.20);
 
   /* Semantic */
-  --success:      #10B981;
-  --success-soft: rgba(16, 185, 129, 0.14);
-  --success-glow: 0 0 0 3px rgba(16, 185, 129, 0.18);
-  --danger:       #EF4444;
-  --danger-soft:  rgba(239, 68, 68, 0.14);
-  --danger-glow:  0 0 0 3px rgba(239, 68, 68, 0.18);
-  --warning:      #F59E0B;
-  --warning-soft: rgba(245, 158, 11, 0.14);
-  --info:         #06B6D4;
-  --info-soft:    rgba(6, 182, 212, 0.14);
-  --purple:       #A855F7;
+  --success:       #10B981;
+  --success-soft:  rgba(16, 185, 129, 0.14);
+  --success-glow:  0 0 0 3px rgba(16, 185, 129, 0.18);
+  /* --text-success is a calmer green for inline text — desaturated &
+     softer-luminance variant of --success so green-on-dark stops
+     "shouting" at the rest of the UI. */
+  --text-success:  #34D39A;
+  --danger:        #EF4444;
+  --danger-soft:   rgba(239, 68, 68, 0.14);
+  --danger-glow:   0 0 0 3px rgba(239, 68, 68, 0.18);
+  --text-danger:   #FCA5A5;
+  --warning:       #F59E0B;
+  --warning-soft:  rgba(245, 158, 11, 0.14);
+  --text-warning:  #FCD34D;
+  --info:          #06B6D4;
+  --info-soft:     rgba(6, 182, 212, 0.14);
+  --purple:        #A855F7;
 
   /* Shadows */
   --shadow-xs:        0 1px 2px rgba(0, 0, 0, 0.5);
@@ -205,11 +211,14 @@
   --success:      #16A34A;
   --success-soft: rgba(22, 163, 74, 0.10);
   --success-glow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+  --text-success: #16A34A;  /* light theme: same as success — bright green still reads well on white */
   --danger:       #DC2626;
   --danger-soft:  rgba(220, 38, 38, 0.10);
   --danger-glow:  0 0 0 3px rgba(220, 38, 38, 0.14);
+  --text-danger:  #B91C1C;
   --warning:      #D97706;
   --warning-soft: rgba(217, 119, 6, 0.10);
+  --text-warning: #B45309;
   --info:         #0891B2;
   --info-soft:    rgba(8, 145, 178, 0.10);
   --purple:       #9333EA;
@@ -275,11 +284,14 @@
   --success:      #34D399;
   --success-soft: rgba(52, 211, 153, 0.14);
   --success-glow: 0 0 0 3px rgba(52, 211, 153, 0.18);
+  --text-success: #6EE7B7;  /* slightly lifted for legibility on deep navy */
   --danger:       #F87171;
   --danger-soft:  rgba(248, 113, 113, 0.14);
   --danger-glow:  0 0 0 3px rgba(248, 113, 113, 0.18);
+  --text-danger:  #FCA5A5;
   --warning:      #FBBF24;
   --warning-soft: rgba(251, 191, 36, 0.14);
+  --text-warning: #FCD34D;
   --info:         #38BDF8;
   --info-soft:    rgba(56, 189, 248, 0.14);
   --purple:       #A78BFA;
@@ -397,9 +409,11 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
 .text-dim     { color: var(--text-dim); }
 .text-label   { color: var(--text-label); }
 
-.text-success { color: var(--success); }
-.text-danger  { color: var(--danger); }
-.text-warning { color: var(--warning); }
+/* Inline text uses the theme-tuned --text-success / --text-danger / --text-warning
+   so legibility stays even when --success etc. is calibrated for solid badges. */
+.text-success { color: var(--text-success, var(--success)); }
+.text-danger  { color: var(--text-danger,  var(--danger)); }
+.text-warning { color: var(--text-warning, var(--warning)); }
 .text-info    { color: var(--info); }
 .text-accent  { color: var(--accent); }
 .text-purple  { color: var(--purple); }
@@ -2288,3 +2302,98 @@ img { object-fit: cover; }
   text-decoration: none;
 }
 .landing-footer-links a:hover { color: var(--text-primary); }
+
+/* ============================================================
+   23. BENTO GRID — used by NewRequestForm and any "registration"
+   style page. Cards sit on a responsive grid; size hints
+   (.bento-card-tall / -wide / -xl) let designers compose without
+   touching JSX. All cards share the same border, shadow, hover.
+   ============================================================ */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-5);
+}
+@media (max-width: 900px) { .bento-grid { gap: var(--space-4); } }
+@media (max-width: 600px) { .bento-grid { grid-template-columns: 1fr; } }
+
+.bento-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+  transition:
+    transform var(--duration-normal) var(--ease),
+    box-shadow var(--duration-normal) var(--ease),
+    border-color var(--duration-normal) var(--ease);
+}
+.bento-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+.bento-card-half  { grid-column: span 6;  }
+.bento-card-third { grid-column: span 4;  }
+.bento-card-two-thirds { grid-column: span 8; }
+.bento-card-quarter { grid-column: span 3; }
+@media (max-width: 900px) {
+  .bento-card-half,
+  .bento-card-third,
+  .bento-card-two-thirds,
+  .bento-card-quarter { grid-column: span 12; }
+}
+
+.bento-card-eyebrow {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.bento-card-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-tight);
+  color: var(--text-primary);
+  margin: 0;
+}
+.bento-card-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: var(--lh-snug);
+}
+
+/* ============================================================
+   24. GLOBAL HOVER POLISH — subtle lift / smooth transitions
+   ============================================================ */
+.btn,
+.card,
+.bento-card,
+.landing-feature,
+.sidebar-nav button,
+.sidebar-nav a {
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color           var(--duration-fast) var(--ease),
+    border-color    var(--duration-fast) var(--ease),
+    box-shadow      var(--duration-normal) var(--ease),
+    transform       var(--duration-fast) var(--ease);
+}
+/* Lift effect for tappable cards (off by default — opt-in via .lift) */
+.lift { transition: transform var(--duration-fast) var(--ease), box-shadow var(--duration-normal) var(--ease); }
+.lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+
+/* Buttons: gentle press feedback */
+.btn:not(:disabled):active { transform: translateY(1px) scale(0.995); }
+
+/* Cards used inline in pages — apply elevation on hover automatically.
+   Avoids needing the consumer to add .lift everywhere. */
+.card:hover { box-shadow: var(--shadow-card-hover); }

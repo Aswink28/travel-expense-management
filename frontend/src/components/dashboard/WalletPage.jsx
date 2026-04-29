@@ -68,7 +68,7 @@ export default function WalletPage() {
         <div style={{ background:'color-mix(in srgb, var(--warning) 6%, transparent)', border:'1px solid color-mix(in srgb, var(--warning) 15%, transparent)', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
           <span style={{ fontSize:24 }}>⏸</span>
           <div>
-            <div style={{ fontSize:14, color:'var(--warning)', fontWeight:600 }}>Wallet Suspended</div>
+            <div style={{ fontSize:14, color: 'var(--text-warning)', fontWeight:600 }}>Wallet Suspended</div>
             <div style={{ fontSize:12, color:'var(--text-muted, var(--text-faint))', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function WalletPage() {
         <div style={{ background:'color-mix(in srgb, var(--danger) 6%, transparent)', border:'1px solid color-mix(in srgb, var(--danger) 15%, transparent)', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
           <span style={{ fontSize:24 }}>⛔</span>
           <div>
-            <div style={{ fontSize:14, color:'var(--danger)', fontWeight:600 }}>Wallet Closed</div>
+            <div style={{ fontSize:14, color: 'var(--text-danger)', fontWeight:600 }}>Wallet Closed</div>
             <div style={{ fontSize:12, color:'var(--text-muted, var(--text-faint))', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible. Please contact your administrator.</div>
           </div>
         </div>
@@ -95,12 +95,12 @@ export default function WalletPage() {
             <div style={{ display:'flex', gap:6, marginTop:8 }}>
               {ppiWallet ? (
                 <>
-                  <span style={{ fontSize:10, background:'color-mix(in srgb, var(--success) 9%, transparent)', color:'var(--success)', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
+                  <span style={{ fontSize:10, background:'color-mix(in srgb, var(--success) 9%, transparent)', color: 'var(--text-success)', padding:'2px 8px', borderRadius:10 }}>● {ppiWallet.walletStatus}</span>
                   <span style={{ fontSize:10, background:'color-mix(in srgb, var(--accent) 9%, transparent)', color:'var(--accent)', padding:'2px 8px', borderRadius:10 }}>KYC: {ppiWallet.kycStatus}</span>
                   <span style={{ fontSize:10, background:'color-mix(in srgb, var(--purple) 9%, transparent)', color:'var(--purple)', padding:'2px 8px', borderRadius:10 }}>{ppiWallet.walletNumber}</span>
                 </>
               ) : (
-                <span style={{ fontSize:10, background:'color-mix(in srgb, var(--success) 9%, transparent)', color:'var(--success)', padding:'2px 8px', borderRadius:10 }}>● Active</span>
+                <span style={{ fontSize:10, background:'color-mix(in srgb, var(--success) 9%, transparent)', color: 'var(--text-success)', padding:'2px 8px', borderRadius:10 }}>● Active</span>
               )}
             </div>
           </div>
@@ -128,13 +128,13 @@ export default function WalletPage() {
           ))}
           <div style={{ background:'var(--bg-card, var(--bg-card))', border:'1px solid var(--bg-input)', borderRadius:10, padding:'12px 14px' }}>
             <div style={{ fontSize:9, color:'var(--text-dim, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Credited</div>
-            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'var(--success)' }}>
+            <div className="syne" style={{ fontSize:15, fontWeight:700, color: 'var(--text-success)' }}>
               ₹{Number(wallet?.total_credited||0).toLocaleString('en-IN')}
             </div>
           </div>
           <div style={{ background:'var(--bg-card, var(--bg-card))', border:'1px solid var(--bg-input)', borderRadius:10, padding:'12px 14px' }}>
             <div style={{ fontSize:9, color:'var(--text-dim, var(--text-dim))', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Total Spent</div>
-            <div className="syne" style={{ fontSize:15, fontWeight:700, color:'var(--danger)' }}>
+            <div className="syne" style={{ fontSize:15, fontWeight:700, color: 'var(--text-danger)' }}>
               ₹{Number(wallet?.total_debited||0).toLocaleString('en-IN')}
             </div>
           </div>

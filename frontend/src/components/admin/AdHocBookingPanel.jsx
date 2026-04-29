@@ -187,7 +187,7 @@ export default function AdHocBookingPanel() {
                         <div>
                           <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{opt.provider}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Departs: {opt.departure} • {opt.duration}</div>
-                          <div style={{ fontSize: 14, color: 'var(--success)', fontWeight: 600, marginTop: 4 }}>₹{opt.price.toLocaleString('en-IN')}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text-success)', fontWeight: 600, marginTop: 4 }}>₹{opt.price.toLocaleString('en-IN')}</div>
                         </div>
                         <Button onClick={() => handleBook(opt)} disabled={bookingLoading} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', fontSize: 12 }}>
                           {bookingLoading ? 'Booking...' : 'Book Ticket'}
@@ -197,14 +197,14 @@ export default function AdHocBookingPanel() {
                   </div>
                 )}
 
-                {error && <div style={{ color: 'var(--danger)', fontSize: 13, background: 'color-mix(in srgb, var(--danger) 7%, transparent)', padding: '8px 12px', borderRadius: 6, marginTop: 10 }}>{error}</div>}
+                {error && <div style={{ color: 'var(--text-danger)', fontSize: 13, background: 'color-mix(in srgb, var(--danger) 7%, transparent)', padding: '8px 12px', borderRadius: 6, marginTop: 10 }}>{error}</div>}
               </div>
             )
           )}
 
           {successData && (
             <div style={{ marginTop: 24, padding: 20, background: 'color-mix(in srgb, var(--success) 9%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 25%, transparent)', borderRadius: 8 }}>
-              <div style={{ color: 'var(--success)', fontWeight: 600, fontSize: 15, marginBottom: 12 }}>🎉 Booking Confirmed!</div>
+              <div style={{ color: 'var(--text-success)', fontWeight: 600, fontSize: 15, marginBottom: 12 }}>🎉 Booking Confirmed!</div>
               <div style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: '1.6' }}>
                 <div><strong>Booking ID:</strong> {successData.booking.id}</div>
                 <div><strong>PNR Number:</strong> {successData.ticket.pnr_number}</div>
