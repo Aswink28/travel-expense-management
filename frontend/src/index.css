@@ -645,10 +645,22 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: currentColor;
+  opacity: 0.85;
+  transition: opacity var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
 }
+.sidebar-item-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.sidebar-nav button:hover .sidebar-item-icon,
+.sidebar-nav a:hover     .sidebar-item-icon { opacity: 1; transform: scale(1.06); }
+.sidebar-nav button.active .sidebar-item-icon,
+.sidebar-nav a.active     .sidebar-item-icon { opacity: 1; }
 .sidebar-item-label { flex: 1; }
 
 .sidebar-badge {
@@ -765,15 +777,32 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
     border-color var(--duration-normal) var(--ease),
     transform var(--duration-normal) var(--ease);
 }
-/* Stronger, visibly noticeable hover: -3px lift + accent border + soft accent halo */
-.card-hover { will-change: transform; }
+/* Stronger, visibly noticeable hover: -4px lift + accent border + soft accent halo.
+   Smoothed via the same easing/duration tokens used app-wide so motion feels
+   unified across cards, buttons, and rows. */
+.card-hover {
+  will-change: transform;
+  cursor: pointer;
+  transition:
+    transform   var(--duration-normal) var(--ease),
+    box-shadow  var(--duration-normal) var(--ease),
+    border-color var(--duration-normal) var(--ease);
+}
 .card-hover:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.18),
-    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
-    0 0 24px color-mix(in srgb, var(--accent) 14%, transparent);
+    0 14px 32px color-mix(in srgb, var(--accent) 14%, rgba(0, 0, 0, 0.20)),
+    0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+/* Light-theme: shadows need to be visible against a white background — use
+   colour-mixed accent shadows with higher opacity instead of black. */
+[data-theme="light"] .card-hover:hover {
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--accent) 18%, rgba(17, 17, 19, 0.12)),
+    0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .card-deep {
   background: var(--bg-card-deep);
@@ -787,6 +816,7 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-3);
+  min-height: 28px;            /* aligns label baseline across all stat cards */
 }
 .stat-card-icon {
   width: 32px;
@@ -795,7 +825,9 @@ small { font-size: var(--fs-xs); color: var(--text-muted); }
   align-items: center;
   justify-content: center;
   border-radius: var(--radius);
-  background: var(--accent-soft);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  flex-shrink: 0;
 }
 .stat-card-value {
   font-size: var(--fs-3xl);
@@ -1619,11 +1651,26 @@ tbody tr:last-child td { border-bottom: 0; }
   margin-bottom: var(--space-4);
 }
 .section-head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-muted);
+  font-weight: var(--fw-semi);
+  color: var(--text-primary);
   letter-spacing: var(--ls-normal);
 }
+.section-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+.section-head-icon svg { width: 14px; height: 14px; display: block; }
 .section-link {
   background: transparent;
   border: 0;
@@ -1646,11 +1693,33 @@ tbody tr:last-child td { border-bottom: 0; }
   border-radius: var(--radius-md);
 }
 .list-row + .list-row { margin-top: var(--space-2); }
+.list-row {
+  transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
+  border: 1px solid transparent;
+}
+.list-row:hover {
+  background: var(--bg-card-deep);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-soft));
+  transform: translateX(2px);
+}
 .list-row-icon  { font-size: var(--fs-lg); flex-shrink: 0; }
 .list-row-main  { flex: 1; min-width: 0; }
-.list-row-title { font-size: var(--fs-sm); color: var(--text-body); }
-.list-row-meta  { font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px; }
-.list-row-tags  { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.list-row-title {
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-meta  {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-tags  { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; flex-wrap: wrap; }
 
 /* Activity row — used inside scroll panes (transactions, etc.) */
 .activity-row {
@@ -1737,9 +1806,16 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .dashboard-stats-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  grid-template-columns: 1.25fr 1fr 1fr 1fr;
   gap: var(--space-4);
   margin-bottom: var(--space-6);
+  align-items: stretch;            /* ensure equal heights across the row */
+}
+.dashboard-stats-grid > * {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;  /* push meta to the bottom for visual alignment */
+  min-height: 132px;               /* uniform baseline height — prevents wallet card towering above */
 }
 .dashboard-stats-grid--3 { grid-template-columns: repeat(3, 1fr); }
 
@@ -1759,10 +1835,12 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 .section-card--span-2 { grid-column: span 2; }
 
-/* Wallet "stat-style" card with corner glow */
+/* Wallet "stat-style" card with corner glow.
+   Padding matches the other StatCards (var(--space-5)) so labels line up
+   on a single horizontal axis across the four-up row. */
 .wallet-stat-card {
   position: relative;
-  padding: var(--space-6);
+  padding: var(--space-5);
   overflow: hidden;
   cursor: pointer;
 }
@@ -1778,11 +1856,11 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 .wallet-stat-card-amount {
   font-family: var(--font-display);
-  font-size: var(--fs-4xl);
+  font-size: var(--fs-3xl);            /* matches .stat-card-value in scale */
   font-weight: var(--fw-black);
   letter-spacing: var(--ls-tight);
   line-height: var(--lh-tight);
-  margin: var(--space-2) 0 var(--space-2);
+  margin: var(--space-2) 0;
   font-variant-numeric: tabular-nums;
 }
 .wallet-stat-card-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; }
@@ -2396,25 +2474,33 @@ img { object-fit: cover; }
     box-shadow var(--duration-normal) var(--ease),
     border-color var(--duration-normal) var(--ease) !important;
 }
-/* Subtle accent stripe on the top edge — visible identity per card. */
+/* Persistent accent stripe on the top edge — gives every section a
+   visible identity at rest (registration page no longer looks like a
+   row of flat boxes). Stripe brightens on hover for tactile feedback. */
 .form-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 3px;
   background: var(--accent-grad);
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity var(--duration-normal) var(--ease);
 }
 .form-card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border)) !important;
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border)) !important;
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.18),
-    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
-    0 0 28px color-mix(in srgb, var(--accent) 14%, transparent) !important;
+    0 14px 32px color-mix(in srgb, var(--accent) 12%, rgba(0, 0, 0, 0.20)),
+    0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent) 18%, transparent) !important;
 }
 .form-card:hover::before { opacity: 1; }
+[data-theme="light"] .form-card:hover {
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--accent) 18%, rgba(17, 17, 19, 0.12)),
+    0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
 
 /* Form section title — bigger than body, with a leading accent dot
    so each section has a strong visual anchor. */

@@ -5,6 +5,19 @@ import { Card, PageTitle, Button, Modal, Alert, Spinner, Select, Input } from '.
 
 const CAT_ICONS = { travel:'✈️', hotel:'🏨', allowance:'🎯', credit:'💳', other:'📋' }
 
+const _PauseSvg = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+)
+const _BlockSvg = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+  </svg>
+)
+
 export default function WalletPage() {
   const { user, updateWallet } = useAuth()
   const [wallet,   setWallet]   = useState(null)
@@ -66,7 +79,7 @@ export default function WalletPage() {
       {/* Suspended / Closed warning */}
       {ppiWallet && (ppiWallet.walletStatus || '').toUpperCase() === 'SUSPENDED' && (
         <div style={{ background:'color-mix(in srgb, var(--warning) 6%, transparent)', border:'1px solid color-mix(in srgb, var(--warning) 15%, transparent)', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
-          <span style={{ fontSize:24 }}>⏸</span>
+          <span style={{ display:'inline-flex', alignItems:'center', color:'var(--text-warning)' }}>{_PauseSvg}</span>
           <div>
             <div style={{ fontSize:14, color: 'var(--text-warning)', fontWeight:600 }}>Wallet Suspended</div>
             <div style={{ fontSize:12, color:'var(--text-muted, var(--text-faint))', marginTop:2 }}>Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
@@ -75,7 +88,7 @@ export default function WalletPage() {
       )}
       {ppiWallet && (ppiWallet.walletStatus || '').toUpperCase() === 'CLOSED' && (
         <div style={{ background:'color-mix(in srgb, var(--danger) 6%, transparent)', border:'1px solid color-mix(in srgb, var(--danger) 15%, transparent)', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
-          <span style={{ fontSize:24 }}>⛔</span>
+          <span style={{ display:'inline-flex', alignItems:'center', color:'var(--text-danger)' }}>{_BlockSvg}</span>
           <div>
             <div style={{ fontSize:14, color: 'var(--text-danger)', fontWeight:600 }}>Wallet Closed</div>
             <div style={{ fontSize:12, color:'var(--text-muted, var(--text-faint))', marginTop:2 }}>Your wallet has been permanently closed. No further transactions are possible. Please contact your administrator.</div>

@@ -121,7 +121,7 @@ export default function EmployeeManagement({ setTab }) {
     return acc;
   }, {});
   const ROLE_NAMES = roles.filter((r) => r.is_active).map((r) => r.name);
-  const accent = user.color || 'var(--success)';
+  const accent = user.color || 'var(--accent)';
 
   useEffect(() => {
     load();

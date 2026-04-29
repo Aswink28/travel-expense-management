@@ -3,6 +3,40 @@ import { dashboardAPI, walletAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, StatCard, Alert, Spinner, PageTitle, StatusPill, BookingBadge } from '../shared/UI'
 
+/* ──────────────────────────────────────────────────────────────
+   Inline SVG icon set — same stroke/size language as the sidebar
+   icons so dashboard iconography stays visually unified.
+   ────────────────────────────────────────────────────────────── */
+const SvgIcon = ({ size = 16, children }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    style={{ flexShrink: 0 }}
+  >
+    {children}
+  </svg>
+)
+const I = {
+  pieChart: <SvgIcon><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></SvgIcon>,
+  list:     <SvgIcon><line x1="8" y1="6"  x2="21" y2="6"  /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6"  x2="3.01" y2="6"  /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></SvgIcon>,
+  activity: <SvgIcon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></SvgIcon>,
+  plane:    <SvgIcon><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.71 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.58 2.81.71A2 2 0 0 1 22 16.92z" /></SvgIcon>,
+  hotel:    <SvgIcon><path d="M3 21V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v13" /><path d="M3 13h18" /><path d="M8 6V3" /><path d="M16 6V3" /><path d="M7 17h2" /><path d="M15 17h2" /></SvgIcon>,
+  wallet:   <SvgIcon><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4z" /></SvgIcon>,
+  layers:   <SvgIcon><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></SvgIcon>,
+  pause:    <SvgIcon><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></SvgIcon>,
+  block:    <SvgIcon><circle cx="12" cy="12" r="9" /><line x1="5.6" y1="5.6" x2="18.4" y2="18.4" /></SvgIcon>,
+  paperclip:<SvgIcon><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></SvgIcon>,
+  card:     <SvgIcon><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 11h20" /><path d="M6 16h4" /></SvgIcon>,
+}
+
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
 
 export default function Dashboard({ setTab }) {
@@ -56,7 +90,7 @@ export default function Dashboard({ setTab }) {
       {/* Wallet suspended/closed warnings — semantic alerts with rich content */}
       {walletStatus === 'SUSPENDED' && (
         <Alert type="warning" className="alert-rich">
-          <span className="alert-rich-icon">⏸</span>
+          <span className="alert-rich-icon" style={{ display: 'inline-flex' }}>{I.pause}</span>
           <div>
             <div className="alert-rich-title">Wallet Suspended</div>
             <div className="alert-rich-body">Your wallet is temporarily frozen. You cannot make transactions or log expenses. Please contact your administrator.</div>
@@ -65,7 +99,7 @@ export default function Dashboard({ setTab }) {
       )}
       {walletStatus === 'CLOSED' && (
         <Alert type="error" className="alert-rich">
-          <span className="alert-rich-icon">⛔</span>
+          <span className="alert-rich-icon" style={{ display: 'inline-flex' }}>{I.block}</span>
           <div>
             <div className="alert-rich-title">Wallet Closed</div>
             <div className="alert-rich-body">Your wallet has been permanently closed. No further transactions are possible.</div>
@@ -83,13 +117,26 @@ export default function Dashboard({ setTab }) {
               ₹{Number(ppiBal?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
             </div>
             <div className="wallet-stat-card-meta">
-              {ppiBal ? (
-                <>
-                  <span className="wallet-stat-card-tag" style={{ background:'var(--success-soft)', color: 'var(--text-success)' }}>● {ppiBal.walletStatus}</span>
-                  <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)',  color:'var(--accent)'  }}>{ppiBal.walletNumber}</span>
-                </>
-              ) : (
-                <span className="wallet-stat-card-tag" style={{ background:'var(--success-soft)', color: 'var(--text-success)' }}>● Amount Loaded</span>
+              {ppiBal ? (() => {
+                const ws = (ppiBal.walletStatus || '').toUpperCase()
+                const statusToken = ws === 'ACTIVE' ? 'success'
+                                  : ws === 'SUSPENDED' ? 'warning'
+                                  : ws === 'CLOSED' ? 'danger'
+                                  : 'accent'
+                return (
+                  <>
+                    <span
+                      className="wallet-stat-card-tag"
+                      style={{
+                        background: `var(--${statusToken}-soft)`,
+                        color: `var(--text-${statusToken}, var(--${statusToken}))`,
+                      }}
+                    >● {ppiBal.walletStatus}</span>
+                    <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)',  color:'var(--accent)'  }}>{ppiBal.walletNumber}</span>
+                  </>
+                )
+              })() : (
+                <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)', color: 'var(--accent)' }}>● Amount Loaded</span>
               )}
             </div>
           </Card>
@@ -110,7 +157,10 @@ export default function Dashboard({ setTab }) {
       {recentRequests?.length > 0 && (
         <Card className="section-card" style={{ marginBottom: 'var(--space-4)' }}>
           <div className="section-head">
-            <div className="section-head-title">Recent Requests</div>
+            <div className="section-head-title">
+              <span className="section-head-icon">{I.list}</span>
+              Recent Requests
+            </div>
             <button className="section-link" onClick={() => setTab('my-requests')}>View all →</button>
           </div>
           <div>
@@ -125,11 +175,32 @@ export default function Dashboard({ setTab }) {
                   <StatusPill status={r.status} />
                   <BookingBadge type={r.booking_type} />
                   {r.wallet_credited && (
-                    <span className="pill" style={{ background:'var(--success-soft)', color: 'var(--text-success)' }}>💳 Wallet Loaded</span>
+                    <span
+                      className="pill"
+                      style={{
+                        background: 'var(--accent-soft)',
+                        color: 'var(--accent)',
+                        borderColor: 'color-mix(in srgb, var(--accent) 28%, transparent)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      {I.card} Wallet Loaded
+                    </span>
                   )}
                   {r.doc_count > 0 && (
-                    <span className="pill" style={{ background:'var(--accent-soft)', color:'var(--accent)' }}>
-                      📎 {r.doc_count} ticket{r.doc_count>1?'s':''}
+                    <span
+                      className="pill"
+                      style={{
+                        background: 'var(--accent-soft)',
+                        color: 'var(--accent)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      {I.paperclip} {r.doc_count} ticket{r.doc_count>1?'s':''}
                     </span>
                   )}
                 </div>
@@ -144,9 +215,9 @@ export default function Dashboard({ setTab }) {
 
         {!isBkAdmin && (() => {
           const cats = [
-            { key:'travel',    label:'Travel',    icon:'✈',  color:'var(--accent)',  spent:Number(expBreakdown.travel?.spent||0),    credited:Number(expBreakdown.travel?.credited||0),    remaining:Number(wallet?.travel_balance||0) },
-            { key:'hotel',     label:'Hotel',     icon:'🏨', color:'var(--purple)',  spent:Number(expBreakdown.hotel?.spent||0),     credited:Number(expBreakdown.hotel?.credited||0),     remaining:Number(wallet?.hotel_balance||0) },
-            { key:'allowance', label:'Allowance', icon:'🎯', color: 'var(--text-success)', spent:Number(expBreakdown.allowance?.spent||0), credited:Number(expBreakdown.allowance?.credited||0), remaining:Number(wallet?.allowance_balance||0) },
+            { key:'travel',    label:'Travel',    icon: I.plane,  color:'var(--accent)',  spent:Number(expBreakdown.travel?.spent||0),    credited:Number(expBreakdown.travel?.credited||0),    remaining:Number(wallet?.travel_balance||0) },
+            { key:'hotel',     label:'Hotel',     icon: I.hotel,  color:'var(--purple)',  spent:Number(expBreakdown.hotel?.spent||0),     credited:Number(expBreakdown.hotel?.credited||0),     remaining:Number(wallet?.hotel_balance||0) },
+            { key:'allowance', label:'Allowance', icon: I.wallet, color:'var(--info)',    spent:Number(expBreakdown.allowance?.spent||0), credited:Number(expBreakdown.allowance?.credited||0), remaining:Number(wallet?.allowance_balance||0) },
           ]
           const totalSpent    = cats.reduce((s, c) => s + c.spent, 0)
           const totalCredited = cats.reduce((s, c) => s + c.credited, 0)
@@ -178,7 +249,10 @@ export default function Dashboard({ setTab }) {
           return (
             <Card className="section-card section-card--tall">
               <div className="section-head">
-                <div className="section-head-title">Expense Breakdown</div>
+                <div className="section-head-title">
+                  <span className="section-head-icon">{I.pieChart}</span>
+                  Expense Breakdown
+                </div>
               </div>
 
               <div className="donut-body">
@@ -217,7 +291,10 @@ export default function Dashboard({ setTab }) {
                         <div className="donut-legend-swatch" style={{ background:c.color }} />
                         <div className="donut-legend-main">
                           <div className="donut-legend-head">
-                            <span className="donut-legend-label">{c.icon} {c.label}</span>
+                            <span className="donut-legend-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: c.color }}>
+                              {c.icon}
+                              <span style={{ color: 'var(--text-primary)' }}>{c.label}</span>
+                            </span>
                             <span className="donut-legend-pct" style={{ color:c.color }}>{pct}%</span>
                           </div>
                           <div className="donut-legend-meta">
@@ -236,7 +313,10 @@ export default function Dashboard({ setTab }) {
         {/* Recent transactions */}
         <Card className={`section-card section-card--tall${isBkAdmin ? ' section-card--span-2' : ''}`}>
           <div className="section-head">
-            <div className="section-head-title">Recent Wallet Activity</div>
+            <div className="section-head-title">
+              <span className="section-head-icon">{I.activity}</span>
+              Recent Wallet Activity
+            </div>
             <button className="section-link" onClick={() => setTab('transactions')}>View all →</button>
           </div>
           <div style={{ flex:1, overflowY:'auto', minHeight:0, paddingRight: 'var(--space-1)' }}>
@@ -265,6 +345,7 @@ export default function Dashboard({ setTab }) {
         <Card className="section-card">
           <div className="section-head" style={{ marginBottom: 'var(--space-3)' }}>
             <div className="section-head-title" style={{ textTransform:'uppercase', letterSpacing:'var(--ls-wide)', fontSize:'var(--fs-2xs)', color:'var(--text-label)' }}>
+              <span className="section-head-icon" style={{ color: 'var(--accent)' }}>{I.layers}</span>
               Your Tier — {user.role}
             </div>
           </div>

@@ -18,7 +18,7 @@ export default function RoleManagement() {
   const [saving, setSaving]         = useState(false)
   const [expandedRole, setExpandedRole] = useState(null)
 
-  const accent = user.color || 'var(--success)'
+  const accent = user.color || 'var(--accent)'
 
   useEffect(() => { load() }, [])
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t) } }, [success])

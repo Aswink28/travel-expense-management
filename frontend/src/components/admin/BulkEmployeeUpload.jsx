@@ -45,7 +45,7 @@ function friendlyError(msg) {
 
 export default function BulkEmployeeUpload() {
   const { user } = useAuth()
-  const accent = user.color || 'var(--success)'
+  const accent = user.color || 'var(--accent)'
   const fileRef = useRef(null)
 
   const [jobs, setJobs]             = useState([])

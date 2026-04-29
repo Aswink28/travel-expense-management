@@ -35,7 +35,16 @@ export function WalletCard({ wallet, color = 'var(--accent)' }) {
         ₹{bal.toLocaleString('en-IN')}
       </div>
       <div>
-        <span className="pill text-success">Amount Loaded</span>
+        <span
+          className="pill"
+          style={{
+            background: 'var(--accent-soft)',
+            color: 'var(--accent)',
+            borderColor: 'color-mix(in srgb, var(--accent) 28%, transparent)',
+          }}
+        >
+          ● Amount Loaded
+        </span>
       </div>
     </Card>
   )
