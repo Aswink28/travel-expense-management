@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { tiersAPI, rolesAPI } from '../../services/api'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth, usePermission } from '../../context/AuthContext'
 import { Card, Button, Input, Select, Alert, Spinner, Modal, PageTitle } from '../shared/UI'
 
 // Authority ranks used to order the approval sequence (lowest authority first).
@@ -16,7 +16,13 @@ const ROLE_RANK = {
 
 export default function DesignationManagement() {
   const { user } = useAuth()
-  const canEdit = user?.role === 'Super Admin'
+  // Phase-2 RBAC — replace blanket Super Admin check with per-action gates.
+  const canCreatePerm = usePermission('designations', 'create')
+  const canEditPerm   = usePermission('designations', 'edit')
+  const canDeletePerm = usePermission('designations', 'delete')
+  // Backwards-compat alias used by render code below — true if the user has
+  // ANY mutation permission so the actions column still renders.
+  const canEdit = canCreatePerm || canEditPerm || canDeletePerm
 
   const [tiers,         setTiers]         = useState([])
   const [designations,  setDesignations]  = useState([])
@@ -50,7 +56,8 @@ export default function DesignationManagement() {
   }
 
   function openCreate() {
-    setModal({ mode: 'create', data: { designation: '', role: '', tier_id: '' } })
+    // Per spec, brand-new designations default to is_approver = false.
+    setModal({ mode: 'create', data: { designation: '', role: '', tier_id: '', is_approver: false } })
     setErrs({})
   }
   function openEdit(dt) {
@@ -61,6 +68,7 @@ export default function DesignationManagement() {
         designation: dt.designation,
         role: dt.role || '',
         tier_id: dt.tier_id ? String(dt.tier_id) : '',
+        is_approver: !!dt.is_approver,
       },
     })
     setErrs({})
@@ -88,6 +96,7 @@ export default function DesignationManagement() {
       designation: modal.data.designation.trim(),
       tier_id:     Number(modal.data.tier_id),
       role:        modal.data.role || null,
+      is_approver: !!modal.data.is_approver,
     }
     const e = validate(modal.data)
     setErrs(e)
@@ -194,7 +203,10 @@ export default function DesignationManagement() {
           <span style={{ marginLeft:'auto', fontSize: 11, color:'var(--text-muted)' }}>
             {rows.length} of {designations.length} designation{designations.length === 1 ? '' : 's'}
           </span>
-          {canEdit && <Button onClick={openCreate}>+ New Designation</Button>}
+          <Button onClick={openCreate} disabled={!canCreatePerm}
+            title={canCreatePerm ? '' : 'You do not have permission to create designations'}>
+            + New Designation
+          </Button>
         </div>
       </Card>
 
@@ -271,16 +283,20 @@ export default function DesignationManagement() {
                         border: `1px solid ${dt.employee_count > 0 ? 'color-mix(in srgb, var(--success) 25%, transparent)' : 'var(--border)'}`,
                       }}>{dt.employee_count ?? 0}</span>
                     </td>
-                    {canEdit && (
+                    {(canEditPerm || canDeletePerm) && (
                       <td style={tdStyle}>
                         <div style={{ display:'flex', gap: 6 }}>
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(dt)}>Edit</Button>
-                          <Button size="sm"
-                            style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color: 'var(--text-danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
-                            title="Delete this designation mapping"
-                            onClick={() => requestDelete(dt)}>
-                            Delete
-                          </Button>
+                          {canEditPerm && (
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(dt)}>Edit</Button>
+                          )}
+                          {canDeletePerm && (
+                            <Button size="sm"
+                              style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color: 'var(--text-danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
+                              title="Delete this designation mapping"
+                              onClick={() => requestDelete(dt)}>
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -321,6 +337,42 @@ export default function DesignationManagement() {
             <option value="">Select a tier</option>
             {tiers.map(t => <option key={t.id} value={t.id}>{t.name} · rank {t.rank} {t.is_active === false ? '· (inactive)' : ''}</option>)}
           </Select>
+
+          {/* ── Is Approver flag ─────────────────────────────────
+             When checked, Tier Config's approver picker will list
+             this designation. Default (unchecked) keeps existing
+             approval flows intact. */}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: '12px 14px',
+              marginBottom: 16,
+              background: modal.data.is_approver
+                ? 'color-mix(in srgb, var(--accent) 10%, transparent)'
+                : 'var(--bg-input)',
+              border: `1px solid ${modal.data.is_approver
+                ? 'color-mix(in srgb, var(--accent) 35%, transparent)'
+                : 'var(--border)'}`,
+              borderRadius: 10,
+              cursor: 'pointer',
+              transition: 'background 160ms ease, border-color 160ms ease',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={!!modal.data.is_approver}
+              onChange={e => setModal(m => ({ ...m, data: { ...m.data, is_approver: e.target.checked } }))}
+              style={{ marginTop: 2, accentColor: 'var(--accent)', cursor: 'pointer', width: 16, height: 16, flexShrink: 0 }}
+            />
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Is Approver</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Allow this designation to appear as an approver option in Tier Configuration.
+              </span>
+            </span>
+          </label>
 
           {modal.data.tier_id && (() => {
             const selectedTier = tiers.find(t => String(t.id) === String(modal.data.tier_id))

@@ -1,13 +1,22 @@
 const express  = require('express')
 const bcrypt   = require('bcryptjs')
 const pool     = require('../config/db')
-const { authenticate, authorise } = require('../middleware')
+const { authenticate, pageGuard, requirePermission } = require('../middleware')
 const { createPpiWallet, suspendPpiWallet, closePpiWallet } = require('../services/ppiWallet')
 const { normaliseApprovalConfig, resolveTierForDesignation, deriveApprovalFromTier } = require('../services/employeeApproval')
 const router   = express.Router()
 
 router.use(authenticate)
-router.use(authorise('Super Admin'))
+// Phase-2 RBAC — gate every endpoint by the caller's permission on the
+// 'employees' page. Method-based mapping handles standard CRUD; explicit
+// overrides reclassify a couple of POST endpoints that are really edits
+// (suspend / close wallet, approver-chain mutations).
+router.use(pageGuard('employees', {
+  'POST */suspend-wallet':  'edit',
+  'POST */close-wallet':    'edit',
+  'POST */approver-chain':  'edit',
+  'POST /reassign-approver':'edit',
+}))
 
 // ── Helper: load an employee's approver chain (ordered) ──────────
 async function fetchApproverChain(client, employeeId) {
@@ -58,7 +67,7 @@ router.get('/', async (req, res, next) => {
              TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
              u.gender, u.pan_number, u.aadhaar_number,
              u.ppi_wallet_id, u.ppi_wallet_number, u.ppi_customer_id, u.ppi_wallet_status, u.ppi_kyc_status,
-             u.approver_roles, u.approval_type, u.required_approval_count,
+             u.approver_roles, u.approval_type, u.required_approval_count, u.approval_flow,
              u.designation, u.tier_id, t.name AS tier_name, t.rank AS tier_rank,
              u.last_login, u.created_at,
              w.balance AS wallet_balance
@@ -104,7 +113,7 @@ router.get('/:id', async (req, res, next) => {
              TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
              u.gender, u.pan_number, u.aadhaar_number,
              u.ppi_wallet_id, u.ppi_wallet_number, u.ppi_customer_id, u.ppi_wallet_status, u.ppi_kyc_status,
-             u.approver_roles, u.approval_type, u.required_approval_count,
+             u.approver_roles, u.approval_type, u.required_approval_count, u.approval_flow,
              u.designation, u.tier_id, t.name AS tier_name, t.rank AS tier_rank,
              u.last_login, u.created_at,
              w.balance AS wallet_balance
@@ -123,9 +132,13 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   const { name, email, password, role, department, reporting_to,
           mobile_number, date_of_birth, gender, pan_number, aadhaar_number, productId,
-          approver_roles, approval_type, required_approval_count,
+          approver_roles, approval_type, required_approval_count, approval_flow,
           designation, tier_id: tier_id_in,
           approver_chain } = req.body
+
+  // approval_flow override (SEQUENTIAL | PARALLEL). NULL = inherit from tier.
+  const approvalFlow = approval_flow === undefined ? null
+                     : ['SEQUENTIAL', 'PARALLEL'].includes(approval_flow) ? approval_flow : null
 
   if (!name || !email || !password || !role) {
     return res.status(400).json({ success: false, message: 'Name, email, password, and role are required' })
@@ -254,13 +267,13 @@ router.post('/', async (req, res, next) => {
       `INSERT INTO users (emp_id, name, email, password_hash, role, department, avatar, color, reporting_to,
                           mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
                           ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status,
-                          approver_roles, approval_type, required_approval_count,
+                          approver_roles, approval_type, required_approval_count, approval_flow,
                           designation, tier_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
        RETURNING id, emp_id, name, email, role, department, avatar, color, reporting_to, is_active,
                  mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
                  ppi_wallet_id, ppi_wallet_number, ppi_customer_id, ppi_wallet_status, ppi_kyc_status,
-                 approver_roles, approval_type, required_approval_count,
+                 approver_roles, approval_type, required_approval_count, approval_flow,
                  designation, tier_id, created_at`,
       [emp_id, name.trim(), email.trim().toLowerCase(), password_hash, role, department || 'Engineering',
        avatar, color, reporting_to || null, mobile_number, date_of_birth, gender,
@@ -270,6 +283,7 @@ router.post('/', async (req, res, next) => {
        approvalCfg.provided ? approvalCfg.approver_roles : null,
        approvalCfg.provided ? approvalCfg.approval_type : null,
        approvalCfg.provided ? approvalCfg.required_approval_count : null,
+       approvalFlow,
        designation || null,
        resolvedTierId || null]
     )
@@ -308,7 +322,7 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { name, email, role, department, reporting_to, password,
             mobile_number, date_of_birth, gender, pan_number, aadhaar_number,
-            approver_roles, approval_type, required_approval_count,
+            approver_roles, approval_type, required_approval_count, approval_flow,
             designation, tier_id: tier_id_in,
             approver_chain } = req.body
     const { id } = req.params
@@ -318,6 +332,13 @@ router.put('/:id', async (req, res, next) => {
       approvalCfg = normaliseApprovalConfig({ approver_roles, approval_type, required_approval_count })
       if (approvalCfg.error) return res.status(400).json({ success: false, message: approvalCfg.error })
     }
+
+    // approval_flow override (SEQUENTIAL | PARALLEL | null = inherit from tier).
+    let approvalFlowUpdate
+    if (approval_flow === undefined)                                 approvalFlowUpdate = undefined  // not in payload — leave alone
+    else if (approval_flow === null || approval_flow === '')         approvalFlowUpdate = null       // explicit clear → inherit
+    else if (['SEQUENTIAL', 'PARALLEL'].includes(approval_flow))     approvalFlowUpdate = approval_flow
+    else return res.status(400).json({ success: false, message: 'approval_flow must be SEQUENTIAL or PARALLEL' })
 
     // Resolve tier_id from designation when caller didn't supply one explicitly.
     let resolvedTierId = (tier_id_in === null) ? null
@@ -358,6 +379,9 @@ router.put('/:id', async (req, res, next) => {
       sets.push(`approver_roles = $${idx++}`);          vals.push(approvalCfg.approver_roles)
       sets.push(`approval_type = $${idx++}`);           vals.push(approvalCfg.approval_type)
       sets.push(`required_approval_count = $${idx++}`); vals.push(approvalCfg.required_approval_count)
+    }
+    if (approvalFlowUpdate !== undefined) {
+      sets.push(`approval_flow = $${idx++}`);           vals.push(approvalFlowUpdate)
     }
     if (designation !== undefined)       { sets.push(`designation = $${idx++}`); vals.push(designation || null) }
     if (resolvedTierId !== undefined)    { sets.push(`tier_id = $${idx++}`);     vals.push(resolvedTierId) }

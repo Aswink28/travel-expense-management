@@ -3,7 +3,7 @@ const multer  = require('multer')
 const bcrypt  = require('bcryptjs')
 const XLSX    = require('xlsx')
 const pool    = require('../config/db')
-const { authenticate, authorise } = require('../middleware')
+const { authenticate, pageGuard } = require('../middleware')
 const { parseFile, formatErrors } = require('../services/bulkParseService')
 const { createPpiWallet } = require('../services/ppiWallet')
 const { resolveTierForDesignation, deriveApprovalFromTier } = require('../services/employeeApproval')
@@ -45,7 +45,11 @@ router.get('/template', (req, res) => {
 })
 
 router.use(authenticate)
-router.use(authorise('Super Admin'))
+// Bulk onboarding shares the 'employees' permission grant — view to list jobs,
+// create to upload a new file, edit to retry, delete to remove a job.
+router.use(pageGuard('employees', {
+  'POST */retry-failed': 'edit',
+}))
 
 // ── In-memory job tracker for background processing ──────────
 const activeJobs = new Map()

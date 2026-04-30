@@ -52,8 +52,7 @@ ON CONFLICT (role_name, page_id) DO NOTHING;
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Booking Admin', 'dashboard',           'Dashboard',       '▦', 1),
   ('Booking Admin', 'booking-panel',       'Booking Panel',   '◈', 2),
-  ('Booking Admin', 'booking-history',     'History',         '◎', 3),
-  ('Booking Admin', 'admin-bookings-view', 'Booking History', '📋', 4)
+  ('Booking Admin', 'admin-bookings-view', 'Booking History', '📋', 3)
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
 -- Super Admin — manages users/sites, does not approve travel requests.
@@ -88,6 +87,12 @@ DELETE FROM role_pages WHERE page_id = 'requests';
 
 -- Retire the legacy "Ad-Hoc Booking" page (folded back into Booking History / Panel).
 DELETE FROM role_pages WHERE page_id = 'ad-hoc-booking';
+
+-- Retire the duplicate "History" sidebar entry — Booking Panel already owns the
+-- recent-bookings panel, and the dedicated history surface is "Booking History"
+-- (admin-bookings-view). The booking-history page-id is removed so no role,
+-- including custom ones seeded earlier, keeps the duplicate row.
+DELETE FROM role_pages WHERE page_id = 'booking-history';
 
 -- Super Admin is no longer an approver — drop the Approvals sidebar entry.
 DELETE FROM role_pages WHERE role_name = 'Super Admin' AND page_id = 'approvals';

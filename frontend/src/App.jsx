@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { useState, useEffect, useMemo } from 'react'
+import { AuthProvider, useAuth, hasPermission } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import LandingPage    from './components/shared/LandingPage'
 import LoginPage      from './components/shared/LoginPage'
@@ -21,6 +21,7 @@ import ApproverAuditLog       from './components/admin/ApproverAuditLog'
 import EmployeeManagement from './components/admin/EmployeeManagement'
 import RoleManagement     from './components/admin/RoleManagement'
 import BulkEmployeeUpload from './components/admin/BulkEmployeeUpload'
+import AdminUsers         from './components/admin/AdminUsers'
 import TransactionsPage   from './components/dashboard/TransactionsPage'
 import { requestsAPI } from './services/api'
 
@@ -56,10 +57,65 @@ function WelcomeBanner() {
   )
 }
 
+// ── Permission-gated page rendering ────────────────────────────
+// Renders a 403 banner instead of the page when the active tab is
+// not in user.pages with can_view = true. Catches direct-state
+// navigation, programmatic setTab() calls, and any page id that
+// hasn't been explicitly granted to this admin user.
+//
+// Pages that are not in ALL_ADMIN_PAGES (e.g. dashboard, my-requests,
+// my-wallet) bypass the gate so existing employee flows keep working
+// — admin permission checks only apply to admin-side pages.
+const ADMIN_GATED_PAGES = new Set([
+  'employees', 'roles', 'tiers', 'designations',
+  'audit-log', 'admin-users',
+  'booking-panel', 'booking-history',
+  'bulk-employees',
+])
+
+function PageGuard({ tab, children }) {
+  const { user } = useAuth()
+  const requiresGate = ADMIN_GATED_PAGES.has(tab)
+  const allowed = !requiresGate || hasPermission(user, tab, 'view')
+  if (allowed) return children
+  return (
+    <div style={{ padding: 'var(--space-12) var(--space-6)', textAlign: 'center', maxWidth: 540, margin: '0 auto' }}>
+      <div style={{
+        fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+        color: 'var(--text-danger)',
+        background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+        padding: '4px 12px', borderRadius: 999, display: 'inline-block', marginBottom: 16,
+      }}>
+        403 · Permission denied
+      </div>
+      <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
+        You don't have access to this page
+      </h2>
+      <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.55 }}>
+        Your role does not include view permission for <code style={{ background:'var(--bg-card-deep)', padding:'2px 6px', borderRadius:4 }}>{tab}</code>.
+        If you believe this is wrong, ask a Super Admin to review the permission matrix on your account.
+      </p>
+    </div>
+  )
+}
+
 function InnerApp() {
   const { user } = useAuth()
   const [tab,          setTab]          = useState('dashboard')
   const [pendingCount, setPendingCount] = useState(0)
+
+  // If the active tab disappears from user.pages after a permission change
+  // (rare — usually happens when an admin edits another admin's permissions
+  // and that admin reloads), fall back to dashboard so the UI never gets
+  // stuck rendering a 403 they can't navigate away from.
+  const visibleIds = useMemo(
+    () => new Set((user?.pages || []).filter(p => p.can_view !== false).map(p => p.id)),
+    [user?.pages]
+  )
+  useEffect(() => {
+    if (ADMIN_GATED_PAGES.has(tab) && !visibleIds.has(tab)) setTab('dashboard')
+  }, [tab, visibleIds])
 
   useEffect(() => {
     if (['Request Approver','Finance','Super Admin'].includes(user.role)) {
@@ -83,7 +139,6 @@ function InnerApp() {
     'approvals':      <ApprovalsQueue />,
     'my-wallet':      <WalletPage />,
     'booking-panel':  <BookingPanel showHistory={false} />,
-    'booking-history':<BookingPanel showHistory={true} />,
     'ad-hoc-booking': <AdHocBookingPanel />,
     'admin-bookings-view': <AdminBookingsView />,
     'employees':      <EmployeeManagement setTab={setTab} />,
@@ -92,6 +147,7 @@ function InnerApp() {
     'tiers':          <TierConfig />,
     'designations':   <DesignationManagement />,
     'audit-log':      <ApproverAuditLog />,
+    'admin-users':    <AdminUsers />,
     'book':           <SelfBookingPanel />,
     'my-tickets':     <MyTicketsPage />,
     'transactions':   <TransactionsPage />,
@@ -102,7 +158,9 @@ function InnerApp() {
       <Sidebar active={tab} setActive={setTab} pendingCount={pendingCount} />
       <main className="app-main">
         <WelcomeBanner />
-        {pages[tab] || pages['dashboard']}
+        <PageGuard tab={tab}>
+          {pages[tab] || pages['dashboard']}
+        </PageGuard>
       </main>
     </div>
   )

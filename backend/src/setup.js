@@ -106,6 +106,24 @@ async function run() {
   await pool.query(empApproversSql)
   console.log('   ✓ employee_approvers + approver_audit_log tables ready')
 
+  // 2i. Designation-level "Is Approver" flag — drives Tier Config approver picker
+  console.log('\n2i. Running designation is_approver migration...')
+  const desigApproverSql = fs.readFileSync(path.join(process.cwd(),'sql','designation_is_approver_migration.sql'),'utf8')
+  await pool.query(desigApproverSql)
+  console.log('   ✓ designation_tiers.is_approver column ready')
+
+  // 2j. Role-level V/C/E/D permissions on role_pages — Phase 1 of Admin User RBAC.
+  console.log('\n2j. Running role permissions migration...')
+  const rolePermsSql = fs.readFileSync(path.join(process.cwd(),'sql','role_permissions_migration.sql'),'utf8')
+  await pool.query(rolePermsSql)
+  console.log('   ✓ role_pages permission columns ready (View/Create/Edit/Delete)')
+
+  // 2k. Parallel approval flow — adds approval_flow to users + tiers.
+  console.log('\n2k. Running parallel approval migration...')
+  const parallelApprovalSql = fs.readFileSync(path.join(process.cwd(),'sql','parallel_approval_migration.sql'),'utf8')
+  await pool.query(parallelApprovalSql)
+  console.log('   ✓ approval_flow column ready on users + tiers (SEQUENTIAL default)')
+
   // 3. Create uploads directory
   const uploadsDir = path.join(process.cwd(), process.env.UPLOAD_DIR || 'uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive:true })
@@ -231,6 +249,122 @@ async function run() {
       ) ON CONFLICT (id) DO NOTHING
     `, [arjun[0].id])
     console.log('   ✓ TR-DEMO3 — Arjun — Company Booking — Pending approval (TL/Finance queue)')
+  }
+
+  // ── Sample admin bookings — populates the AdminBookingsView page ──
+  // Booked by Meena (Booking Admin) on behalf of Arjun & Priya. Idempotent:
+  // gated by AH-DEMO-FLIGHT presence, so re-running setup never duplicates.
+  // txn_id is left NULL so we don't disturb existing wallet balances via the
+  // wallet_transactions trigger; the page doesn't show transaction info anyway.
+  const todayMinus = (n) => {
+    const d = new Date(); d.setDate(d.getDate() - n)
+    return d.toISOString().slice(0, 10)
+  }
+  const { rows: meena } = await pool.query("SELECT id FROM users WHERE email='meena@company.in'")
+  if (meena.length && arjun.length && priya.length) {
+    const { rows: alreadySeeded } = await pool.query("SELECT 1 FROM travel_requests WHERE id = 'AH-DEMO-FLIGHT'")
+    if (!alreadySeeded.length) {
+      const { rows: priyaWallet } = await pool.query('SELECT id FROM wallets WHERE user_id=$1', [priya[0].id])
+      const { rows: arjunWallet } = await pool.query('SELECT id FROM wallets WHERE user_id=$1', [arjun[0].id])
+      const meenaId = meena[0].id
+
+      const samples = [
+        { reqId:'AH-DEMO-FLIGHT', forUserId: priya[0].id, forName: 'Priya Nair', forRole: 'Employee', dept: 'QA',
+          walletId: priyaWallet[0]?.id, mode: 'Flight', category: 'travel',
+          from: 'Mumbai', to: 'Delhi', daysAgo: 5, amount: 8500,
+          pnr: 'PNR-DEMOFL', ref: 'BK-DEMOFL', passenger: 'Priya Nair' },
+        { reqId:'AH-DEMO-HOTEL', forUserId: arjun[0].id, forName: 'Arjun Sharma', forRole: 'Employee', dept: 'Engineering',
+          walletId: arjunWallet[0]?.id, mode: 'Hotel', category: 'hotel',
+          from: 'Bangalore', to: 'Hilton Bangalore', daysAgo: 3, amount: 9000,
+          pnr: 'PNR-DEMOHT', ref: 'BK-DEMOHT', passenger: 'Arjun Sharma',
+          checkIn: 3, checkOut: 0 },
+        { reqId:'AH-DEMO-CAB', forUserId: priya[0].id, forName: 'Priya Nair', forRole: 'Employee', dept: 'QA',
+          walletId: priyaWallet[0]?.id, mode: 'Cab', category: 'travel',
+          from: 'Mumbai Office', to: 'Mumbai Airport', daysAgo: 5, amount: 650,
+          pnr: 'PNR-DEMOCB', ref: 'BK-DEMOCB', passenger: 'Priya Nair' },
+        { reqId:'AH-DEMO-TRAIN', forUserId: arjun[0].id, forName: 'Arjun Sharma', forRole: 'Employee', dept: 'Engineering',
+          walletId: arjunWallet[0]?.id, mode: 'Train', category: 'travel',
+          from: 'Chennai', to: 'Bangalore', daysAgo: 7, amount: 1200,
+          pnr: 'PNR-DEMOTR', ref: 'BK-DEMOTR', passenger: 'Arjun Sharma' },
+      ]
+
+      for (const s of samples) {
+        if (!s.walletId) continue
+
+        const isHotel    = s.mode === 'Hotel'
+        const startMinus = s.daysAgo
+        const endMinus   = Math.max(s.daysAgo - 2, 0)
+        const checkIn    = isHotel ? s.checkIn  : null
+        const checkOut   = isHotel ? s.checkOut : null
+
+        await pool.query(`
+          INSERT INTO travel_requests (
+            id, user_id, user_name, user_role, department,
+            from_location, to_location, travel_mode, booking_type,
+            start_date, end_date, purpose,
+            estimated_travel_cost, estimated_total, approved_total,
+            status, booking_status
+          ) VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, $8::travel_mode_enum, 'company',
+            CURRENT_DATE - $9::int, CURRENT_DATE - $10::int, 'Ad-Hoc Admin Booking',
+            $11, $11, $11,
+            'approved', 'booked'
+          ) ON CONFLICT (id) DO NOTHING
+        `, [s.reqId, s.forUserId, s.forName, s.forRole, s.dept,
+            s.from, s.to, s.mode, startMinus, endMinus, s.amount])
+
+        await pool.query(`
+          INSERT INTO bookings (
+            request_id, wallet_id, booked_by_id, booked_for_id,
+            booking_type, category, travel_mode,
+            from_location, to_location, travel_date,
+            check_in_date, check_out_date,
+            amount, pnr_number, booking_ref, status, created_at
+          ) VALUES (
+            $1, $2, $3, $4,
+            'company', $5::txn_category_enum, $6::travel_mode_enum,
+            $7, $8,
+            $9::date,
+            $10::date, $11::date,
+            $12, $13, $14, 'booked',
+            NOW() - ($15 || ' days')::interval
+          )
+          ON CONFLICT DO NOTHING
+        `, [s.reqId, s.walletId, meenaId, s.forUserId,
+            s.category, s.mode, s.from, s.to,
+            isHotel ? null : todayMinus(startMinus),
+            checkIn  != null ? todayMinus(checkIn)  : null,
+            checkOut != null ? todayMinus(checkOut) : null,
+            s.amount, s.pnr, s.ref, startMinus])
+
+        const { rows: bookingRow } = await pool.query(
+          'SELECT id FROM bookings WHERE pnr_number=$1 LIMIT 1', [s.pnr]
+        )
+        if (bookingRow.length) {
+          await pool.query(`
+            INSERT INTO tickets (
+              booking_id, user_id, request_id,
+              pnr_number, booking_ref, ticket_type, travel_mode,
+              passenger_name, from_location, to_location,
+              travel_date, amount, ticket_data
+            ) VALUES (
+              $1, $2, $3,
+              $4, $5, $6, $7,
+              $8, $9, $10,
+              $11::date, $12,
+              $13::jsonb
+            ) ON CONFLICT (pnr_number) DO NOTHING
+          `, [bookingRow[0].id, s.forUserId, s.reqId,
+              s.pnr, s.ref,
+              isHotel ? 'hotel' : 'transport', s.mode,
+              s.passenger, s.from, s.to,
+              todayMinus(startMinus), s.amount,
+              JSON.stringify({ passenger: s.passenger, delivered_via: ['email','sms','in-app'] })])
+        }
+      }
+      console.log('   ✓ Sample admin bookings — Flight / Hotel / Cab / Train (Booking History page)')
+    }
   }
 
   console.log('\n╔══════════════════════════════════════════╗')

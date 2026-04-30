@@ -216,3 +216,17 @@ export const adminBookingsAPI = {
   bookings:        ()           => api.get('/admin/bookings'),
   bookingDetail:   id           => api.get(`/admin/booking/${id}`),
 }
+
+// ── Admin Users (Phase-1 RBAC) ─────────────────────────────────
+// CRUD for admin-tier users (role != 'Employee') and per-role
+// View/Create/Edit/Delete permission matrix.
+export const adminUsersAPI = {
+  list:           ()              => api.get('/admin-users'),
+  create:         body            => api.post('/admin-users', body),
+  update:         (id, body)      => api.put(`/admin-users/${id}`, body),
+  remove:         id              => api.delete(`/admin-users/${id}`),
+  roles:          ()              => api.get('/admin-users/roles'),
+  getPermissions: role            => api.get(`/admin-users/permissions/${encodeURIComponent(role)}`),
+  setPermissions: (role, permissions) =>
+                                     api.put(`/admin-users/permissions/${encodeURIComponent(role)}`, { permissions }),
+}

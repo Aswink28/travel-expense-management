@@ -101,6 +101,29 @@ async function nextPendingUserStep(client, requestId, chain) {
   return null
 }
 
+// Resolve the effective approval flow + condition for a request:
+//   flow      ∈ 'SEQUENTIAL' | 'PARALLEL'   (default 'SEQUENTIAL')
+//   condition ∈ 'ANY_ONE'    | 'ALL'        (default 'ALL') — only meaningful when flow=PARALLEL
+//
+// Resolution order matches the existing approver-roles override chain:
+//   1. Per-employee (users.approval_flow / users.approval_type)
+//   2. Tier-level   (tiers.approval_flow / tiers.approval_type)
+//   3. Defaults     (SEQUENTIAL / ALL — preserves today's behaviour)
+async function resolveApprovalMode(client, employeeId) {
+  const { rows: u } = await client.query(
+    `SELECT u.approval_flow AS user_flow, u.approval_type AS user_type,
+            t.approval_flow AS tier_flow, t.approval_type AS tier_type
+       FROM users u
+       LEFT JOIN tiers t ON t.id = u.tier_id
+      WHERE u.id = $1`,
+    [employeeId]
+  )
+  const r = u[0] || {}
+  const flow      = r.user_flow || r.tier_flow || 'SEQUENTIAL'
+  const condition = r.user_type || r.tier_type || 'ALL'
+  return { flow, condition }
+}
+
 // Resolve the effective approver designation sequence for a given request.
 async function approverSequenceForRequest(client, tr) {
   // 1. Per-employee override (users.approver_roles — entries are designations)
@@ -392,6 +415,11 @@ router.post('/:id/action', async (req, res, next) => {
     const { rows:acted } = await client.query('SELECT 1 FROM approvals WHERE request_id=$1 AND approver_id=$2',[id,u.id])
     if (acted.length) { await client.query('ROLLBACK'); return res.status(409).json({ success:false, message:'Already acted on this request' }) }
 
+    // Resolve approval mode for THIS request's submitter. Sequential = today's
+    // strict step-by-step behaviour. Parallel = every chain participant can act
+    // simultaneously; completion is decided by `condition` (ANY_ONE | ALL).
+    const approvalMode = await resolveApprovalMode(client, tr.user_id)
+
     // Pre-validate the approval sequence BEFORE inserting the approval row so we don't
     // leave a stale row behind when early-returning with 403. Two routing modes:
     //   · USER chain (employee_approvers) — expected user must match caller.id
@@ -400,36 +428,61 @@ router.post('/:id/action', async (req, res, next) => {
     let inSequence = false
     const callerDesignationLc = (u.designation || '').toLowerCase()
     let usingUserChain = false
+    let userChainCached = null
     if (action === 'approved') {
       const isFinance = u.role === 'Finance'
       const userChain = await fetchUserApproverChain(client, tr.user_id)
+      userChainCached = userChain
 
       if (userChain) {
         usingUserChain = true
-        const step = await nextPendingUserStep(client, id, userChain)
-        if (step === null) {
-          await client.query('ROLLBACK')
-          return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
-        }
-        if (!step.expected_user_id) {
-          await client.query('ROLLBACK')
-          return res.status(403).json({
-            success: false,
-            message: `No active approver assigned for "${step.step_designation}". Ask an admin to set a primary or backup.`,
-          })
-        }
-        // Finance is allowed to act independently if this employee's chain doesn't include Finance.
         const financeInChain = userChain.some(s => s.step_designation.toLowerCase() === 'finance')
-        if (isFinance && !financeInChain) {
-          inSequence = false                  // pure budget-lane action; engine still records it below
-        } else if (step.expected_user_id !== u.id) {
-          await client.query('ROLLBACK')
-          return res.status(403).json({
-            success: false,
-            message: `Not your turn. The next approver for "${step.step_designation}" is the assigned ${step.primary_active ? 'primary' : 'backup'} user.`,
-          })
+
+        if (approvalMode.flow === 'PARALLEL') {
+          // Parallel — caller just needs to be in the chain (primary or backup of
+          // any step). Order is irrelevant. Finance acting outside the chain on
+          // its own lane stays allowed (matches sequential semantics).
+          if (isFinance && !financeInChain) {
+            inSequence = false
+          } else {
+            const inChain = userChain.some(s =>
+              (s.primary_user_id && s.primary_user_id === u.id) ||
+              (s.backup_user_id  && s.backup_user_id  === u.id)
+            )
+            if (!inChain) {
+              await client.query('ROLLBACK')
+              return res.status(403).json({
+                success: false,
+                message: `You are not in the approval chain for ${tr.user_name}'s request.`,
+              })
+            }
+            inSequence = true
+          }
         } else {
-          inSequence = true
+          // Sequential — existing strict ordering.
+          const step = await nextPendingUserStep(client, id, userChain)
+          if (step === null) {
+            await client.query('ROLLBACK')
+            return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
+          }
+          if (!step.expected_user_id) {
+            await client.query('ROLLBACK')
+            return res.status(403).json({
+              success: false,
+              message: `No active approver assigned for "${step.step_designation}". Ask an admin to set a primary or backup.`,
+            })
+          }
+          if (isFinance && !financeInChain) {
+            inSequence = false                  // pure budget-lane action; engine still records it below
+          } else if (step.expected_user_id !== u.id) {
+            await client.query('ROLLBACK')
+            return res.status(403).json({
+              success: false,
+              message: `Not your turn. The next approver for "${step.step_designation}" is the assigned ${step.primary_active ? 'primary' : 'backup'} user.`,
+            })
+          } else {
+            inSequence = true
+          }
         }
       } else {
         // Legacy designation-based path
@@ -452,19 +505,23 @@ router.post('/:id/action', async (req, res, next) => {
             await client.query('ROLLBACK')
             return res.status(403).json({ success: false, message: 'No approval flow is configured for this employee' })
           }
-          const stepDesg = await nextPendingStep(client, id, sequence)
-          if (stepDesg === null) {
-            await client.query('ROLLBACK')
-            return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
+
+          if (approvalMode.flow === 'SEQUENTIAL') {
+            const stepDesg = await nextPendingStep(client, id, sequence)
+            if (stepDesg === null) {
+              await client.query('ROLLBACK')
+              return res.status(409).json({ success: false, message: 'Approval sequence already complete' })
+            }
+            if (stepDesg.toLowerCase() !== callerDesignationLc) {
+              const order = sequence.map((d, i) => `${i + 1}. ${d}`).join(' → ')
+              await client.query('ROLLBACK')
+              return res.status(403).json({
+                success: false,
+                message: `Out of order. The next approver must hold the designation "${stepDesg}". Sequence: ${order}`,
+              })
+            }
           }
-          if (stepDesg.toLowerCase() !== callerDesignationLc) {
-            const order = sequence.map((d, i) => `${i + 1}. ${d}`).join(' → ')
-            await client.query('ROLLBACK')
-            return res.status(403).json({
-              success: false,
-              message: `Out of order. The next approver must hold the designation "${stepDesg}". Sequence: ${order}`,
-            })
-          }
+          // Parallel — designation membership is sufficient; no order check.
         }
       }
     }
@@ -485,15 +542,38 @@ router.post('/:id/action', async (req, res, next) => {
       // Update approval flags — Super Admin is blocked upstream, so only sequence + Finance apply.
       if (inSequence) {
         // Recompute: is the sequence now complete (including this approval)?
-        let remaining
-        if (usingUserChain) {
-          const refreshedChain = await fetchUserApproverChain(client, tr.user_id)
-          remaining = refreshedChain ? await nextPendingUserStep(client, id, refreshedChain) : null
+        // Sequential & PARALLEL+ALL  → "every step has an approval" (existing helper handles both).
+        // PARALLEL+ANY_ONE           → "at least one step has an approval".
+        let complete = false
+        if (approvalMode.flow === 'PARALLEL' && approvalMode.condition === 'ANY_ONE') {
+          // ANY_ONE — first non-Finance approval marks hierarchy done.
+          const { rows: anyApproved } = await client.query(
+            `SELECT 1
+               FROM approvals a
+               LEFT JOIN users au ON au.id = a.approver_id
+              WHERE a.request_id = $1
+                AND a.action = 'approved'
+                AND COALESCE(au.role::text, '') <> 'Finance'
+              LIMIT 1`,
+            [id]
+          )
+          complete = anyApproved.length > 0
         } else {
-          remaining = await nextPendingStep(client, id, sequence)
+          // SEQUENTIAL or PARALLEL+ALL — completion = no pending step left.
+          let remaining
+          if (usingUserChain) {
+            const refreshedChain = userChainCached || await fetchUserApproverChain(client, tr.user_id)
+            remaining = refreshedChain ? await nextPendingUserStep(client, id, refreshedChain) : null
+          } else {
+            remaining = await nextPendingStep(client, id, sequence)
+          }
+          complete = remaining === null
         }
-        if (remaining === null) {
-          await client.query(`UPDATE travel_requests SET hierarchy_approved=TRUE,hierarchy_approved_by=$1,hierarchy_approved_at=NOW() WHERE id=$2`, [u.name, id])
+        if (complete) {
+          await client.query(
+            `UPDATE travel_requests SET hierarchy_approved=TRUE, hierarchy_approved_by=$1, hierarchy_approved_at=NOW() WHERE id=$2`,
+            [u.name, id]
+          )
         }
       }
       // Finance always sets finance_approved + amounts — whether in-sequence or parallel.

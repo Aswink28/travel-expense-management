@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { tiersAPI, rolesAPI } from '../../services/api'
 import { Card, PageTitle, Alert, Spinner, Button, Modal, Input, Select } from '../shared/UI'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth, usePermission } from '../../context/AuthContext'
 
 const FLIGHT_CLASSES = ['Economy', 'Premium Economy', 'Business', 'First Class']
 const TRAIN_CLASSES  = ['Sleeper', '3AC', '2AC', '1AC', 'Executive']
@@ -30,7 +30,8 @@ const EMPTY_TIER = {
   budget_limit: 0,
   budget_period: 'trip',
   approver_roles: [],
-  approval_type: 'ALL',
+  approval_type: 'ALL',           // Condition (only meaningful when approval_flow = PARALLEL)
+  approval_flow: 'SEQUENTIAL',    // Default = sequential = today's behaviour
   max_hotel_per_night: 0,
   meal_daily_limit: 0,
   cab_daily_limit: 0,
@@ -41,7 +42,15 @@ const EMPTY_TIER = {
 
 export default function TierConfig() {
   const { user }  = useAuth()
-  const canEdit   = user?.role === 'Super Admin'
+  // Phase-2 RBAC — replace blanket Super Admin check with per-action gates.
+  // The original `canEdit` boolean now reflects 'edit' permission since this
+  // page's ghost/danger buttons covered all mutation actions.
+  const canCreatePerm = usePermission('tiers', 'create')
+  const canEditPerm   = usePermission('tiers', 'edit')
+  const canDeletePerm = usePermission('tiers', 'delete')
+  // Backwards-compat alias used heavily in this file's render logic — true if
+  // the user can do ANY mutation, so the action column still shows up.
+  const canEdit   = canCreatePerm || canEditPerm || canDeletePerm
   const [tiers, setTiers]                = useState([])
   const [roles, setRoles]                = useState([])
   const [designations, setDesignations]  = useState([])
@@ -68,13 +77,22 @@ export default function TierConfig() {
     finally   { setLoading(false) }
   }
 
-  // Approver-pickable designations: exclude designations whose role is non-approver
-  // (Employee, Booking Admin, Super Admin). Tier.approver_roles entries are
-  // designation names, so the picker should show designations.
+  // Approver-pickable designations: an admin marks a designation as an approver
+  // via the "Is Approver" checkbox in Designation Management — that flag
+  // (designation_tiers.is_approver) is the source of truth here. We dedupe
+  // defensively in case two designations share a name across tiers.
+  //
+  // Backward-compat fallback: if NO row in the response carries is_approver
+  // (e.g. the migration hasn't run yet on this environment), fall back to the
+  // legacy role-denylist so existing approval flows aren't silently emptied.
+  const hasApproverFlag = designations.some(d => d.is_approver !== undefined && d.is_approver !== null)
   const NON_APPROVER_ROLES = new Set(['Employee', 'Super Admin', 'Booking Admin'])
-  const activeRoleNames = designations
-    .filter(d => d.role && !NON_APPROVER_ROLES.has(d.role))
-    .map(d => d.designation)
+  const activeRoleNames = Array.from(new Set(
+    (hasApproverFlag
+      ? designations.filter(d => d.is_approver === true)
+      : designations.filter(d => d.role && !NON_APPROVER_ROLES.has(d.role))
+    ).map(d => d.designation)
+  ))
 
   // ── Tier CRUD ──────────────────────────────────────────────
   function openCreateTier() {
@@ -98,6 +116,7 @@ export default function TierConfig() {
         budget_period:  t.budget_period || 'trip',
         approver_roles: Array.isArray(t.approver_roles) ? t.approver_roles : [],
         approval_type:  t.approval_type || 'ALL',
+        approval_flow:  t.approval_flow || 'SEQUENTIAL',
         max_hotel_per_night:  Number(t.max_hotel_per_night)  || 0,
         meal_daily_limit:     Number(t.meal_daily_limit)     || 0,
         cab_daily_limit:      Number(t.cab_daily_limit)      || 0,
@@ -158,7 +177,10 @@ export default function TierConfig() {
               Rank 1 is highest. Travel classes, budget, and approval flow per tier.
             </div>
           </div>
-          {canEdit && <Button onClick={openCreateTier}>+ New Tier</Button>}
+          <Button onClick={openCreateTier} disabled={!canCreatePerm}
+            title={canCreatePerm ? '' : 'You do not have permission to create tiers'}>
+            + New Tier
+          </Button>
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap: 10 }}>
@@ -193,14 +215,18 @@ export default function TierConfig() {
                     )}
                     {t.description && <span style={{ fontSize: 11, color:'var(--text-muted)' }}>· {t.description}</span>}
                   </div>
-                  {canEdit && (
+                  {(canEditPerm || canDeletePerm) && (
                     <div style={{ display:'flex', gap: 6 }}>
-                      <Button size="sm" variant="ghost" onClick={() => openEditTier(t)}>Edit</Button>
-                      <Button size="sm"
-                        style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color: 'var(--text-danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
-                        onClick={() => requestDeleteTier(t)}>
-                        Delete
-                      </Button>
+                      {canEditPerm && (
+                        <Button size="sm" variant="ghost" onClick={() => openEditTier(t)}>Edit</Button>
+                      )}
+                      {canDeletePerm && (
+                        <Button size="sm"
+                          style={{ background:'color-mix(in srgb, var(--danger) 9%, transparent)', color: 'var(--text-danger)', border:'1px solid color-mix(in srgb, var(--danger) 19%, transparent)' }}
+                          onClick={() => requestDeleteTier(t)}>
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -225,8 +251,14 @@ export default function TierConfig() {
                     value={Number(t.advance_booking_days || 0) > 0 ? `${t.advance_booking_days} day(s) ahead` : 'No minimum'} />
                   <InfoCell label="Approval Sequence"
                     value={(t.approver_roles || []).length
-                      ? [...t.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join(' → ')
+                      ? (t.approval_flow === 'PARALLEL'
+                          ? [...t.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join(' · ')
+                          : [...t.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join(' → '))
                       : 'No approval required'} />
+                  <InfoCell label="Approval Mode"
+                    value={t.approval_flow === 'PARALLEL'
+                      ? `Parallel · ${t.approval_type === 'ANY_ONE' ? 'Any one' : 'All must'} approve`
+                      : 'Sequential'} />
                   <InfoCell label="Flight access"
                     value={Array.isArray(t.flight_classes) && t.flight_classes.length
                       ? t.flight_classes.join(', ')
@@ -346,10 +378,31 @@ function TierForm({ data, setData, errors, activeRoleNames }) {
           selected={data.approver_roles} onToggle={v => toggleFrom('approver_roles', v)} error={errors.approver_roles} />
       </div>
 
-      {/* Sequence preview — approval runs lowest-authority first */}
+      {/* ── Approval Flow + Condition ─────────────────────────────
+         Sequential keeps today's strict order. Parallel sends to all
+         approvers simultaneously — either ANY ONE finishes the lane,
+         or ALL must finish, depending on the condition. */}
+      <Select label="Approval Flow"
+        value={data.approval_flow || 'SEQUENTIAL'}
+        onChange={e => field('approval_flow', e.target.value)}>
+        <option value="SEQUENTIAL">Sequential (default)</option>
+        <option value="PARALLEL">Parallel</option>
+      </Select>
+      {data.approval_flow === 'PARALLEL' ? (
+        <Select label="Approval Condition"
+          value={data.approval_type || 'ALL'}
+          onChange={e => field('approval_type', e.target.value)}>
+          <option value="ANY_ONE">Any one can approve</option>
+          <option value="ALL">All must approve</option>
+        </Select>
+      ) : (
+        <div /> /* placeholder so the 2-col grid stays aligned */
+      )}
+
+      {/* Order / mode preview */}
       <div style={{ gridColumn:'1 / -1', marginBottom: 12 }}>
         <div style={{ fontSize: 11, color:'var(--text-muted)', fontWeight: 600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom: 6 }}>
-          Sequential Approval Order
+          {data.approval_flow === 'PARALLEL' ? 'Parallel Approval Mode' : 'Sequential Approval Order'}
         </div>
         <div style={{
           padding:'10px 12px', borderRadius: 8,
@@ -357,9 +410,13 @@ function TierForm({ data, setData, errors, activeRoleNames }) {
           border:'1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
           fontSize: 13, fontWeight: 600, color:'var(--accent)',
         }}>
-          {data.approver_roles?.length
-            ? [...data.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join('  →  ')
-            : 'No approval required (highest tier)'}
+          {!data.approver_roles?.length
+            ? 'No approval required (highest tier)'
+            : data.approval_flow === 'PARALLEL'
+              ? `${[...data.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join('  ·  ')}  ·  ${
+                  data.approval_type === 'ANY_ONE' ? 'Any one approves' : 'All must approve'
+                }`
+              : [...data.approver_roles].sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a]).join('  →  ')}
         </div>
       </div>
 

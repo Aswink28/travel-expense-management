@@ -1,11 +1,17 @@
 const express = require('express')
 const pool    = require('../config/db')
-const { authenticate, authorise } = require('../middleware')
+const { authenticate, pageGuard } = require('../middleware')
 const router  = express.Router()
 
 router.use(authenticate)
-// Require 'Super Admin' or 'Booking Admin' for all admin routes
-router.use(authorise('Booking Admin', 'Super Admin'))
+// Phase-2 RBAC — gate by 'booking-panel' permission. POST endpoints
+// (deduct wallet, book ticket) are reclassified as 'edit' since they
+// operate on existing employees / requests rather than creating
+// brand-new admin records.
+router.use(pageGuard('booking-panel', {
+  'POST /wallet/deduct': 'edit',
+  'POST /book-ticket':   'edit',
+}))
 
 // ── GET /api/admin/users ──────────────────────────────────────
 router.get('/users', async (req, res, next) => {

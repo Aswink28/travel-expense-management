@@ -48,7 +48,7 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = req.body
     if (!email || !password) return res.status(400).json({ success:false, message:'Email and password required' })
     const { rows } = await pool.query(
-      'SELECT id,emp_id,name,email,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,designation,tier_id FROM users WHERE email=$1',
+      'SELECT id,emp_id,name,email,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,approval_flow,designation,tier_id FROM users WHERE email=$1',
       [email.toLowerCase().trim()]
     )
     if (!rows.length || !rows[0].is_active) return res.status(401).json({ success:false, message:'Invalid credentials' })
@@ -59,7 +59,11 @@ router.post('/login', async (req, res, next) => {
     let pages = []
     try {
       const { rows: pageRows } = await pool.query(
-        'SELECT page_id, page_label, page_icon FROM role_pages WHERE role_name=$1 ORDER BY sort_order',
+        `SELECT page_id, page_label, page_icon, sort_order,
+                can_view, can_create, can_edit, can_delete
+           FROM role_pages
+          WHERE role_name = $1 AND can_view = TRUE
+          ORDER BY sort_order`,
         [rows[0].role]
       )
       pages = pageRows
@@ -73,9 +77,14 @@ router.post('/login', async (req, res, next) => {
       reportingTo:rows[0].reporting_to, walletId:rows[0].ppi_wallet_id || null,
       wallet: w[0] || { balance:0, travel_balance:0, hotel_balance:0, allowance_balance:0 },
       ppiWallet: ppiWallet || null,
-      pages: pages.map(p => ({ id: p.page_id, label: p.page_label, icon: p.page_icon })),
+      pages: pages.map(p => ({
+        id: p.page_id, label: p.page_label, icon: p.page_icon,
+        can_view: p.can_view, can_create: p.can_create,
+        can_edit: p.can_edit, can_delete: p.can_delete,
+      })),
       approver_roles: rows[0].approver_roles || [],
       approval_type: rows[0].approval_type || 'ALL',
+      approval_flow: rows[0].approval_flow || null,
       designation: rows[0].designation || null,
       tier_id: rows[0].tier_id || null,
       tier_policy: tierPolicy,
@@ -91,7 +100,7 @@ router.post('/oauth/token', express.urlencoded({ extended: false }), async (req,
     if (!username || !password) return res.status(400).json({ error: 'invalid_request', error_description: 'username and password required' })
 
     const { rows } = await pool.query(
-      'SELECT id,emp_id,name,email,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,designation,tier_id FROM users WHERE email=$1',
+      'SELECT id,emp_id,name,email,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,approval_flow,designation,tier_id FROM users WHERE email=$1',
       [username.toLowerCase().trim()]
     )
     if (!rows.length || !rows[0].is_active) return res.status(401).json({ error: 'invalid_grant', error_description: 'Invalid credentials' })
@@ -115,7 +124,11 @@ router.get('/me', authenticate, async (req, res, next) => {
     let pages = []
     try {
       const { rows: pageRows } = await pool.query(
-        'SELECT page_id, page_label, page_icon, sort_order FROM role_pages WHERE role_name=$1 ORDER BY sort_order',
+        `SELECT page_id, page_label, page_icon, sort_order,
+                can_view, can_create, can_edit, can_delete
+           FROM role_pages
+          WHERE role_name = $1 AND can_view = TRUE
+          ORDER BY sort_order`,
         [req.user.role]
       )
       pages = pageRows
@@ -129,9 +142,14 @@ router.get('/me', authenticate, async (req, res, next) => {
       walletId:u.ppi_wallet_id || null,
       wallet: w[0] || { balance:0, travel_balance:0, hotel_balance:0, allowance_balance:0 },
       ppiWallet: ppiWallet || null,
-      pages: pages.map(p => ({ id: p.page_id, label: p.page_label, icon: p.page_icon })),
+      pages: pages.map(p => ({
+        id: p.page_id, label: p.page_label, icon: p.page_icon,
+        can_view: p.can_view, can_create: p.can_create,
+        can_edit: p.can_edit, can_delete: p.can_delete,
+      })),
       approver_roles: u.approver_roles || [],
       approval_type: u.approval_type || 'ALL',
+      approval_flow: u.approval_flow || null,
       designation: u.designation || null,
       tier_id: u.tier_id || null,
       tier_policy: tierPolicy,

@@ -10,6 +10,7 @@
 // NODE_ENV defaults to "development" when unset.
 
 const path   = require('path')
+const fs     = require('fs')
 const dotenv = require('dotenv')
 
 const NODE_ENV = process.env.NODE_ENV || 'development'
@@ -17,18 +18,26 @@ const NODE_ENV = process.env.NODE_ENV || 'development'
 // Anchor on process.cwd() so this works whether run from src/ or the bundled dist/.
 const root = process.cwd()
 
-const files = [
-  `.env.${NODE_ENV}.local`,
-  `.env.${NODE_ENV}`,
-  '.env.local',
-  '.env',
-]
+// In production, ONLY read .env.production. Falling through to a stray .env file
+// (left over from local dev) silently overrode values like DB_USER on the demo box.
+const files = NODE_ENV === 'production'
+  ? [`.env.production.local`, `.env.production`]
+  : [
+      `.env.${NODE_ENV}.local`,
+      `.env.${NODE_ENV}`,
+      '.env.local',
+      '.env',
+    ]
 
 for (const f of files) {
   dotenv.config({ path: path.join(root, f) })
 }
 
-// Promote NODE_ENV to process.env in case it was implicit
+if (NODE_ENV === 'production' && !fs.existsSync(path.join(root, '.env.production'))) {
+  console.error(`[env] FATAL: .env.production not found in ${root}. Place it next to the running entrypoint.`)
+  process.exit(1)
+}
+
 process.env.NODE_ENV = NODE_ENV
 
 module.exports = { NODE_ENV }

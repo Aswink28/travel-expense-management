@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { rolesAPI } from '../../services/api'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth, usePermission } from '../../context/AuthContext'
 import { Card, Button, Input, Alert, Spinner, Modal, PageTitle } from '../shared/UI'
 
 export default function RoleManagement() {
   const { user } = useAuth()
+  const canCreate = usePermission('roles', 'create')
+  const canEdit   = usePermission('roles', 'edit')
+  const canDelete = usePermission('roles', 'delete')
   const [roles, setRoles]           = useState([])
   const [allPages, setAllPages]     = useState([])
   const [loading, setLoading]       = useState(true)
@@ -126,7 +129,10 @@ export default function RoleManagement() {
       {/* Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{roles.length} role{roles.length !== 1 ? 's' : ''} configured</div>
-        <Button onClick={openCreate}>+ New Role</Button>
+        <Button onClick={openCreate} disabled={!canCreate}
+          title={canCreate ? '' : 'You do not have permission to create roles'}>
+          + New Role
+        </Button>
       </div>
 
       {/* Role cards */}
@@ -233,9 +239,17 @@ export default function RoleManagement() {
 
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(role)}>Edit Role</Button>
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(role)}
+                      disabled={!canEdit}
+                      title={canEdit ? '' : 'You do not have permission to edit roles'}>
+                      Edit Role
+                    </Button>
                     {!role.is_system && (
-                      <Button size="sm" variant="danger" onClick={() => handleDelete(role)}>Delete</Button>
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(role)}
+                        disabled={!canDelete}
+                        title={canDelete ? '' : 'You do not have permission to delete roles'}>
+                        Delete
+                      </Button>
                     )}
                   </div>
                 </div>

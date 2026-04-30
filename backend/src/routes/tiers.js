@@ -1,6 +1,6 @@
 const express = require('express')
 const pool    = require('../config/db')
-const { authenticate, authorise } = require('../middleware')
+const { authenticate, requirePermission } = require('../middleware')
 const router  = express.Router()
 
 router.use(authenticate)
@@ -8,6 +8,7 @@ router.use(authenticate)
 // ── Helpers ──────────────────────────────────────────────────
 const BUDGET_PERIODS  = ['trip', 'day']
 const APPROVAL_TYPES  = ['ANY_ONE', 'ALL']
+const APPROVAL_FLOWS  = ['SEQUENTIAL', 'PARALLEL']
 
 function arr(v) { return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()) : [] }
 function num(v) {
@@ -32,6 +33,7 @@ function normaliseTier(body) {
     out.approver_roles = arr(body.approver_roles).filter(r => !BLOCKED.has(r))
   }
   if (body.approval_type !== undefined)             out.approval_type  = APPROVAL_TYPES.includes(body.approval_type) ? body.approval_type : 'ALL'
+  if (body.approval_flow !== undefined)             out.approval_flow  = APPROVAL_FLOWS.includes(body.approval_flow) ? body.approval_flow : 'SEQUENTIAL'
   if (body.intl_flight_class_upgrade !== undefined) out.intl_flight_class_upgrade = !!body.intl_flight_class_upgrade
   // Extended policy fields
   if (body.max_hotel_per_night !== undefined)       out.max_hotel_per_night = num(body.max_hotel_per_night)
@@ -47,13 +49,15 @@ function normaliseTier(body) {
 // Returns tiers (sorted by rank) plus designation mappings with:
 //   - employee_count        : users.designation references
 //   - chain_step_count      : employee_approvers.step_designation references
-// Both are blockers for deletion.
-router.get('/', async (req, res, next) => {
+// Both are blockers for deletion. Visible to anyone with view rights on
+// either the tiers or designations page (the response is shared between
+// both UIs).
+router.get('/', requirePermission('tiers', 'view'), async (req, res, next) => {
   try {
     const [{ rows: tiers }, { rows: designations }] = await Promise.all([
       pool.query('SELECT * FROM tiers ORDER BY rank ASC, id ASC'),
       pool.query(`
-        SELECT dt.id, dt.designation, dt.tier_id, dt.role,
+        SELECT dt.id, dt.designation, dt.tier_id, dt.role, dt.is_approver,
                t.name AS tier_name, t.rank AS tier_rank,
                t.approver_roles AS tier_approver_roles,
                (SELECT COUNT(*)::int FROM users u WHERE LOWER(u.designation) = LOWER(dt.designation)) AS employee_count,
@@ -86,11 +90,13 @@ router.get('/preview/:designation', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
-// ── Super Admin–only CRUD ────────────────────────────────────
-router.use(authorise('Super Admin'))
+// ── Tier + Designation CRUD ──────────────────────────────────
+// Each route declares its own permission so the 'tiers' and
+// 'designations' grants can be assigned independently in the
+// Admin User permission matrix.
 
 // ── POST /api/tiers — create ─────────────────────────────────
-router.post('/', async (req, res, next) => {
+router.post('/', requirePermission('tiers', 'create'), async (req, res, next) => {
   try {
     const t = normaliseTier(req.body)
     if (!t.name)                        return res.status(400).json({ success: false, message: 'Tier name is required' })
@@ -99,8 +105,8 @@ router.post('/', async (req, res, next) => {
       `INSERT INTO tiers (name, rank, description, flight_classes, train_classes, bus_types, hotel_types,
                           budget_limit, budget_period, approver_roles, approval_type, intl_flight_class_upgrade,
                           max_hotel_per_night, meal_daily_limit, cab_daily_limit,
-                          advance_booking_days, intl_budget_limit, is_active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+                          advance_booking_days, intl_budget_limit, is_active, approval_flow)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [t.name, t.rank, t.description || null,
        t.flight_classes || [], t.train_classes || [], t.bus_types || [], t.hotel_types || [],
@@ -108,7 +114,8 @@ router.post('/', async (req, res, next) => {
        t.approver_roles || [], t.approval_type || 'ALL', !!t.intl_flight_class_upgrade,
        t.max_hotel_per_night || 0, t.meal_daily_limit || 0, t.cab_daily_limit || 0,
        t.advance_booking_days || 0, t.intl_budget_limit || 0,
-       t.is_active === undefined ? true : !!t.is_active]
+       t.is_active === undefined ? true : !!t.is_active,
+       t.approval_flow || 'SEQUENTIAL']
     )
     res.status(201).json({ success: true, message: 'Tier created', data: rows[0] })
   } catch (e) {
@@ -118,7 +125,7 @@ router.post('/', async (req, res, next) => {
 })
 
 // ── PUT /api/tiers/:id — update ──────────────────────────────
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requirePermission('tiers', 'edit'), async (req, res, next) => {
   try {
     const t = normaliseTier(req.body)
     const sets = []
@@ -144,7 +151,7 @@ router.put('/:id', async (req, res, next) => {
 })
 
 // ── DELETE /api/tiers/:id ────────────────────────────────────
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requirePermission('tiers', 'delete'), async (req, res, next) => {
   try {
     // Guard: block delete if any user is still assigned to this tier.
     const { rows: usersUsing } = await pool.query('SELECT COUNT(*)::int AS n FROM users WHERE tier_id = $1', [req.params.id])
@@ -158,13 +165,16 @@ router.delete('/:id', async (req, res, next) => {
 })
 
 // ── POST /api/tiers/designations — upsert one mapping ────────
-// Body: { designation, tier_id, role? }
+// Body: { designation, tier_id, role?, is_approver? }
 // Role is optional but recommended — it's what drives role auto-fill on the employee form.
-router.post('/designations', async (req, res, next) => {
+// is_approver (default FALSE) decides whether this designation appears in
+// Tier Config's approver picker.
+router.post('/designations', requirePermission('designations', 'create'), async (req, res, next) => {
   try {
     const designation = String(req.body?.designation || '').trim()
     const tier_id     = parseInt(req.body?.tier_id, 10)
     const role        = req.body?.role ? String(req.body.role).trim() : null
+    const is_approver = req.body?.is_approver === undefined ? false : !!req.body.is_approver
     if (!designation)               return res.status(400).json({ success: false, message: 'Designation is required' })
     if (!Number.isInteger(tier_id)) return res.status(400).json({ success: false, message: 'tier_id must be an integer' })
 
@@ -177,19 +187,22 @@ router.post('/designations', async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO designation_tiers (designation, tier_id, role)
-         VALUES ($1, $2, $3)
-       ON CONFLICT (designation) DO UPDATE SET tier_id = EXCLUDED.tier_id, role = EXCLUDED.role
+      `INSERT INTO designation_tiers (designation, tier_id, role, is_approver)
+         VALUES ($1, $2, $3, $4)
+       ON CONFLICT (designation) DO UPDATE
+         SET tier_id     = EXCLUDED.tier_id,
+             role        = EXCLUDED.role,
+             is_approver = EXCLUDED.is_approver
        RETURNING *`,
-      [designation, tier_id, role]
+      [designation, tier_id, role, is_approver]
     )
     res.json({ success: true, message: 'Designation mapping saved', data: rows[0] })
   } catch (e) { next(e) }
 })
 
 // ── PUT /api/tiers/designations/:id — rename or remap by id ──
-// Body: { designation?, tier_id?, role? }
-router.put('/designations/:id', async (req, res, next) => {
+// Body: { designation?, tier_id?, role?, is_approver? }
+router.put('/designations/:id', requirePermission('designations', 'edit'), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10)
     if (!Number.isInteger(id)) return res.status(400).json({ success: false, message: 'Invalid id' })
@@ -199,6 +212,7 @@ router.put('/designations/:id', async (req, res, next) => {
     const role        = req.body?.role        !== undefined
       ? (req.body.role ? String(req.body.role).trim() : null)
       : undefined
+    const is_approver = req.body?.is_approver !== undefined ? !!req.body.is_approver : undefined
 
     if (designation === '') return res.status(400).json({ success: false, message: 'Designation cannot be empty' })
 
@@ -217,6 +231,7 @@ router.put('/designations/:id', async (req, res, next) => {
     if (designation !== undefined) { sets.push(`designation = $${idx++}`); vals.push(designation) }
     if (tier_id     !== undefined) { sets.push(`tier_id = $${idx++}`);     vals.push(tier_id) }
     if (role        !== undefined) { sets.push(`role = $${idx++}`);        vals.push(role) }
+    if (is_approver !== undefined) { sets.push(`is_approver = $${idx++}`); vals.push(is_approver) }
     if (!sets.length) return res.status(400).json({ success: false, message: 'No fields to update' })
 
     vals.push(id)
@@ -257,7 +272,7 @@ router.put('/designations/:id', async (req, res, next) => {
 //   - employee_approvers.step_designation (approval-chain steps)
 // Returns 409 with a structured `blockers` object so the UI can render
 // a precise "you can't delete this because…" message.
-router.delete('/designations/:designation', async (req, res, next) => {
+router.delete('/designations/:designation', requirePermission('designations', 'delete'), async (req, res, next) => {
   try {
     const designation = req.params.designation
     const [{ rows: u }, { rows: c }] = await Promise.all([

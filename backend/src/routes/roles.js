@@ -1,27 +1,33 @@
 const express = require('express')
 const pool    = require('../config/db')
-const { authenticate, authorise } = require('../middleware')
+const { authenticate, pageGuard } = require('../middleware')
 const router  = express.Router()
 
 router.use(authenticate)
-router.use(authorise('Super Admin'))
+router.use(pageGuard('roles'))
 
-// Master list of all available pages in the system
+// Master list of all available pages in the system.
+// admin_only = true for pages that should appear in the Admin User permission
+// matrix (i.e. system-management surfaces). Employee-side pages stay in the
+// list so the existing role manager UI keeps working, but the Admin User
+// matrix filters by admin_only.
 const ALL_PAGES = [
-  { id: 'dashboard',          label: 'Dashboard',       icon: '▦',  group: 'General' },
-  { id: 'my-requests',        label: 'My Requests',     icon: '◈',  group: 'Requests' },
-  { id: 'new-request',        label: 'New Request',     icon: '+',  group: 'Requests' },
-  { id: 'approvals',          label: 'Approvals',       icon: '◎',  group: 'Approvals' },
-  { id: 'my-wallet',          label: 'My Wallet',       icon: '◉',  group: 'Wallet' },
-  { id: 'book',               label: 'Book Travel',     icon: '🎫', group: 'Booking' },
-  { id: 'my-tickets',         label: 'My Tickets',      icon: '🎟', group: 'Booking' },
-  { id: 'booking-panel',      label: 'Booking Panel',   icon: '◈',  group: 'Admin Booking' },
-  { id: 'booking-history',    label: 'Booking History',  icon: '◎',  group: 'Admin Booking' },
-  { id: 'employees',          label: 'Employees',        icon: '◆',  group: 'Administration' },
-  { id: 'roles',              label: 'Role Manager',     icon: '⚙',  group: 'Administration' },
-  { id: 'tiers',              label: 'Tier Config',      icon: '◐',  group: 'Administration' },
-  { id: 'designations',       label: 'Designations',     icon: '◇',  group: 'Administration' },
-  { id: 'audit-log',          label: 'Approver Audit',   icon: '📋', group: 'Administration' },
+  { id: 'dashboard',          label: 'Dashboard',       icon: '▦',  group: 'General',         admin_only: false },
+  { id: 'my-requests',        label: 'My Requests',     icon: '◈',  group: 'Requests',        admin_only: false },
+  { id: 'new-request',        label: 'New Request',     icon: '+',  group: 'Requests',        admin_only: false },
+  { id: 'approvals',          label: 'Approvals',       icon: '◎',  group: 'Approvals',       admin_only: false },
+  { id: 'my-wallet',          label: 'My Wallet',       icon: '◉',  group: 'Wallet',          admin_only: false },
+  { id: 'book',               label: 'Book Travel',     icon: '🎫', group: 'Booking',         admin_only: false },
+  { id: 'my-tickets',         label: 'My Tickets',      icon: '🎟', group: 'Booking',         admin_only: false },
+  { id: 'transactions',       label: 'Transactions',    icon: '⊟',  group: 'Wallet',          admin_only: false },
+  { id: 'admin-bookings-view',label: 'Booking History', icon: '◎',  group: 'Admin Booking',   admin_only: true  },
+  { id: 'booking-panel',      label: 'Booking Panel',   icon: '◈',  group: 'Admin Booking',   admin_only: true  },
+  { id: 'employees',          label: 'Employees',       icon: '◆',  group: 'Administration', admin_only: true  },
+  { id: 'roles',              label: 'Role Manager',    icon: '⚙',  group: 'Administration', admin_only: true  },
+  { id: 'tiers',              label: 'Tier Config',     icon: '◐',  group: 'Administration', admin_only: true  },
+  { id: 'designations',       label: 'Designations',    icon: '◇',  group: 'Administration', admin_only: true  },
+  { id: 'audit-log',          label: 'Approver Audit',  icon: '▤',  group: 'Administration', admin_only: true  },
+  { id: 'admin-users',        label: 'Admin Users',     icon: '◈',  group: 'Administration', admin_only: true  },
 ]
 
 // ── GET /api/roles/pages — master list of all pages ──────────

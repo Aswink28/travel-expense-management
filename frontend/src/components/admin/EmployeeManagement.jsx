@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { employeesAPI, rolesAPI, tiersAPI } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth, usePermission } from "../../context/AuthContext";
 import {
   Card,
   Button,
@@ -75,6 +75,7 @@ const INITIAL_FORM = {
   aadhaar_number: "",
   approver_roles: [],
   approval_type: "ALL",
+  approval_flow: null,           // null = inherit from tier; 'SEQUENTIAL' | 'PARALLEL' to override
   designation: "",
   tier_id: null,
   // Per-employee approver chain — one entry per step in the tier's approval sequence.
@@ -93,6 +94,11 @@ function MLabel({ text, required }) {
 
 export default function EmployeeManagement({ setTab }) {
   const { user } = useAuth();
+  // Permission gates — backend enforces these too. UI just hides/disables
+  // affordances so users don't see actions that will fail with 403.
+  const canCreate = usePermission('employees', 'create');
+  const canEdit   = usePermission('employees', 'edit');
+  const canDelete = usePermission('employees', 'delete');
   const [employees, setEmployees] = useState([]);
   const [roles, setRoles] = useState([]);
   const [tiers, setTiers] = useState([]);
@@ -191,6 +197,7 @@ export default function EmployeeManagement({ setTab }) {
           tier_id: t.id,
           approver_roles: approvers.length ? approvers : prev.approver_roles,
           approval_type: t.approval_type || prev.approval_type,
+          approval_flow: prev.approval_flow ?? null,  // keep override if user already chose; else inherit (null) from tier
           role: mappedRole || prev.role,
           approver_chain: nextChain,
         };
@@ -268,6 +275,7 @@ export default function EmployeeManagement({ setTab }) {
       aadhaar_number: emp.aadhaar_number || "",
       approver_roles: approverRoles,
       approval_type: emp.approval_type || "ALL",
+      approval_flow: emp.approval_flow || null,
       designation: emp.designation || "",
       tier_id: emp.tier_id || null,
       approver_chain: normalisedChain,
@@ -749,7 +757,9 @@ export default function EmployeeManagement({ setTab }) {
         >
           Bulk Upload
         </Button>
-        <Button onClick={openCreate} style={{ whiteSpace: "nowrap" }}>
+        <Button onClick={openCreate} disabled={!canCreate}
+          title={canCreate ? '' : 'You do not have permission to create employees'}
+          style={{ whiteSpace: "nowrap" }}>
           + New Employee
         </Button>
       </div>
@@ -1006,6 +1016,8 @@ export default function EmployeeManagement({ setTab }) {
                           size="sm"
                           variant="ghost"
                           onClick={() => openEdit(emp)}
+                          disabled={!canEdit}
+                          title={canEdit ? '' : 'You do not have permission to edit employees'}
                         >
                           Edit
                         </Button>
@@ -1619,6 +1631,51 @@ export default function EmployeeManagement({ setTab }) {
                         </div>
                       )}
 
+                      {/* ── Approval Flow + Condition (Phase: Parallel approval) ──
+                         null = inherit from tier (default sequential).  Setting
+                         either dropdown produces an explicit per-employee override. */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+                            Approval Flow
+                          </div>
+                          <select
+                            value={form.approval_flow ?? ""}
+                            onChange={e => setForm(prev => ({ ...prev, approval_flow: e.target.value || null }))}
+                            style={{
+                              width: "100%", padding: "8px 10px", borderRadius: 8,
+                              background: "var(--bg-input)", color: "var(--text-primary)",
+                              border: "1px solid var(--border)", fontSize: 13, outline: "none",
+                            }}
+                          >
+                            <option value="">Inherit from tier</option>
+                            <option value="SEQUENTIAL">Sequential</option>
+                            <option value="PARALLEL">Parallel</option>
+                          </select>
+                        </div>
+                        {form.approval_flow === "PARALLEL" ? (
+                          <div>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+                              Approval Condition
+                            </div>
+                            <select
+                              value={form.approval_type || "ALL"}
+                              onChange={e => setApprovalType(e.target.value)}
+                              style={{
+                                width: "100%", padding: "8px 10px", borderRadius: 8,
+                                background: "var(--bg-input)", color: "var(--text-primary)",
+                                border: "1px solid var(--border)", fontSize: 13, outline: "none",
+                              }}
+                            >
+                              <option value="ANY_ONE">Any one can approve</option>
+                              <option value="ALL">All must approve</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div /> /* placeholder to keep grid aligned */
+                        )}
+                      </div>
+
                       {orderedSelected.length > 0 && (
                         <>
                           <div
@@ -1631,7 +1688,7 @@ export default function EmployeeManagement({ setTab }) {
                               marginBottom: 6,
                             }}
                           >
-                            Execution Order
+                            {form.approval_flow === "PARALLEL" ? "Parallel Approval Mode" : "Execution Order"}
                           </div>
                           <div
                             style={{
@@ -1646,21 +1703,37 @@ export default function EmployeeManagement({ setTab }) {
                               color: "var(--accent)",
                             }}
                           >
-                            {orderedSelected.map((name, i) => (
-                              <span key={name}>
-                                <span style={{ opacity: 0.6, marginRight: 4 }}>
-                                  {i + 1}.
-                                </span>
-                                {name}
-                                {i < orderedSelected.length - 1 && (
-                                  <span
-                                    style={{ margin: "0 8px", opacity: 0.6 }}
-                                  >
-                                    →
+                            {form.approval_flow === "PARALLEL" ? (
+                              <>
+                                {orderedSelected.map((name, i) => (
+                                  <span key={name}>
+                                    {name}
+                                    {i < orderedSelected.length - 1 && (
+                                      <span style={{ margin: "0 8px", opacity: 0.6 }}>·</span>
+                                    )}
                                   </span>
-                                )}
-                              </span>
-                            ))}
+                                ))}
+                                <span style={{ marginLeft: 12, opacity: 0.7 }}>
+                                  · {form.approval_type === "ANY_ONE" ? "Any one approves" : "All must approve"}
+                                </span>
+                              </>
+                            ) : (
+                              orderedSelected.map((name, i) => (
+                                <span key={name}>
+                                  <span style={{ opacity: 0.6, marginRight: 4 }}>
+                                    {i + 1}.
+                                  </span>
+                                  {name}
+                                  {i < orderedSelected.length - 1 && (
+                                    <span
+                                      style={{ margin: "0 8px", opacity: 0.6 }}
+                                    >
+                                      →
+                                    </span>
+                                  )}
+                                </span>
+                              ))
+                            )}
                           </div>
                         </>
                       )}
