@@ -15,7 +15,8 @@ async function fetchTierPolicy(tierId) {
   const { rows } = await pool.query(
     `SELECT id, name, rank, flight_classes, train_classes, bus_types, hotel_types,
             budget_limit, intl_budget_limit, max_hotel_per_night, meal_daily_limit,
-            cab_daily_limit, advance_booking_days, intl_flight_class_upgrade
+            cab_daily_limit, advance_booking_days, intl_flight_class_upgrade,
+            approval_flow, approval_type
        FROM tiers WHERE id = $1`,
     [tierId]
   )
@@ -40,6 +41,25 @@ async function fetchTierPolicy(tierId) {
     max_hotel_per_night: t.max_hotel_per_night, meal_daily_limit: t.meal_daily_limit,
     cab_daily_limit: t.cab_daily_limit, advance_booking_days: t.advance_booking_days,
     intl_flight_class_upgrade: t.intl_flight_class_upgrade,
+    // Approval flow + condition belong to the tier — frontend uses these to
+    // describe how the user's request will be processed (sequential vs.
+    // parallel, any-one vs. all).
+    approval_flow: t.approval_flow || 'SEQUENTIAL',
+    approval_type: t.approval_type || 'ALL',
+  }
+}
+
+// Resolve the effective approval flow + condition for a user. Mirrors the
+// resolver in routes/requests.js — user-level value wins, tier-level fills
+// the gap, hard defaults if neither exists. Frontend uses these values to
+// label the approval section in the New Request form, so they MUST match
+// what the backend will actually use at action time.
+function effectiveApprovalConfig(userRow, tierPolicy) {
+  return {
+    effective_approval_flow:
+      userRow.approval_flow || tierPolicy?.approval_flow || 'SEQUENTIAL',
+    effective_approval_type:
+      userRow.approval_type || tierPolicy?.approval_type || 'ALL',
   }
 }
 
@@ -71,6 +91,7 @@ router.post('/login', async (req, res, next) => {
     // Fetch live PPI wallet balance (non-blocking — don't fail login if PPI is down)
     const ppiWallet = await fetchPpiBalance(rows[0].ppi_wallet_id)
     const tierPolicy = await fetchTierPolicy(rows[0].tier_id)
+    const eff = effectiveApprovalConfig(rows[0], tierPolicy)
     res.json({ success:true, token, user: {
       id:rows[0].id, empId:rows[0].emp_id, name:rows[0].name, email:rows[0].email,
       role:rows[0].role, dept:rows[0].department, avatar:rows[0].avatar, color:rows[0].color,
@@ -85,6 +106,8 @@ router.post('/login', async (req, res, next) => {
       approver_roles: rows[0].approver_roles || [],
       approval_type: rows[0].approval_type || 'ALL',
       approval_flow: rows[0].approval_flow || null,
+      effective_approval_flow: eff.effective_approval_flow,
+      effective_approval_type: eff.effective_approval_type,
       designation: rows[0].designation || null,
       tier_id: rows[0].tier_id || null,
       tier_policy: tierPolicy,
@@ -136,6 +159,7 @@ router.get('/me', authenticate, async (req, res, next) => {
     const u = req.user
     const ppiWallet = await fetchPpiBalance(u.ppi_wallet_id)
     const tierPolicy = await fetchTierPolicy(u.tier_id)
+    const eff = effectiveApprovalConfig(u, tierPolicy)
     res.json({ success:true, user: {
       id:u.id, empId:u.emp_id, name:u.name, email:u.email, role:u.role,
       dept:u.department, avatar:u.avatar, color:u.color, reportingTo:u.reporting_to,
@@ -150,6 +174,8 @@ router.get('/me', authenticate, async (req, res, next) => {
       approver_roles: u.approver_roles || [],
       approval_type: u.approval_type || 'ALL',
       approval_flow: u.approval_flow || null,
+      effective_approval_flow: eff.effective_approval_flow,
+      effective_approval_type: eff.effective_approval_type,
       designation: u.designation || null,
       tier_id: u.tier_id || null,
       tier_policy: tierPolicy,

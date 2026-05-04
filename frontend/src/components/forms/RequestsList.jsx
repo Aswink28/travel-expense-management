@@ -63,8 +63,10 @@ export default function RequestsList({ onNewRequest }) {
   const [filter,   setFilter]   = useState('all')
 
   useEffect(() => {
-    const fn = ['Employee'].includes(user.role) ? requestsAPI.list : requestsAPI.list
-    fn().then(d => setRequests(d.data||[])).catch(e => setError(e.message)).finally(() => setLoading(false))
+    requestsAPI.list()
+      .then(d => setRequests(d.data || []))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
   }, [])
 
   async function loadDetail(id) {
@@ -88,16 +90,23 @@ export default function RequestsList({ onNewRequest }) {
   return (
     <div className="fade-up">
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:24 }}>
-        <PageTitle title={user.role === 'Employee' ? 'My Requests' : 'Travel Requests'} sub={`${filtered.length} total`} />
+        <PageTitle title="My Requests" sub={`${filtered.length} total`} />
         <div style={{ display:'flex', gap:10 }}>
-          <select value={filter} onChange={e=>setFilter(e.target.value)} style={{ background:'var(--bg-card, var(--bg-input))', border:'1px solid var(--border, var(--border-input))', borderRadius:8, color:'var(--text-body, var(--text-body))', fontSize:12, padding:'7px 12px', outline:'none' }}>
-            <option value="all">All status</option>
-            <option value="pending">Pending</option>
-            <option value="pending_finance">Pending Finance</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="booked">Booked</option>
-          </select>
+          {/* Status filter is only useful when there's something to filter — hide
+             the dropdown entirely on a fresh / empty list so the toolbar isn't
+             cluttered with a control that has nothing to act on. The check uses
+             the unfiltered `requests` length (not `filtered`) so a user who
+             filters down to zero results can still pick a different status. */}
+          {requests.length > 0 && (
+            <select value={filter} onChange={e=>setFilter(e.target.value)} style={{ background:'var(--bg-card, var(--bg-input))', border:'1px solid var(--border, var(--border-input))', borderRadius:8, color:'var(--text-body, var(--text-body))', fontSize:12, padding:'7px 12px', outline:'none' }}>
+              <option value="all">All status</option>
+              <option value="pending">Pending</option>
+              <option value="pending_finance">Pending Finance</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="booked">Booked</option>
+            </select>
+          )}
           {user.role !== 'Booking Admin' && (
             <Button variant="primary" style={{ background:user.color||'var(--accent)' }} onClick={onNewRequest}>+ New Request</Button>
           )}

@@ -193,18 +193,23 @@ router.get('/distance-check', async (req, res, next) => {
 })
 
 // ── GET /api/requests ─────────────────────────────────────────
+// "My Requests" — returns ONLY the requests raised by the calling user,
+// regardless of role. Approvers / Finance / Booking Admin / Super Admin
+// see their own raised travel via this endpoint; their work queues live
+// elsewhere (/api/requests/queue for approvers, the Booking Panel for
+// booking admins, the Finance queue for finance).
+//
+// Older builds had role-specific WHERE clauses that exposed every
+// employee's submitted requests on the My Requests screen — that leaked
+// other people's data and is now fixed.
 router.get('/', async (req, res, next) => {
   try {
-    const { role, id:uid } = req.user
+    const { id:uid } = req.user
     const { status } = req.query
-    let where = '', params = []
-    if (role === 'Employee')           { where = 'WHERE tr.user_id=$1'; params=[uid] }
-    else if (role === 'Request Approver') { where = `WHERE tr.user_role IN ('Employee')` }
-    else if (role === 'Finance')       { where = `WHERE tr.status IN ('pending','pending_finance') OR tr.finance_approved=FALSE` }
-    else if (role === 'Booking Admin') { where = `WHERE tr.status='approved' AND tr.booking_type='company'` }
-    // Super Admin: no filter (sees all)
+    let where = 'WHERE tr.user_id = $1'
+    const params = [uid]
     if (status) {
-      where += (where?` AND `:' WHERE ') + `tr.status=$${params.length+1}`
+      where += ` AND tr.status = $${params.length + 1}`
       params.push(status)
     }
     const { rows } = await pool.query(`

@@ -21,6 +21,27 @@ export default function NewRequestForm({ onSuccess }) {
     .slice()
     .sort((a, b) => (DESIGNATION_RANK[b] ?? 99) - (DESIGNATION_RANK[a] ?? 99))
 
+  // Effective approval mode — backend resolves user-level override → tier
+  // → defaults and surfaces it on the auth payload as effective_approval_*.
+  // Older auth payloads (cached login from before this field shipped) fall
+  // back to the user-level value or 'SEQUENTIAL' so nothing breaks.
+  const effectiveFlow = (user?.effective_approval_flow || user?.approval_flow || 'SEQUENTIAL').toUpperCase()
+  const effectiveType = (user?.effective_approval_type || user?.approval_type || 'ALL').toUpperCase()
+  const isParallel    = effectiveFlow === 'PARALLEL'
+  const isAnyOne      = isParallel && effectiveType === 'ANY_ONE'
+  const flowTitle     = isParallel ? 'Parallel Approval Flow' : 'Sequential Approval Flow'
+  const flowSubtitle  = isParallel
+    ? (isAnyOne ? '· any one approver finalises the hierarchy lane' : '· every approver in this chain must approve')
+    : '· lowest → highest authority, one step at a time'
+  const flowIcon      = isParallel ? '⇶' : '🔀'
+  const flowDescription = approverRoles.length === 0
+    ? null
+    : isParallel
+      ? (isAnyOne
+          ? `Your request will be sent to all ${approverRoles.length} approver${approverRoles.length === 1 ? '' : 's'} simultaneously. The hierarchy lane is complete the moment any one of them approves; the others can no longer act after that.`
+          : `Your request will be sent to all ${approverRoles.length} approver${approverRoles.length === 1 ? '' : 's'} simultaneously. Every one of them must approve before the hierarchy lane is complete. Order does not matter.`)
+      : `Approvers act in the order shown below. Each step waits for the previous one — only the next-in-line approver sees an action button until they decide.`
+
   // ----- Form State -----
   const [form, setForm] = useState({
     trip_name: '',
@@ -382,41 +403,69 @@ export default function NewRequestForm({ onSuccess }) {
             background: 'var(--bg-input, var(--bg-card))', border: '1px solid var(--border, var(--border-input))',
           }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: approverRoles.length ? 10 : 0, gap: 10, flexWrap:'wrap' }}>
-              <div style={{ display:'flex', alignItems:'center', gap: 8 }}>
-                <span style={{ fontSize: 14 }}>🔀</span>
+              <div style={{ display:'flex', alignItems:'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 14 }}>{flowIcon}</span>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform:'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary, var(--text-primary))' }}>
-                  Sequential Approval Flow
+                  {flowTitle}
                 </div>
                 <span style={{ fontSize: 10, color: 'var(--text-muted, #9090A8)' }}>
-                  · lowest → highest authority
+                  {flowSubtitle}
                 </span>
               </div>
               {approverRoles.length > 0 && (
-                <span style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
-                  color: accent, background: `${accent}18`, border: `1px solid ${accent}40`,
-                  padding: '3px 8px', borderRadius: 999,
-                }}>{approverRoles.length}-step flow</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {isParallel && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-card, var(--bg-input))', border: '1px solid var(--border, var(--border-input))',
+                      padding: '3px 8px', borderRadius: 999,
+                    }}>{isAnyOne ? 'Any one approves' : 'All must approve'}</span>
+                  )}
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+                    color: accent, background: `${accent}18`, border: `1px solid ${accent}40`,
+                    padding: '3px 8px', borderRadius: 999,
+                  }}>
+                    {approverRoles.length}{isParallel ? '-approver group' : '-step flow'}
+                  </span>
+                </div>
               )}
             </div>
             {approverRoles.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                {approverRoles.map((name, i) => (
-                  <span key={name} style={{ display:'inline-flex', alignItems:'center', gap: 6 }}>
-                    <span style={{
-                      fontSize: 12, fontWeight: 600, color: 'var(--text-primary, var(--text-primary))',
-                      background: 'var(--bg-card, var(--bg-input))', border: '1px solid var(--border, var(--border-input))',
-                      padding: '4px 10px', borderRadius: 999, display:'inline-flex', alignItems:'center', gap: 6,
-                    }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: accent, background: `${accent}18`, padding:'1px 5px', borderRadius: 3 }}>
-                        {i + 1}
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                  {approverRoles.map((name, i) => (
+                    <span key={name} style={{ display:'inline-flex', alignItems:'center', gap: 6 }}>
+                      <span style={{
+                        fontSize: 12, fontWeight: 600, color: 'var(--text-primary, var(--text-primary))',
+                        background: 'var(--bg-card, var(--bg-input))', border: '1px solid var(--border, var(--border-input))',
+                        padding: '4px 10px', borderRadius: 999, display:'inline-flex', alignItems:'center', gap: 6,
+                      }}>
+                        {/* In parallel mode the numbered badge is informational
+                            only — the engine doesn't enforce ordering. */}
+                        <span style={{ fontSize: 9, fontWeight: 800, color: accent, background: `${accent}18`, padding:'1px 5px', borderRadius: 3 }}>
+                          {i + 1}
+                        </span>
+                        {name}
                       </span>
-                      {name}
+                      {i < approverRoles.length - 1 && (
+                        <span style={{ color: 'var(--text-muted, #9090A8)', fontWeight: 700 }}>
+                          {isParallel ? '·' : '→'}
+                        </span>
+                      )}
                     </span>
-                    {i < approverRoles.length - 1 && <span style={{ color: 'var(--text-muted, #9090A8)', fontWeight: 700 }}>→</span>}
-                  </span>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {flowDescription && (
+                  <div style={{
+                    marginTop: 10, fontSize: 11, lineHeight: 1.55,
+                    color: 'var(--text-muted, #9090A8)',
+                  }}>
+                    {flowDescription}
+                  </div>
+                )}
+              </>
             ) : (
               <div style={{ fontSize: 11, color: 'var(--text-warning)' }}>
                 ⚠️ No approvers configured on your profile — contact your administrator.

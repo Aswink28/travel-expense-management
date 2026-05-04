@@ -39,10 +39,12 @@ ON CONFLICT (name) DO NOTHING;
 --  migration. No seed rows for those legacy role names.)
 
 -- Finance
+-- "New Request" is reachable via the My Requests page's primary button, so
+-- it doesn't need its own sidebar slot — that keeps the rail tighter and
+-- avoids two distinct entry points for the same flow.
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Finance', 'dashboard',    'Dashboard',      '▦', 1),
   ('Finance', 'approvals',    'Finance Queue',  '◎', 3),
-  ('Finance', 'new-request',  'New Request',    '+', 4),
   ('Finance', 'my-wallet',    'My Wallet',      '◉', 5),
   ('Finance', 'transactions', 'Transactions',   '📊', 6),
   ('Finance', 'my-tickets',   'My Tickets',     '🎟', 7)
@@ -56,9 +58,9 @@ INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) V
 ON CONFLICT (role_name, page_id) DO NOTHING;
 
 -- Super Admin — manages users/sites, does not approve travel requests.
+-- New Request is reachable from the My Requests page's primary button.
 INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES
   ('Super Admin', 'dashboard',          'Dashboard',      '▦',  1),
-  ('Super Admin', 'new-request',        'New Request',    '+',  4),
   ('Super Admin', 'my-wallet',          'My Wallet',      '◉',  5),
   ('Super Admin', 'transactions',       'Transactions',   '⊟',  6),
   ('Super Admin', 'my-tickets',         'My Tickets',     '◰',  7),
@@ -93,6 +95,27 @@ DELETE FROM role_pages WHERE page_id = 'ad-hoc-booking';
 -- (admin-bookings-view). The booking-history page-id is removed so no role,
 -- including custom ones seeded earlier, keeps the duplicate row.
 DELETE FROM role_pages WHERE page_id = 'booking-history';
+
+-- "Book Travel" (page_id 'book') is the self-booking panel and is not used by
+-- TL / Manager users. Those designations now hold the Request Approver role,
+-- and Request Approver was the only system role still seeded with the page
+-- (legacy carry-over from the pre-consolidation Tech Lead / Manager seeds).
+-- Drop it so the sidebar matches the policy. Custom roles can still grant it
+-- via Role Manager — it remains in ALL_PAGES.
+DELETE FROM role_pages WHERE role_name = 'Request Approver' AND page_id = 'book';
+
+-- "New Request" sidebar entry is retired for every role — the My Requests page
+-- has a primary "+ New Request" button that's the canonical entry point. Two
+-- entry points to the same form was redundant. The page itself stays wired
+-- in App.jsx so the button still navigates correctly.
+DELETE FROM role_pages WHERE page_id = 'new-request';
+
+-- Admin Users management is Super-Admin-only. Earlier permission-matrix saves
+-- (or partial seeds) granted view rights to other roles like Request Approver;
+-- this strips those grants so the matrix matches the policy. Rerunning this
+-- migration will undo any future grant via the matrix UI to other roles —
+-- that's intentional for this surface.
+DELETE FROM role_pages WHERE page_id = 'admin-users' AND role_name <> 'Super Admin';
 
 -- Super Admin is no longer an approver — drop the Approvals sidebar entry.
 DELETE FROM role_pages WHERE role_name = 'Super Admin' AND page_id = 'approvals';
