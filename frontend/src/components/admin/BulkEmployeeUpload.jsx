@@ -3,6 +3,7 @@ import { bulkEmployeesAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, Button, Spinner, Modal, PageTitle, ProgressBar } from '../shared/UI'
 import { Upload, Download, RefreshCw, XCircle, FileSpreadsheet } from 'lucide-react'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const STATUS_COLORS = {
   pending: 'var(--warning)', processing: 'var(--accent)', completed: 'var(--success)',
@@ -248,7 +249,7 @@ export default function BulkEmployeeUpload() {
                       </span>
                     </td>
                     <td style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-dim)' }}>
-                      {new Date(job.created_at).toLocaleDateString('en-IN')}
+                      {fmtDate(job.created_at)}
                     </td>
                     <td style={{ padding: '10px 16px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { requestsAPI, docsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, PageTitle, StatusPill, BookingBadge, Button, Alert, Spinner, Modal } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
 
@@ -38,7 +39,7 @@ function TicketsPanel({ tickets = [], documents = [] }) {
               {d.doc_type === 'ticket' ? '🎟️' : d.doc_type === 'hotel_voucher' ? '🏨' : '📄'} {d.original_name}
             </div>
             <div style={{ fontSize:10, color:'var(--text-faint, var(--text-dim))', marginTop:2 }}>
-              {d.doc_type} · Uploaded {new Date(d.created_at).toLocaleDateString('en-IN')}
+              {d.doc_type} · Uploaded {fmtDate(d.created_at)}
               {d.description && ` · ${d.description}`}
             </div>
           </div>
@@ -145,7 +146,7 @@ export default function RequestsList({ onNewRequest }) {
                   <td style={{ padding:'11px 13px', fontSize:12, color:'var(--text-muted, var(--text-faint))' }}>{r.from_location} → {r.to_location}</td>
                   <td style={{ padding:'11px 13px', fontSize:13 }}>{MODE_ICONS[r.travel_mode]||'🚀'} <span style={{ fontSize:11, color:'var(--text-faint)' }}>{r.travel_mode}</span></td>
                   <td style={{ padding:'11px 13px' }}><BookingBadge type={r.booking_type} /></td>
-                  <td style={{ padding:'11px 13px', fontSize:11, color:'var(--text-faint)' }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</td>
+                  <td style={{ padding:'11px 13px', fontSize:11, color:'var(--text-faint)' }}>{fmtDate(r.start_date)} → {fmtDate(r.end_date)}</td>
                   <td style={{ padding:'11px 13px' }}>
                     {r.approved_total ? (
                       <div style={{ fontSize:12, color: 'var(--text-success)', fontWeight:500 }}>₹{Number(r.approved_total).toLocaleString('en-IN')}</div>
@@ -217,7 +218,7 @@ export default function RequestsList({ onNewRequest }) {
                       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                         <span style={{ fontSize:12, color:a.action==='approved'?'var(--success)':'var(--danger)' }}>{a.action==='approved'?'✓':'✗'}</span>
                         <span style={{ fontSize:12, color:'var(--text-body, var(--text-body))', flex:1 }}>{a.approver_name} <span style={{ color:'var(--text-faint, var(--text-dim))' }}>({a.approver_role})</span></span>
-                        <span style={{ fontSize:10, color:'var(--text-faint)' }}>{new Date(a.acted_at).toLocaleString('en-IN')}</span>
+                        <span style={{ fontSize:10, color:'var(--text-faint)' }}>{fmtDateTime(a.acted_at)}</span>
                       </div>
                       {a.note && (
                         <div style={{ marginTop:6, paddingLeft:24 }}>

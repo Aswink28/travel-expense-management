@@ -3,6 +3,7 @@ import { selfBookingAPI, walletAPI, flightsAPI } from '../../services/api' // fl
 import { useAuth } from '../../context/AuthContext'
 import { Spinner, Alert, Button } from '../shared/UI'
 import TicketCard from './TicketCard'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 // ── Icons ──
 const TABS = [
@@ -504,7 +505,7 @@ export default function SelfBookingPanel() {
                       </div>
                       
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 24 }}>
-                        <div style={{ fontSize: 18, fontWeight: 700 }}>INR {flight.price.toLocaleString('en-IN')}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>INR {fmtDateTime(flight.price)}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                           <button 
                             onClick={() => setExpandedFlight(expandedFlight === flight.flightId ? null : flight.flightId)}
@@ -555,7 +556,7 @@ export default function SelfBookingPanel() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                               <div>
                                  <div style={{ fontSize: 11, color: 'var(--text-danger)', marginBottom: 4 }}>👎 Out Policy</div>
-                                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--border-strong)' }}>INR {fare.price.toLocaleString('en-IN')}</div>
+                                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--border-strong)' }}>INR {fmtDateTime(fare.price)}</div>
                               </div>
                               <button 
                                  onClick={() => handleBook(flight, fare)}

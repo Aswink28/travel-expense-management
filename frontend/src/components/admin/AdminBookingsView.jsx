@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { adminBookingsAPI } from '../../services/api'
 import { Spinner } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 export default function AdminBookingsView() {
   const [bookings, setBookings] = useState([])
@@ -41,8 +42,8 @@ export default function AdminBookingsView() {
               {bookings.map(b => (
                 <tr key={b.id} style={{ borderBottom: '1px solid var(--border-soft, var(--bg-input))', transition: 'background .15s' }}>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: 'var(--text-body, var(--text-body))' }}>
-                    {new Date(b.created_at).toLocaleDateString()}<br/>
-                    <span style={{ fontSize: 11, color: 'var(--text-faint, var(--text-faint))' }}>{new Date(b.created_at).toLocaleTimeString()}</span>
+                    {fmtDate(b.created_at)}<br/>
+                    <span style={{ fontSize: 11, color: 'var(--text-faint, var(--text-faint))' }}>{fmtTime(b.created_at)}</span>
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: 'var(--accent, var(--accent))' }}>
                     {b.booked_for_name}
@@ -53,7 +54,7 @@ export default function AdminBookingsView() {
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: 'var(--text-body, var(--text-body))' }}>
                     {b.from_location} → {b.to_location}<br/>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted, var(--text-faint))' }}>on {b.travel_date?.substring(0,10)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted, var(--text-faint))' }}>on {fmtDate(b.travel_date)}</span>
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: 'var(--success, var(--success))', fontWeight: 600 }}>
                     ₹{Number(b.amount).toLocaleString('en-IN')}

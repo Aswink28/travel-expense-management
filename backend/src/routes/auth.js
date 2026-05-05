@@ -68,7 +68,7 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = req.body
     if (!email || !password) return res.status(400).json({ success:false, message:'Email and password required' })
     const { rows } = await pool.query(
-      'SELECT id,emp_id,name,email,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,approval_flow,designation,tier_id FROM users WHERE email=$1',
+      'SELECT id,emp_id,name,email,mobile_number,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,approval_flow,designation,tier_id FROM users WHERE email=$1',
       [email.toLowerCase().trim()]
     )
     if (!rows.length || !rows[0].is_active) return res.status(401).json({ success:false, message:'Invalid credentials' })
@@ -94,6 +94,7 @@ router.post('/login', async (req, res, next) => {
     const eff = effectiveApprovalConfig(rows[0], tierPolicy)
     res.json({ success:true, token, user: {
       id:rows[0].id, empId:rows[0].emp_id, name:rows[0].name, email:rows[0].email,
+      mobile_number:rows[0].mobile_number || null,
       role:rows[0].role, dept:rows[0].department, avatar:rows[0].avatar, color:rows[0].color,
       reportingTo:rows[0].reporting_to, walletId:rows[0].ppi_wallet_id || null,
       wallet: w[0] || { balance:0, travel_balance:0, hotel_balance:0, allowance_balance:0 },
@@ -123,7 +124,7 @@ router.post('/oauth/token', express.urlencoded({ extended: false }), async (req,
     if (!username || !password) return res.status(400).json({ error: 'invalid_request', error_description: 'username and password required' })
 
     const { rows } = await pool.query(
-      'SELECT id,emp_id,name,email,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,approval_flow,designation,tier_id FROM users WHERE email=$1',
+      'SELECT id,emp_id,name,email,mobile_number,password_hash,role,department,avatar,color,reporting_to,is_active,ppi_wallet_id,approver_roles,approval_type,approval_flow,designation,tier_id FROM users WHERE email=$1',
       [username.toLowerCase().trim()]
     )
     if (!rows.length || !rows[0].is_active) return res.status(401).json({ error: 'invalid_grant', error_description: 'Invalid credentials' })
@@ -161,7 +162,9 @@ router.get('/me', authenticate, async (req, res, next) => {
     const tierPolicy = await fetchTierPolicy(u.tier_id)
     const eff = effectiveApprovalConfig(u, tierPolicy)
     res.json({ success:true, user: {
-      id:u.id, empId:u.emp_id, name:u.name, email:u.email, role:u.role,
+      id:u.id, empId:u.emp_id, name:u.name, email:u.email,
+      mobile_number:u.mobile_number || null,
+      role:u.role,
       dept:u.department, avatar:u.avatar, color:u.color, reportingTo:u.reporting_to,
       walletId:u.ppi_wallet_id || null,
       wallet: w[0] || { balance:0, travel_balance:0, hotel_balance:0, allowance_balance:0 },

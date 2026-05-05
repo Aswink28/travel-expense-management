@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { employeesAPI } from '../../services/api'
 import { Card, PageTitle, Alert, Spinner } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 export default function ApproverAuditLog() {
   const [rows, setRows]       = useState([])
@@ -46,7 +47,7 @@ export default function ApproverAuditLog() {
               )}
               {rows.map(r => (
                 <tr key={r.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                  <td style={td}>{new Date(r.acted_at).toLocaleString('en-IN')}</td>
+                  <td style={td}>{fmtDateTime(r.acted_at)}</td>
                   <td style={td}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding:'3px 8px', borderRadius: 999,

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 // ── Card ──────────────────────────────────────────────────────
 export function Card({ children, style = {}, className = '', onClick }) {
@@ -32,7 +33,7 @@ export function WalletCard({ wallet, color = 'var(--accent)' }) {
       <div className="wallet-card-glow" style={{ background: color }} />
       <div className="text-xs text-faint uppercase tracking-wide">Wallet Balance</div>
       <div className="syne wallet-card-amount" style={{ color, textShadow: `0 0 24px ${color}40` }}>
-        ₹{bal.toLocaleString('en-IN')}
+        ₹{fmtDateTime(bal)}
       </div>
       <div>
         <span

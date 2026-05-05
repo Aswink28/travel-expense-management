@@ -12,6 +12,7 @@ import {
   PageTitle,
 } from "../shared/UI";
 import { Eye, EyeOff } from "lucide-react";
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 // PPI productId is configured server-side via PPI_PRODUCT_IDS env var.
 // The frontend no longer sends it on Create Employee.
@@ -277,11 +278,41 @@ export default function EmployeeManagement({ setTab }) {
       approver_chain: normalisedChain,
     });
     setFieldErrors({});
-    // Refresh tier preview if the employee has a designation
+    // Refresh tier preview if the employee has a designation. When the
+    // employee has no saved approver chain (no rows in employee_approvers
+    // — common for users created via setup seeds), derive a skeleton from
+    // the tier's approver_roles so the Primary / Backup card shows the
+    // full step sequence rather than appearing empty. The admin can then
+    // pick primary/backup users per step before saving.
     if (emp.designation) {
       tiersAPI
         .preview(emp.designation)
-        .then((r) => setTierPreview(r?.data || null))
+        .then((r) => {
+          const tier = r?.data || null;
+          setTierPreview(tier);
+          if (tier && normalisedChain.length === 0) {
+            const approvers = Array.isArray(tier.approver_roles)
+              ? tier.approver_roles
+              : [];
+            if (approvers.length) {
+              const orderedSteps = [...approvers].sort(
+                (a, b) => (ROLE_RANK[b] ?? 99) - (ROLE_RANK[a] ?? 99)
+              );
+              const skeleton = orderedSteps.map((stepDesg, i) => ({
+                step_designation: stepDesg,
+                step_order: i + 1,
+                primary_user_id: null,
+                backup_user_id: null,
+              }));
+              setForm((prev) => ({
+                ...prev,
+                tier_id: tier.id || prev.tier_id,
+                approver_roles: approvers,
+                approver_chain: skeleton,
+              }));
+            }
+          }
+        })
         .catch(() => setTierPreview(null));
     } else {
       setTierPreview(null);
@@ -443,14 +474,14 @@ export default function EmployeeManagement({ setTab }) {
           ...(type === "suspend"
             ? {
                 suspended_at: result.data?.suspended_at
-                  ? new Date(result.data.suspended_at).toLocaleString("en-IN")
+                  ? fmtDateTime(result.data.suspended_at)
                   : "-",
               }
             : {}),
           ...(type === "close"
             ? {
                 closed_at: result.data?.closed_at
-                  ? new Date(result.data.closed_at).toLocaleString("en-IN")
+                  ? fmtDateTime(result.data.closed_at)
                   : "-",
               }
             : {}),
@@ -992,7 +1023,7 @@ export default function EmployeeManagement({ setTab }) {
                       }}
                     >
                       {emp.last_login
-                        ? new Date(emp.last_login).toLocaleDateString("en-IN")
+                        ? fmtDate(emp.last_login)
                         : "Never"}
                     </td>
                     <td style={{ padding: "10px 16px" }}>

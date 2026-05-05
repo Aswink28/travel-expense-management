@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { dashboardAPI, walletAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, StatCard, Alert, Spinner, PageTitle, StatusPill, BookingBadge } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 /* ──────────────────────────────────────────────────────────────
    Inline SVG icon set — same stroke/size language as the sidebar
@@ -84,7 +85,7 @@ export default function Dashboard({ setTab }) {
     <div className="fade-up">
       <PageTitle
         title="Dashboard"
-        sub={new Date().toLocaleDateString('en-IN',{ weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+        sub={fmtDate()}
       />
 
       {/* Wallet suspended/closed warnings — semantic alerts with rich content */}
@@ -169,7 +170,7 @@ export default function Dashboard({ setTab }) {
                 <span className="list-row-icon">{MODE_ICONS[r.travel_mode]||'🚀'}</span>
                 <div className="list-row-main">
                   <div className="list-row-title">{r.from_location} → {r.to_location}</div>
-                  <div className="list-row-meta">{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)}</div>
+                  <div className="list-row-meta">{fmtDate(r.start_date)} → {fmtDate(r.end_date)}</div>
                 </div>
                 <div className="list-row-tags">
                   <StatusPill status={r.status} />
@@ -298,7 +299,7 @@ export default function Dashboard({ setTab }) {
                             <span className="donut-legend-pct" style={{ color:c.color }}>{pct}%</span>
                           </div>
                           <div className="donut-legend-meta">
-                            ₹{c.spent.toLocaleString('en-IN')} / ₹{c.credited.toLocaleString('en-IN')}
+                            ₹{fmtDateTime(c.spent)} / ₹{fmtDateTime(c.credited)}
                           </div>
                         </div>
                       </div>
@@ -326,7 +327,7 @@ export default function Dashboard({ setTab }) {
               <div key={i} className="activity-row">
                 <div>
                   <div className="activity-row-title">{t.description}</div>
-                  <div className="activity-row-meta">{t.category} · {new Date(t.created_at).toLocaleDateString('en-IN')}</div>
+                  <div className="activity-row-meta">{t.category} · {fmtDate(t.created_at)}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
                   <div className="activity-row-amount" style={{ color: t.txn_type==='credit' ? 'var(--success)' : 'var(--danger)' }}>

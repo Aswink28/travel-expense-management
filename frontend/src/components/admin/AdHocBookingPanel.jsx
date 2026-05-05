@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { requestsAPI, bookingsAPI } from '../../services/api'
 import { Button, Input, Select, Spinner } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 export default function AdHocBookingPanel() {
   const [requests, setRequests] = useState([])
@@ -145,7 +146,7 @@ export default function AdHocBookingPanel() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: 12, color: 'var(--text-faint)', marginBottom: 6 }}>Travel Date</label>
-                    <Input readOnly value={selectedRequest.start_date?.substring(0,10) || ''} style={{ width: '100%', background: 'var(--bg-input)', color: 'var(--text-body)' }} />
+                    <Input readOnly value={fmtDate(selectedRequest.start_date)} style={{ width: '100%', background: 'var(--bg-input)', color: 'var(--text-body)' }} />
                   </div>
                 </div>
 
@@ -187,7 +188,7 @@ export default function AdHocBookingPanel() {
                         <div>
                           <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{opt.provider}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Departs: {opt.departure} • {opt.duration}</div>
-                          <div style={{ fontSize: 14, color: 'var(--text-success)', fontWeight: 600, marginTop: 4 }}>₹{opt.price.toLocaleString('en-IN')}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text-success)', fontWeight: 600, marginTop: 4 }}>₹{fmtDateTime(opt.price)}</div>
                         </div>
                         <Button onClick={() => handleBook(opt)} disabled={bookingLoading} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', fontSize: 12 }}>
                           {bookingLoading ? 'Booking...' : 'Book Ticket'}
@@ -208,7 +209,7 @@ export default function AdHocBookingPanel() {
               <div style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: '1.6' }}>
                 <div><strong>Booking ID:</strong> {successData.booking.id}</div>
                 <div><strong>PNR Number:</strong> {successData.ticket.pnr_number}</div>
-                <div><strong>Travel Details:</strong> {successData.ticket.travel_mode} | {successData.ticket.from_location} to {successData.ticket.to_location} on {successData.ticket.travel_date?.substring(0,10)}</div>
+                <div><strong>Travel Details:</strong> {successData.ticket.travel_mode} | {successData.ticket.from_location} to {successData.ticket.to_location} on {fmtDate(successData.ticket.travel_date)}</div>
                 <div><strong>Payment Status:</strong> Paid via Wallet (₹{successData.booking.amount})</div>
                 <div style={{ marginTop: 10, color: 'var(--info)' }}>✉️ Ticket has been delivered via Email, SMS, and In-app notification to the user.</div>
               </div>

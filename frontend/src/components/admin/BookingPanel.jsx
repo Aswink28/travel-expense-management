@@ -6,6 +6,7 @@ import {
   hotelsAPI,
   heldFlightsAPI,
 } from "../../services/api";
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 import { useAuth } from "../../context/AuthContext";
 import TicketCard from "../booking/TicketCard";
 
@@ -526,7 +527,7 @@ export default function BookingPanel() {
       return setErr('Please enter a valid travel date.');
     }
     if (travel < today) {
-      const todayStr = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      const todayStr = fmtDate(today);
       return setErr(`Travel date cannot be in the past. Please select ${todayStr} or later.`);
     }
 
@@ -1213,7 +1214,7 @@ export default function BookingPanel() {
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 10 }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: s.price > 0 ? C.green : C.muted }}>
-                              {s.price > 0 ? `₹${s.price.toLocaleString('en-IN')}` : 'Free'}
+                              {s.price > 0 ? `₹${fmtDateTime(s.price)}` : 'Free'}
                             </span>
                             <span style={{ fontSize: 16, color: isSelected ? (typeColors[typeName] || C.accent) : C.muted }}>
                               {isSelected ? '☑' : '☐'}
@@ -1232,7 +1233,7 @@ export default function BookingPanel() {
           {selectedSSRs.length > 0 && (
             <div style={{ marginTop: 16, padding: '12px 16px', background: C.bg, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.accent}40` }}>
               <span style={{ fontSize: 13, color: C.sub }}>Selected: {selectedSSRs.length} item(s)</span>
-              <span style={{ fontSize: 15, fontWeight: 800, color: C.accent }}>+ ₹{ssrTotal.toLocaleString('en-IN')}</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: C.accent }}>+ ₹{fmtDateTime(ssrTotal)}</span>
             </div>
           )}
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
@@ -1309,7 +1310,7 @@ export default function BookingPanel() {
               <span style={{ fontSize: 13, color: C.text }}>Selected: <strong>{selectedSeat}</strong></span>
               {(() => {
                 const seatPrice = segment?.rows?.flatMap(r => r.seats).find(s => s.seatNumber === selectedSeat)?.price || 0;
-                return <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>{seatPrice > 0 ? `₹${seatPrice.toLocaleString('en-IN')}` : 'Free'}</span>;
+                return <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>{seatPrice > 0 ? `₹${fmtDateTime(seatPrice)}` : 'Free'}</span>;
               })()}
             </div>
           )}
@@ -1566,7 +1567,7 @@ export default function BookingPanel() {
                 }}
               >
                 {walletBal != null
-                  ? `₹${walletBal.toLocaleString("en-IN")}`
+                  ? `₹${fmtDateTime(walletBal)}`
                   : "Checking…"}
               </span>
             </div>
@@ -1583,7 +1584,7 @@ export default function BookingPanel() {
                 Flight Fare ({fare.type})
               </span>
               <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
-                — ₹{fare.price.toLocaleString("en-IN")}
+                — ₹{fmtDateTime(fare.price)}
               </span>
             </div>
             <div
@@ -1611,7 +1612,7 @@ export default function BookingPanel() {
                 }}
               >
                 {remaining != null
-                  ? `₹${remaining.toLocaleString("en-IN")}`
+                  ? `₹${fmtDateTime(remaining)}`
                   : "—"}
               </span>
             </div>
@@ -1814,7 +1815,7 @@ export default function BookingPanel() {
                   color: sufficient ? C.green : C.red,
                 }}
               >
-                ₹{walletBal.toLocaleString("en-IN")}
+                ₹{fmtDateTime(walletBal)}
               </span>
             </div>
             <div
@@ -1830,7 +1831,7 @@ export default function BookingPanel() {
                 Hotel Total ({nights} Night{nights > 1 ? "s" : ""})
               </span>
               <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
-                — ₹{hotel.totalPrice.toLocaleString("en-IN")}
+                — ₹{fmtDateTime(hotel.totalPrice)}
               </span>
             </div>
             <div
@@ -1857,7 +1858,7 @@ export default function BookingPanel() {
                   color: sufficient ? C.green : C.red,
                 }}
               >
-                ₹{remaining.toLocaleString("en-IN")}
+                ₹{fmtDateTime(remaining)}
               </span>
             </div>
           </div>
@@ -1948,23 +1949,11 @@ export default function BookingPanel() {
       : allAmenitiesInResults;
     const nights = hotelResults[0]?.nights || 1;
     const checkinFmt = hotelForm.checkIn
-      ? new Date(hotelForm.checkIn + "T00:00")
-          .toLocaleDateString("en-IN", {
-            weekday: "short",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
+      ? fmtDate(hotelForm.checkIn + "T00:00")
           .toUpperCase()
       : "";
     const checkoutFmt = hotelForm.checkOut
-      ? new Date(hotelForm.checkOut + "T00:00")
-          .toLocaleDateString("en-IN", {
-            weekday: "short",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
+      ? fmtDate(hotelForm.checkOut + "T00:00")
           .toUpperCase()
       : "";
     const policyMax =
@@ -2608,7 +2597,7 @@ export default function BookingPanel() {
                               color: C.text,
                             }}
                           >
-                            ₹{hotel.pricePerNight.toLocaleString("en-IN")}
+                            ₹{fmtDateTime(hotel.pricePerNight)}
                           </div>
                           <div style={{ fontSize: 10, color: C.sub }}>
                             {hotelForm.rooms} Room / {hotel.nights} Night
@@ -2622,7 +2611,7 @@ export default function BookingPanel() {
                               marginTop: 4,
                             }}
                           >
-                            Total: ₹{hotel.totalPrice.toLocaleString("en-IN")}
+                            Total: ₹{fmtDateTime(hotel.totalPrice)}
                           </div>
                         </div>
                         <button
@@ -2662,10 +2651,7 @@ export default function BookingPanel() {
     const dstCode =
       form.destination.match(/\((\w+)\)/)?.[1] ||
       form.destination.slice(0, 3).toUpperCase();
-    const dateStr = new Date(form.date + "T00:00:00").toLocaleDateString(
-      "en-IN",
-      { weekday: "short", day: "numeric", month: "short", year: "numeric" },
-    );
+    const dateStr = fmtDate(form.date + "T00:00:00");
     const allAirlines = [...new Set(rawResults.map((f) => f.airline))];
     const globalMin = Math.min(...rawResults.map((f) => f.price));
     const globalMax = Math.max(...rawResults.map((f) => f.price));
@@ -2910,7 +2896,7 @@ export default function BookingPanel() {
                   marginBottom: 10,
                 }}
               >
-                <span>₹{globalMin.toLocaleString("en-IN")}</span>
+                <span>₹{fmtDateTime(globalMin)}</span>
                 <span style={{ color: C.accent, fontWeight: 700 }}>
                   ₹{(filterMaxPrice ?? globalMax).toLocaleString("en-IN")}
                 </span>
@@ -3317,7 +3303,7 @@ export default function BookingPanel() {
                               letterSpacing: "-0.5px",
                             }}
                           >
-                            ₹{fl.price.toLocaleString("en-IN")}
+                            ₹{fmtDateTime(fl.price)}
                           </div>
                           <div style={{ fontSize: 10, color: C.sub }}>
                             per person
@@ -3450,7 +3436,7 @@ export default function BookingPanel() {
                                   color: fi === 0 ? C.accent : C.text,
                                 }}
                               >
-                                ₹{fare.price.toLocaleString("en-IN")}
+                                ₹{fmtDateTime(fare.price)}
                               </div>
                             </div>
                             <div
@@ -3562,7 +3548,7 @@ export default function BookingPanel() {
                                   {confirmedSSRs.map(s => (
                                     <div key={s.ssrKey} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.sub, marginBottom: 2 }}>
                                       <span>{s.typeDesc || s.code}</span>
-                                      <span style={{ color: s.price > 0 ? C.green : C.muted }}>{s.price > 0 ? `₹${s.price.toLocaleString('en-IN')}` : 'Free'}</span>
+                                      <span style={{ color: s.price > 0 ? C.green : C.muted }}>{s.price > 0 ? `₹${fmtDateTime(s.price)}` : 'Free'}</span>
                                     </div>
                                   ))}
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: C.green, marginTop: 4, paddingTop: 4, borderTop: `1px solid ${C.green}20` }}>
@@ -3750,7 +3736,7 @@ export default function BookingPanel() {
                 if (!d) return '';
                 const [m, day, y] = d.split('/');
                 const dt = new Date(y, m - 1, day);
-                return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                return fmtDate(dt);
               };
               return (
                 <div key={i} style={{
@@ -4403,7 +4389,7 @@ export default function BookingPanel() {
                     ✈ {r.from_location} → {r.to_location}
                   </div>
                   <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
-                    {r.start_date?.slice(0, 10)}
+                    {fmtDate(r.start_date)}
                   </div>
                 </div>
                 <button
@@ -4483,7 +4469,7 @@ export default function BookingPanel() {
                     🏨 {r.to_location}
                   </div>
                   <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
-                    {r.start_date?.slice(0, 10)} → {r.end_date?.slice(0, 10)}
+                    {fmtDate(r.start_date)} → {fmtDate(r.end_date)}
                   </div>
                 </div>
                 <button
@@ -4563,7 +4549,7 @@ export default function BookingPanel() {
                     {h.from_location} → {h.to_location}
                   </div>
                   <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>
-                    {new Date(h.created_at).toLocaleDateString("en-IN")}
+                    {fmtDate(h.created_at)}
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -4695,7 +4681,7 @@ export default function BookingPanel() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                   <span style={{ fontSize: 10, color: C.sub }}>Held at</span>
                                   <span style={{ fontSize: 11, color: C.text, fontWeight: 600 }}>
-                                    {h.heldAt ? new Date(h.heldAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                    {h.heldAt ? fmtDateTime(h.heldAt) : '—'}
                                   </span>
                                 </div>
                               </div>
@@ -4932,11 +4918,11 @@ export default function BookingPanel() {
                                 {ticketStatus}
                               </span>
                               <div style={{ fontSize: 10, color: C.muted, marginTop: 8 }}>
-                                Booked: {raw.Booking_DateTime ? new Date(raw.Booking_DateTime).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                Booked: {raw.Booking_DateTime ? fmtDateTime(raw.Booking_DateTime) : '—'}
                               </div>
                               {pnrDetail.TicketingDate && (
                                 <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
-                                  Ticketed: {new Date(pnrDetail.TicketingDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  Ticketed: {fmtDateTime(pnrDetail.TicketingDate)}
                                 </div>
                               )}
                               {pnrDetail.BlockedExpiryDate && (

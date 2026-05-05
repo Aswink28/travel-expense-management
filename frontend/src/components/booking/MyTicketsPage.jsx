@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { selfBookingAPI } from '../../services/api'
 import TicketCard from './TicketCard'
 import { Spinner, Alert } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const MODE_ICONS  = { Flight:'✈️', Train:'🚂', Bus:'🚌', Cab:'🚕', Metro:'🚇', Hotel:'🏨' }
 const TYPE_LABELS = { transport:'Travel Ticket', hotel:'Hotel Voucher' }
@@ -81,10 +82,10 @@ export default function MyTicketsPage() {
             const accentMap   = { Flight:'var(--accent)', Train:'var(--success)', Bus:'var(--warning)', Cab:'var(--warning)', Hotel:'var(--purple)' }
             const accent      = isTransport ? (accentMap[t.travel_mode] || 'var(--accent-2)') : 'var(--purple)'
             const icon        = isTransport ? (MODE_ICONS[t.travel_mode] || '🚀') : '🏨'
-            const bookedOn    = new Date(t.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })
+            const bookedOn    = fmtDate(t.created_at)
             const travelOn    = isTransport
-              ? t.travel_date?.slice(0,10)
-              : `${t.check_in_date?.slice(0,10)} → ${t.check_out_date?.slice(0,10)}`
+              ? fmtDate(t.travel_date)
+              : `${fmtDate(t.check_in_date)} → ${fmtDate(t.check_out_date)}`
 
             return (
               <div key={t.id}

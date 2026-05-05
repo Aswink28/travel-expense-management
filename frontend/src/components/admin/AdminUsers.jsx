@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminUsersAPI, rolesAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, PageTitle, Alert, Spinner, Button, Modal, Input, Select } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 /* Inline eye-toggle icons — same lucide-style stroke language used by the
    sidebar / login page so the affordance fits the rest of the app. */
@@ -442,7 +443,7 @@ export default function AdminUsers() {
                   </td>
                   <td style={tdStyle}>
                     <span style={{ fontSize: 11, color:'var(--text-muted)' }}>
-                      {a.last_login ? new Date(a.last_login).toLocaleString('en-IN') : 'Never'}
+                      {a.last_login ? fmtDateTime(a.last_login) : 'Never'}
                     </span>
                   </td>
                   {(canEdit || canDelete) && (

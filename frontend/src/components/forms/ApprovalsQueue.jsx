@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { requestsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, PageTitle, StatusPill, BookingBadge, Button, Modal, Alert, Spinner } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
 
@@ -96,7 +97,7 @@ export default function ApprovalsQueue() {
                     <span style={{ fontSize:16 }}>{MODE_ICONS[r.travel_mode]}</span>
                   </div>
                   <div style={{ fontSize:12, color:'var(--text-faint)', marginBottom:3 }}>{r.user_role} · {r.from_location} → {r.to_location}</div>
-                  <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:8 }}>{r.start_date?.slice(0,10)} → {r.end_date?.slice(0,10)} ({r.total_days} days) · {r.purpose}</div>
+                  <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:8 }}>{fmtDate(r.start_date)} → {fmtDate(r.end_date)} ({r.total_days} days) · {r.purpose}</div>
                   {r.approvals?.length > 0 && (
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                       {r.approvals.map((a,i) => (
@@ -168,7 +169,7 @@ export default function ApprovalsQueue() {
               ['Allowance',          `₹${Number(modal.total_days||1) * 500} (${modal.total_days} days × ₹500)`],
               ['Total Estimated',    `₹${Number(modal.estimated_total||0).toLocaleString('en-IN')}`],
               ['Purpose',            modal.purpose],
-              ['Dates',              `${modal.start_date?.slice(0,10)} → ${modal.end_date?.slice(0,10)}`],
+              ['Dates',              `${fmtDate(modal.start_date)} → ${fmtDate(modal.end_date)}`],
             ].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid var(--border-input)' }}>
                 <span style={{ fontSize:11, color:'var(--text-dim)' }}>{k}</span>

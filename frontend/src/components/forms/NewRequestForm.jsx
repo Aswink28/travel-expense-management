@@ -42,15 +42,26 @@ export default function NewRequestForm({ onSuccess }) {
           : `Your request will be sent to all ${approverRoles.length} approver${approverRoles.length === 1 ? '' : 's'} simultaneously. Every one of them must approve before the hierarchy lane is complete. Order does not matter.`)
       : `Approvers act in the order shown below. Each step waits for the previous one — only the next-in-line approver sees an action button until they decide.`
 
+  // Multi-passenger eligibility — Employees and Tech Leads can only book for
+  // themselves, so the Add Passenger button is hidden for those users. Manager
+  // and senior roles (Finance / Booking Admin / Super Admin) keep the button
+  // because team travel is part of their workflow.
+  const canAddPassenger = user?.role !== 'Employee'
+    && (user?.designation || '').toLowerCase() !== 'tech lead'
+
   // ----- Form State -----
+  // Primary contact is sourced from the requester's profile and is read-only —
+  // employees raise requests for themselves, so the contact is always them.
+  // Admins update profile details via Employee Management; that's the only
+  // place these values can change.
   const [form, setForm] = useState({
     trip_name: '',
     trip_type: 'Domestic',
     project_name: 'Not Applicable',
     remarks: '',
-    contact_name: user?.name || '',
-    contact_mobile: '',
-    contact_email: '',
+    contact_name:   user?.name || '',
+    contact_mobile: user?.mobile_number || '',
+    contact_email:  user?.email || '',
   })
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
@@ -487,23 +498,47 @@ export default function NewRequestForm({ onSuccess }) {
           </div>
         </div>
 
-        {/* RIGHT: Contact Information */}
+        {/* RIGHT: Contact Information — read-only, sourced from the
+           requester's user profile. Updates happen in Employee Management. */}
         <div className="form-card" style={{ ...cardStyle, flex: 1 }}>
-          <div style={sectionTitleStyle}>Primary Contact</div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Contact Name *</label>
-            <input style={req(form.contact_name)} value={form.contact_name} onChange={e => set('contact_name', e.target.value)} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={sectionTitleStyle}>Primary Contact</div>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+              color: 'var(--text-muted, #9090A8)',
+              background: 'var(--bg-input, var(--bg-card))',
+              border: '1px solid var(--border, var(--border-input))',
+              padding: '3px 8px', borderRadius: 999,
+            }}>auto-filled · read-only</span>
           </div>
           <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Mobile *</label>
+            <label style={labelStyle}>Contact Name</label>
+            <input
+              style={{ ...inputStyle, opacity: 0.85, cursor: 'not-allowed' }}
+              value={form.contact_name} readOnly tabIndex={-1}
+            />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={labelStyle}>Mobile</label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input style={{ ...inputStyle, width: 70, textAlign: 'center' }} placeholder="+91" />
-              <input style={{ ...req(form.contact_mobile), flex: 1 }} value={form.contact_mobile} onChange={e => set('contact_mobile', e.target.value)} />
+              <input style={{ ...inputStyle, width: 70, textAlign: 'center', opacity: 0.85, cursor: 'not-allowed' }}
+                value="+91" readOnly tabIndex={-1} />
+              <input
+                style={{ ...inputStyle, flex: 1, opacity: 0.85, cursor: 'not-allowed' }}
+                value={form.contact_mobile} readOnly tabIndex={-1}
+              />
             </div>
+            {!form.contact_mobile && (
+              <div style={{ fontSize: 10, color: 'var(--text-warning, var(--danger))', marginTop: 6 }}>
+                No mobile on file — ask an admin to update your profile in Employee Management.
+              </div>
+            )}
           </div>
           <div>
-            <label style={labelStyle}>Email *</label>
-            <input style={req(form.contact_email)} value={form.contact_email} onChange={e => set('contact_email', e.target.value)} />
+            <label style={labelStyle}>Email</label>
+            <input
+              style={{ ...inputStyle, opacity: 0.85, cursor: 'not-allowed' }}
+              value={form.contact_email} readOnly tabIndex={-1}
+            />
           </div>
         </div>
       </div>
@@ -514,7 +549,6 @@ export default function NewRequestForm({ onSuccess }) {
           {['Flight', 'Train', 'Bus', 'Hotel'].map(mode => {
             const allowed = modeAllowed(mode)
             const isActive = activeTab === mode
-            const icon = mode==='Flight'?'✈️': mode==='Train'?'🚆': mode==='Bus'?'🚌':'🏨'
             return (
               <div
                 key={mode}
@@ -532,8 +566,7 @@ export default function NewRequestForm({ onSuccess }) {
                   position: 'relative',
                 }}
               >
-                <div style={{ fontSize: 16, filter: allowed ? 'none' : 'grayscale(1)' }}>{icon}</div>
-                <div>Add {mode}</div>
+                <div>Book {mode}</div>
                 {!allowed && <span style={{ fontSize: 11, marginLeft: 4 }}>🔒</span>}
               </div>
             )
@@ -671,12 +704,18 @@ export default function NewRequestForm({ onSuccess }) {
       <div className="form-card" style={{ ...cardStyle, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={sectionTitleStyle}>Passenger Roster</div>
-          <button
-            onClick={(e) => { e.preventDefault(); (activeTab === 'Bus' || activeTab === 'Train') ? addBusPax() : activeTab === 'Hotel' ? addHotelPax() : addPassenger() }}
-            style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}55`, borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
-          >
-            + Add Passenger
-          </button>
+          {canAddPassenger ? (
+            <button
+              onClick={(e) => { e.preventDefault(); (activeTab === 'Bus' || activeTab === 'Train') ? addBusPax() : activeTab === 'Hotel' ? addHotelPax() : addPassenger() }}
+              style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}55`, borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              + Add Passenger
+            </button>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--text-muted, #9090A8)', fontStyle: 'italic' }}>
+              Self-travel only · contact your manager for multi-passenger bookings
+            </span>
+          )}
         </div>
 
         {/* ── FLIGHT passengers ── */}

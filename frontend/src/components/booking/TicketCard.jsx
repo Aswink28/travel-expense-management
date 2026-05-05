@@ -49,14 +49,14 @@ export default function TicketCard({ ticket, onClose }) {
             ${isTransport ? `
               <div class="row"><span class="label">From</span><span class="value">${ticket.from_location||''}</span></div>
               <div class="row"><span class="label">To</span><span class="value">${ticket.to_location||''}</span></div>
-              <div class="row"><span class="label">Date</span><span class="value">${ticket.travel_date?.slice(0,10)||''}</span></div>
+              <div class="row"><span class="label">Date</span><span class="value">${fmtDate(ticket.travel_date)}</span></div>
               <div class="row"><span class="label">Time</span><span class="value">${ticket.travel_time||'As per schedule'}</span></div>
               <div class="row"><span class="label">Class / Seat</span><span class="value">${ticket.seat_class||'—'} ${ticket.seat_number ? '/ '+ticket.seat_number : ''}</span></div>
               <div class="row"><span class="label">Vendor</span><span class="value">${ticket.vendor||'—'}</span></div>
             ` : `
               <div class="row"><span class="label">Hotel</span><span class="value">${ticket.hotel_name||''}</span></div>
-              <div class="row"><span class="label">Check-in</span><span class="value">${ticket.check_in_date?.slice(0,10)||''}</span></div>
-              <div class="row"><span class="label">Check-out</span><span class="value">${ticket.check_out_date?.slice(0,10)||''}</span></div>
+              <div class="row"><span class="label">Check-in</span><span class="value">${fmtDate(ticket.check_in_date)}</span></div>
+              <div class="row"><span class="label">Check-out</span><span class="value">${fmtDate(ticket.check_out_date)}</span></div>
               <div class="row"><span class="label">Room Type</span><span class="value">${ticket.room_type||'Standard'}</span></div>
               <div class="row"><span class="label">Vendor</span><span class="value">${ticket.vendor||'—'}</span></div>
             `}
@@ -69,7 +69,7 @@ export default function TicketCard({ ticket, onClose }) {
             </div>
           </div>
           <div class="footer">
-            Issued by Moiter Workz &nbsp;·&nbsp; ${new Date(ticket.created_at).toLocaleString('en-IN')}
+            Issued by Moiter Workz &nbsp;·&nbsp; ${fmtDateTime(ticket.created_at)}
             &nbsp;·&nbsp; ${ticket.status?.toUpperCase()}
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function TicketCard({ ticket, onClose }) {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
               {[
-                ['Date',    ticket.travel_date?.slice(0,10) || '—'],
+                ['Date',    fmtDate(ticket.travel_date) || '—'],
                 ['Time',    ticket.travel_time || 'As scheduled'],
                 ['Class',   ticket.seat_class  || '—'],
                 ['Seat',    ticket.seat_number || '—'],
@@ -146,8 +146,8 @@ export default function TicketCard({ ticket, onClose }) {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
               {[
-                ['Check-in',   ticket.check_in_date?.slice(0,10)  || '—'],
-                ['Check-out',  ticket.check_out_date?.slice(0,10) || '—'],
+                ['Check-in',   fmtDate(ticket.check_in_date)  || '—'],
+                ['Check-out',  fmtDate(ticket.check_out_date) || '—'],
                 ['Room',       ticket.room_type  || 'Standard'],
                 ['Nights',     ticket.ticket_data?.numNights || '—'],
                 ['Vendor',     ticket.vendor || '—'],
@@ -167,7 +167,7 @@ export default function TicketCard({ ticket, onClose }) {
           <span style={{ fontSize:10, background: ticket.status==='confirmed'?'color-mix(in srgb, var(--success) 9%, transparent)':'color-mix(in srgb, var(--danger) 9%, transparent)', color:ticket.status==='confirmed'?'var(--success)':'var(--danger)', padding:'3px 10px', borderRadius:20 }}>
             ● {ticket.status?.toUpperCase()}
           </span>
-          <span style={{ fontSize:10, color:'var(--text-dim)' }}>Issued: {new Date(ticket.created_at).toLocaleString('en-IN')}</span>
+          <span style={{ fontSize:10, color:'var(--text-dim)' }}>Issued: {fmtDateTime(ticket.created_at)}</span>
         </div>
       </div>
 

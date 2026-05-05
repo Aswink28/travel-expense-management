@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { walletAPI, requestsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, PageTitle, Button, Modal, Alert, Spinner, Select, Input } from '../shared/UI'
+import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const CAT_ICONS = { travel:'✈️', hotel:'🏨', allowance:'🎯', credit:'💳', other:'📋' }
 
@@ -189,7 +190,7 @@ export default function WalletPage() {
             <tbody>
               {txns.map((t,i) => (
                 <tr key={t.id} style={{ borderBottom: i<txns.length-1?'1px solid var(--border-soft, var(--bg-card))':'none' }}>
-                  <td style={{ padding:'10px 12px', fontSize:10, color:'var(--text-faint, var(--text-dim))' }}>{new Date(t.created_at).toLocaleDateString('en-IN')}</td>
+                  <td style={{ padding:'10px 12px', fontSize:10, color:'var(--text-faint, var(--text-dim))' }}>{fmtDate(t.created_at)}</td>
                   <td style={{ padding:'10px 12px', fontSize:12, color:'var(--text-body, var(--text-body))', maxWidth:220 }}>
                     <div>{t.description}</div>
                     {t.reference && <div style={{ fontSize:10, color:'var(--text-dim, var(--text-dim))', marginTop:2 }}>Ref: {t.reference}</div>}
