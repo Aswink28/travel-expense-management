@@ -38,6 +38,7 @@ const EMPTY_TIER = {
   advance_booking_days: 0,
   intl_budget_limit: 0,
   is_active: true,
+  allow_extra_passenger: false,
 }
 
 export default function TierConfig() {
@@ -123,6 +124,7 @@ export default function TierConfig() {
         advance_booking_days: Number(t.advance_booking_days) || 0,
         intl_budget_limit:    Number(t.intl_budget_limit)    || 0,
         is_active:            t.is_active !== false,
+        allow_extra_passenger: !!t.allow_extra_passenger,
       },
     })
     setTierErrors({})
@@ -259,10 +261,8 @@ export default function TierConfig() {
                     value={t.approval_flow === 'PARALLEL'
                       ? `Parallel · ${t.approval_type === 'ANY_ONE' ? 'Any one' : 'All must'} approve`
                       : 'Sequential'} />
-                  <InfoCell label="Flight access"
-                    value={Array.isArray(t.flight_classes) && t.flight_classes.length
-                      ? t.flight_classes.join(', ')
-                      : 'Not allowed'} />
+                  <InfoCell label="Extra Passenger"
+                    value={t.allow_extra_passenger ? 'Allowed' : 'Not allowed'} />
                 </div>
               </div>
             )
@@ -370,6 +370,14 @@ function TierForm({ data, setData, errors, activeRoleNames }) {
             onChange={e => field('is_active', e.target.checked)}
             style={{ accentColor:'var(--accent)', cursor:'pointer' }} />
           Tier is active (uncheck to retire without deleting)
+        </label>
+      </div>
+      <div style={{ display:'flex', alignItems:'flex-end', paddingBottom: 6 }}>
+        <label style={{ display:'flex', alignItems:'center', gap: 8, fontSize: 13, color:'var(--text-primary)', cursor:'pointer' }}>
+          <input type="checkbox" checked={!!data.allow_extra_passenger}
+            onChange={e => field('allow_extra_passenger', e.target.checked)}
+            style={{ accentColor:'var(--accent)', cursor:'pointer' }} />
+          Allow extra passengers in travel requests
         </label>
       </div>
 

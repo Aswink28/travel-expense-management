@@ -42,12 +42,12 @@ export default function NewRequestForm({ onSuccess }) {
           : `Your request will be sent to all ${approverRoles.length} approver${approverRoles.length === 1 ? '' : 's'} simultaneously. Every one of them must approve before the hierarchy lane is complete. Order does not matter.`)
       : `Approvers act in the order shown below. Each step waits for the previous one — only the next-in-line approver sees an action button until they decide.`
 
-  // Multi-passenger eligibility — Employees and Tech Leads can only book for
-  // themselves, so the Add Passenger button is hidden for those users. Manager
-  // and senior roles (Finance / Booking Admin / Super Admin) keep the button
-  // because team travel is part of their workflow.
-  const canAddPassenger = user?.role !== 'Employee'
-    && (user?.designation || '').toLowerCase() !== 'tech lead'
+  // Multi-passenger eligibility — controlled by the tier's `allow_extra_passenger`
+  // flag. When the flag is not present (legacy data / no tier assigned), fall
+  // back to the original role-based check so existing installs keep working.
+  const canAddPassenger = tierPolicy?.allow_extra_passenger !== undefined
+    ? !!tierPolicy.allow_extra_passenger
+    : (user?.role !== 'Employee' && (user?.designation || '').toLowerCase() !== 'tech lead')
 
   // ----- Form State -----
   // Primary contact is sourced from the requester's profile and is read-only —

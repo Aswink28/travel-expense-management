@@ -42,6 +42,7 @@ function normaliseTier(body) {
   if (body.advance_booking_days !== undefined)      out.advance_booking_days = Math.max(0, parseInt(body.advance_booking_days, 10) || 0)
   if (body.intl_budget_limit !== undefined)         out.intl_budget_limit   = num(body.intl_budget_limit)
   if (body.is_active !== undefined)                 out.is_active           = !!body.is_active
+  if (body.allow_extra_passenger !== undefined)     out.allow_extra_passenger = !!body.allow_extra_passenger
   return out
 }
 
@@ -105,8 +106,9 @@ router.post('/', requirePermission('tiers', 'create'), async (req, res, next) =>
       `INSERT INTO tiers (name, rank, description, flight_classes, train_classes, bus_types, hotel_types,
                           budget_limit, budget_period, approver_roles, approval_type, intl_flight_class_upgrade,
                           max_hotel_per_night, meal_daily_limit, cab_daily_limit,
-                          advance_booking_days, intl_budget_limit, is_active, approval_flow)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+                          advance_booking_days, intl_budget_limit, is_active, approval_flow,
+                          allow_extra_passenger)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
       [t.name, t.rank, t.description || null,
        t.flight_classes || [], t.train_classes || [], t.bus_types || [], t.hotel_types || [],
@@ -115,7 +117,8 @@ router.post('/', requirePermission('tiers', 'create'), async (req, res, next) =>
        t.max_hotel_per_night || 0, t.meal_daily_limit || 0, t.cab_daily_limit || 0,
        t.advance_booking_days || 0, t.intl_budget_limit || 0,
        t.is_active === undefined ? true : !!t.is_active,
-       t.approval_flow || 'SEQUENTIAL']
+       t.approval_flow || 'SEQUENTIAL',
+       !!t.allow_extra_passenger]
     )
     res.status(201).json({ success: true, message: 'Tier created', data: rows[0] })
   } catch (e) {

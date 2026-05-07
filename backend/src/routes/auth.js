@@ -16,7 +16,7 @@ async function fetchTierPolicy(tierId) {
     `SELECT id, name, rank, flight_classes, train_classes, bus_types, hotel_types,
             budget_limit, intl_budget_limit, max_hotel_per_night, meal_daily_limit,
             cab_daily_limit, advance_booking_days, intl_flight_class_upgrade,
-            approval_flow, approval_type
+            approval_flow, approval_type, allow_extra_passenger
        FROM tiers WHERE id = $1`,
     [tierId]
   )
@@ -41,6 +41,7 @@ async function fetchTierPolicy(tierId) {
     max_hotel_per_night: t.max_hotel_per_night, meal_daily_limit: t.meal_daily_limit,
     cab_daily_limit: t.cab_daily_limit, advance_booking_days: t.advance_booking_days,
     intl_flight_class_upgrade: t.intl_flight_class_upgrade,
+    allow_extra_passenger: !!t.allow_extra_passenger,
     // Approval flow + condition belong to the tier — frontend uses these to
     // describe how the user's request will be processed (sequential vs.
     // parallel, any-one vs. all).
