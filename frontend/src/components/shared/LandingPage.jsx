@@ -42,7 +42,55 @@ const TESTIMONIALS = [
   { quote: 'I run bookings for the whole org. The admin panel cut my queue from a full day to under an hour.', name: 'Meena Iyer', role: 'Booking Admin', initials: 'MI', color: '#059669' },
 ]
 
-const TRUST_LOGOS = ['Northwind', 'Cloudbase', 'Aurex Labs', 'Vertex AI', 'Elysia Group', 'Helix Co']
+/* ── Company logo marks (monochrome SVGs) ─────────────────── */
+const LOGO_MARKS = {
+  northwind: ( /* Compass needle — pointing north */
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2l4 10-4-2-4 2z" fill="currentColor" />
+      <path d="M12 22l-4-10 4 2 4-2z" fill="currentColor" opacity=".3" />
+    </svg>
+  ),
+  cloudbase: ( /* Cloud silhouette */
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" fill="currentColor" />
+    </svg>
+  ),
+  aurex: ( /* Hexagon with center dot — lab/science mark */
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <polygon points="12,3 20.5,7.5 20.5,16.5 12,21 3.5,16.5 3.5,7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+    </svg>
+  ),
+  vertex: ( /* Triangle with vertex dots — graph/AI mark */
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 4L5 19h14z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="12" cy="4" r="2" fill="currentColor" />
+      <circle cx="5" cy="19" r="2" fill="currentColor" />
+      <circle cx="19" cy="19" r="2" fill="currentColor" />
+    </svg>
+  ),
+  elysia: ( /* Overlapping circles — partnership/group mark */
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="15" cy="12" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  ),
+  helix: ( /* Double helix — intertwining S-curves */
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 2c0 5 12 5 12 10s-12 5-12 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M18 2c0 5-12 5-12 10s12 5 12 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
+}
+
+const TRUST_LOGOS = [
+  { id: 'northwind', name: 'Northwind',    color: '#3B82F6' },
+  { id: 'cloudbase', name: 'Cloudbase',    color: '#06B6D4' },
+  { id: 'aurex',     name: 'Aurex Labs',   color: '#F59E0B' },
+  { id: 'vertex',    name: 'Vertex AI',    color: '#8B5CF6' },
+  { id: 'elysia',    name: 'Elysia Group', color: '#10B981' },
+  { id: 'helix',     name: 'Helix Co',     color: '#EC4899' },
+]
 
 const MODE_IMAGES = { flight: imgFlight, hotel: imgHotel, cab: imgCab, train: imgTrain }
 const TRAVEL_MODES = [
@@ -429,8 +477,11 @@ export default function LandingPage({ onSignIn }) {
         <div className="lp-marquee-label">Trusted by finance teams at forward-thinking companies</div>
         <div className="lp-marquee-track">
           <div className="lp-marquee-row">
-            {[...TRUST_LOGOS, ...TRUST_LOGOS].map((name, i) => (
-              <span key={i} className="lp-marquee-logo">{name}</span>
+            {[...TRUST_LOGOS, ...TRUST_LOGOS].map((logo, i) => (
+              <div key={i} className="lp-marquee-logo">
+                <span className="lp-marquee-mark" style={{ color: logo.color }}>{LOGO_MARKS[logo.id]}</span>
+                <span className="lp-marquee-name">{logo.name}</span>
+              </div>
             ))}
           </div>
         </div>
