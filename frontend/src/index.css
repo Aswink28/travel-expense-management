@@ -2200,16 +2200,48 @@ img { object-fit: cover; }
   height: 100%;
   object-fit: cover;
   object-position: center 40%;
+  filter: brightness(0.45) contrast(1.15) saturate(1.1);
+  transition: filter 0.5s ease;
 }
 .lp-hero-bg-overlay {
   position: absolute;
   inset: 0;
+  transition: background 0.5s ease;
+  /* Default (dark theme) — cinematic, high contrast */
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--bg-app) 92%, transparent) 0%,
-    color-mix(in srgb, var(--bg-app) 80%, transparent) 40%,
-    color-mix(in srgb, var(--bg-app) 55%, transparent) 70%,
-    color-mix(in srgb, var(--bg-app) 40%, transparent) 100%
+    rgba(10, 10, 11, 0.95) 0%,
+    rgba(10, 10, 11, 0.82) 35%,
+    rgba(10, 10, 11, 0.55) 65%,
+    rgba(10, 10, 11, 0.35) 100%
+  );
+}
+
+/* ── Theme-specific hero ──────────────────────────────────── */
+/* Light — bright airplane, soft white veil, airplane fully visible */
+[data-theme="light"] .lp-hero-bg-img {
+  filter: brightness(1.05) contrast(1.1) saturate(1.15);
+}
+[data-theme="light"] .lp-hero-bg-overlay {
+  background: linear-gradient(
+    135deg,
+    rgba(250, 250, 250, 0.92) 0%,
+    rgba(250, 250, 250, 0.78) 35%,
+    rgba(250, 250, 250, 0.48) 65%,
+    rgba(250, 250, 250, 0.22) 100%
+  );
+}
+/* Ocean — deep navy atmosphere with cool-toned tint */
+[data-theme="ocean"] .lp-hero-bg-img {
+  filter: brightness(0.5) contrast(1.12) saturate(0.85) hue-rotate(-10deg);
+}
+[data-theme="ocean"] .lp-hero-bg-overlay {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 22, 40, 0.94) 0%,
+    rgba(10, 22, 40, 0.80) 35%,
+    rgba(10, 22, 40, 0.50) 65%,
+    rgba(14, 30, 54, 0.30) 100%
   );
 }
 
@@ -2279,13 +2311,41 @@ img { object-fit: cover; }
   position: relative;
 }
 .lp-hero-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  display: flex;
+  background: color-mix(in srgb, var(--bg-card) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   border-radius: var(--radius-xl);
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+    0 24px 80px rgba(0, 0, 0, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
   overflow: hidden;
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+.lp-hero-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+}
+[data-theme="light"] .lp-hero-card {
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+[data-theme="light"] .lp-hero-card:hover {
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.09),
+    0 2px 6px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+[data-theme="ocean"] .lp-hero-card {
+  border-color: color-mix(in srgb, var(--border) 70%, rgba(56, 189, 248, 0.1));
 }
 
 /* ── Buttons ──────────────────────────────────────────────── */
@@ -2404,6 +2464,7 @@ img { object-fit: cover; }
 
 /* ── Dashboard avatar ─────────────────────────────────────── */
 .lp-dash-avatar {
+  position: relative;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -2421,6 +2482,212 @@ img { object-fit: cover; }
   width: 28px;
   height: 28px;
   font-size: 10px;
+}
+
+/* ── Hero dashboard card — premium layout ────────────────── */
+/* Mini sidebar */
+.lp-dash-side {
+  width: 48px;
+  background: color-mix(in srgb, var(--bg-card-deep) 85%, transparent);
+  border-right: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.lp-dash-side-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--fw-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.lp-dash-side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lp-dash-side-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: default;
+  transition: color var(--duration-fast);
+}
+.lp-dash-side-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.lp-dash-side-icon--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Dashboard content area */
+.lp-dash-content {
+  flex: 1;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.lp-dash-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 14px;
+}
+.lp-dash-greeting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lp-dash-online {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid var(--bg-card);
+}
+.lp-dash-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.lp-dash-role {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+/* Metric tiles */
+.lp-dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.lp-dash-metric {
+  background: var(--bg-card-deep);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+.lp-dash-metric-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  font-weight: var(--fw-semi);
+}
+.lp-dash-metric-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+.lp-dash-metric-val {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--fw-black);
+  color: var(--text-primary);
+  line-height: 1;
+}
+.lp-dash-metric-val--green { color: #059669; }
+.lp-dash-metric-val--blue { color: #0284C7; }
+.lp-dash-metric-delta {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+.lp-dash-metric-delta--up {
+  color: var(--success);
+  font-weight: var(--fw-semi);
+}
+.lp-dash-metric-bar {
+  height: 3px;
+  background: var(--border-soft);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.lp-dash-metric-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.lp-dash-metric-fill--green { background: #059669; }
+.lp-dash-metric-fill--blue { background: #0284C7; }
+
+/* Upcoming trip card */
+.lp-dash-trip {
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg-card-deep));
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border-soft));
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.lp-dash-trip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.lp-dash-trip-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: var(--fw-bold);
+}
+.lp-dash-trip-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.lp-dash-trip-city { text-align: center; }
+.lp-dash-trip-city strong {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+.lp-dash-trip-city span {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+.lp-dash-trip-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lp-dash-trip-plane {
+  position: absolute;
+  font-size: 11px;
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg-card-deep));
+  padding: 0 4px;
+}
+.lp-dash-trip-meta {
+  font-size: 10px;
+  color: var(--text-faint);
 }
 
 .lp-mock-row {
@@ -2753,7 +3020,19 @@ img { object-fit: cover; }
 }
 .lp-feature-card:hover {
   border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+[data-theme="dark"] .lp-feature-card:hover {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+[data-theme="ocean"] .lp-feature-card:hover {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.3),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .lp-feature-icon {
   width: 48px; height: 48px;
@@ -3138,9 +3417,11 @@ img { object-fit: cover; }
     gap: var(--space-8);
   }
   .lp-hero-content { max-width: none; }
+  .lp-dash-side { display: none; }
 }
 @media (max-width: 600px) {
   .lp-mock-stats { grid-template-columns: 1fr; }
+  .lp-dash-metrics { grid-template-columns: 1fr; }
   .lp-footer-inner { flex-direction: column; align-items: flex-start; }
   .lp-hero { min-height: auto; }
 }

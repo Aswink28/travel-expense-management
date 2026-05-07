@@ -358,35 +358,65 @@ export default function LandingPage({ onSignIn }) {
             transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="lp-hero-card">
-              <div className="lp-mock-chrome">
-                <span className="lp-mock-dot lp-mock-dot--r" />
-                <span className="lp-mock-dot lp-mock-dot--y" />
-                <span className="lp-mock-dot lp-mock-dot--g" />
-                <span className="lp-mock-url">moiter-workz.app/dashboard</span>
+              {/* Mini sidebar */}
+              <div className="lp-dash-side">
+                <div className="lp-dash-side-logo">M</div>
+                <div className="lp-dash-side-nav">
+                  <span className="lp-dash-side-icon lp-dash-side-icon--active">{ICON_MAP.chart}</span>
+                  <span className="lp-dash-side-icon">{ICON_MAP.edit}</span>
+                  <span className="lp-dash-side-icon">{ICON_MAP.wallet}</span>
+                  <span className="lp-dash-side-icon">{ICON_MAP.shield}</span>
+                </div>
               </div>
-              <div className="lp-mock-body">
-                <div className="lp-mock-row">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="lp-dash-avatar lp-dash-avatar--sm"><span>AS</span></div>
+              {/* Dashboard main */}
+              <div className="lp-dash-content">
+                <div className="lp-dash-topbar">
+                  <div className="lp-dash-greeting">
+                    <div className="lp-dash-avatar"><span>AS</span><span className="lp-dash-online" /></div>
                     <div>
-                      <div className="lp-mock-h1">Good morning, Aisha</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 1 }}>Tue, 06 May 2025 · 3 pending</div>
+                      <div className="lp-dash-name">Good morning, Aisha</div>
+                      <div className="lp-dash-role">Finance Lead · Tier 1</div>
                     </div>
                   </div>
+                  <span className="lp-pill lp-pill--accent">3 pending</span>
                 </div>
-                <div className="lp-mock-stats">
-                  <div className="lp-mock-stat"><span className="lp-mock-stat-label">Active</span><strong>27</strong></div>
-                  <div className="lp-mock-stat"><span className="lp-mock-stat-label">Budget</span><strong style={{ color: '#059669' }}>₹4.8L</strong></div>
-                  <div className="lp-mock-stat"><span className="lp-mock-stat-label">Wallet</span><strong style={{ color: '#0284C7' }}>₹3.2L</strong></div>
+                <div className="lp-dash-metrics">
+                  <div className="lp-dash-metric">
+                    <span className="lp-dash-metric-label">Active Requests</span>
+                    <div className="lp-dash-metric-row">
+                      <strong className="lp-dash-metric-val">27</strong>
+                      <span className="lp-dash-metric-delta lp-dash-metric-delta--up">+4</span>
+                    </div>
+                    <div className="lp-dash-metric-bar"><div className="lp-dash-metric-fill" style={{ width: '68%' }} /></div>
+                  </div>
+                  <div className="lp-dash-metric">
+                    <span className="lp-dash-metric-label">Budget Approved</span>
+                    <div className="lp-dash-metric-row">
+                      <strong className="lp-dash-metric-val lp-dash-metric-val--green">₹4.8L</strong>
+                      <span className="lp-dash-metric-delta">this month</span>
+                    </div>
+                    <div className="lp-dash-metric-bar"><div className="lp-dash-metric-fill lp-dash-metric-fill--green" style={{ width: '67%' }} /></div>
+                  </div>
+                  <div className="lp-dash-metric">
+                    <span className="lp-dash-metric-label">Wallet Loaded</span>
+                    <div className="lp-dash-metric-row">
+                      <strong className="lp-dash-metric-val lp-dash-metric-val--blue">₹3.2L</strong>
+                      <span className="lp-dash-metric-delta">auto-credited</span>
+                    </div>
+                    <div className="lp-dash-metric-bar"><div className="lp-dash-metric-fill lp-dash-metric-fill--blue" style={{ width: '82%' }} /></div>
+                  </div>
                 </div>
-                <div className="lp-mock-chart-row">
-                  {[42, 68, 55, 80, 47, 73, 90, 60, 85, 55, 70, 78].map((h, i) => (
-                    <span key={i} className="lp-mock-bar" style={{ height: `${h}%`, animationDelay: `${i * 0.08}s` }} />
-                  ))}
-                </div>
-                <div className="lp-mock-list">
-                  <div className="lp-mock-list-item"><span>BLR → BOM · TR-2071</span><span className="lp-pill lp-pill--green">Approved</span></div>
-                  <div className="lp-mock-list-item"><span>DEL → MAA · TR-2070</span><span className="lp-pill lp-pill--warn">Pending</span></div>
+                <div className="lp-dash-trip">
+                  <div className="lp-dash-trip-top">
+                    <span className="lp-dash-trip-label">Next Trip</span>
+                    <span className="lp-pill lp-pill--green">Approved</span>
+                  </div>
+                  <div className="lp-dash-trip-route">
+                    <div className="lp-dash-trip-city"><strong>BLR</strong><span>Bengaluru</span></div>
+                    <div className="lp-dash-trip-line"><span className="lp-dash-trip-plane">✈</span></div>
+                    <div className="lp-dash-trip-city"><strong>BOM</strong><span>Mumbai</span></div>
+                  </div>
+                  <div className="lp-dash-trip-meta">TR-2071 · 12 May 2025 · ₹34,900</div>
                 </div>
               </div>
             </div>
