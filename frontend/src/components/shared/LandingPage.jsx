@@ -42,43 +42,67 @@ const TESTIMONIALS = [
   { quote: 'I run bookings for the whole org. The admin panel cut my queue from a full day to under an hour.', name: 'Meena Iyer', role: 'Booking Admin', initials: 'MI', color: '#059669' },
 ]
 
-/* ── Company logo marks (monochrome SVGs) ─────────────────── */
+/* ── Company logo marks (colorful brand SVGs) ─────────────── */
 const LOGO_MARKS = {
-  northwind: ( /* Compass needle — pointing north */
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2l4 10-4-2-4 2z" fill="currentColor" />
-      <path d="M12 22l-4-10 4 2 4-2z" fill="currentColor" opacity=".3" />
+  northwind: ( /* Compass rose — travel/navigation brand */
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="16" cy="16" r="14" fill="#3B82F6" opacity=".12" />
+      <circle cx="16" cy="16" r="10" fill="#3B82F6" opacity=".18" />
+      <path d="M16 4l3 12-3-2-3 2z" fill="#3B82F6" />
+      <path d="M16 28l-3-12 3 2 3-2z" fill="#93C5FD" />
+      <path d="M4 16l12 3-2-3 2-3z" fill="#60A5FA" />
+      <path d="M28 16l-12-3 2 3-2 3z" fill="#BFDBFE" />
+      <circle cx="16" cy="16" r="2.5" fill="#1D4ED8" />
     </svg>
   ),
-  cloudbase: ( /* Cloud silhouette */
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" fill="currentColor" />
+  cloudbase: ( /* Cloud with upward arrow — cloud services */
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M24 15a7 7 0 0 0-13.4-2.8A5.5 5.5 0 0 0 6 17.5 5.5 5.5 0 0 0 11.5 23H23a5 5 0 0 0 1-9.9z" fill="#06B6D4" opacity=".2" />
+      <path d="M24 15a7 7 0 0 0-13.4-2.8A5.5 5.5 0 0 0 6 17.5 5.5 5.5 0 0 0 11.5 23H23a5 5 0 0 0 1-9.9z" fill="none" stroke="#06B6D4" strokeWidth="1.8" />
+      <path d="M16 20v-8m-3 3l3-3 3 3" stroke="#0891B2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   ),
-  aurex: ( /* Hexagon with center dot — lab/science mark */
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <polygon points="12,3 20.5,7.5 20.5,16.5 12,21 3.5,16.5 3.5,7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+  aurex: ( /* Hexagonal atom — fintech/labs brand */
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <polygon points="16,3 27,9.5 27,22.5 16,29 5,22.5 5,9.5" fill="#F59E0B" opacity=".15" />
+      <polygon points="16,3 27,9.5 27,22.5 16,29 5,22.5 5,9.5" fill="none" stroke="#F59E0B" strokeWidth="1.6" strokeLinejoin="round" />
+      <polygon points="16,9 22,12.5 22,19.5 16,23 10,19.5 10,12.5" fill="#F59E0B" opacity=".3" />
+      <circle cx="16" cy="16" r="3" fill="#D97706" />
+      <circle cx="16" cy="16" r="1.2" fill="#FDE68A" />
     </svg>
   ),
-  vertex: ( /* Triangle with vertex dots — graph/AI mark */
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 4L5 19h14z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="12" cy="4" r="2" fill="currentColor" />
-      <circle cx="5" cy="19" r="2" fill="currentColor" />
-      <circle cx="19" cy="19" r="2" fill="currentColor" />
+  vertex: ( /* Connected nodes — AI/graph network */
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <line x1="16" y1="6" x2="7" y2="24" stroke="#8B5CF6" strokeWidth="1.5" opacity=".4" />
+      <line x1="16" y1="6" x2="25" y2="24" stroke="#8B5CF6" strokeWidth="1.5" opacity=".4" />
+      <line x1="7" y1="24" x2="25" y2="24" stroke="#8B5CF6" strokeWidth="1.5" opacity=".4" />
+      <line x1="16" y1="6" x2="16" y2="16" stroke="#A78BFA" strokeWidth="1.5" opacity=".5" />
+      <line x1="7" y1="24" x2="16" y2="16" stroke="#A78BFA" strokeWidth="1.5" opacity=".5" />
+      <line x1="25" y1="24" x2="16" y2="16" stroke="#A78BFA" strokeWidth="1.5" opacity=".5" />
+      <circle cx="16" cy="6" r="3.5" fill="#8B5CF6" />
+      <circle cx="7" cy="24" r="3.5" fill="#A78BFA" />
+      <circle cx="25" cy="24" r="3.5" fill="#7C3AED" />
+      <circle cx="16" cy="16" r="2.5" fill="#C4B5FD" />
     </svg>
   ),
-  elysia: ( /* Overlapping circles — partnership/group mark */
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="15" cy="12" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+  elysia: ( /* Overlapping petals — group/partnership */
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="12" cy="13" r="7" fill="#10B981" opacity=".2" />
+      <circle cx="20" cy="13" r="7" fill="#34D399" opacity=".2" />
+      <circle cx="16" cy="20" r="7" fill="#6EE7B7" opacity=".2" />
+      <circle cx="12" cy="13" r="7" fill="none" stroke="#10B981" strokeWidth="1.5" />
+      <circle cx="20" cy="13" r="7" fill="none" stroke="#34D399" strokeWidth="1.5" />
+      <circle cx="16" cy="20" r="7" fill="none" stroke="#6EE7B7" strokeWidth="1.5" />
+      <circle cx="16" cy="15.5" r="2" fill="#059669" />
     </svg>
   ),
-  helix: ( /* Double helix — intertwining S-curves */
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 2c0 5 12 5 12 10s-12 5-12 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M18 2c0 5-12 5-12 10s12 5 12 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  helix: ( /* Double helix — innovation/biotech */
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M8 3c0 6.5 16 6.5 16 13s-16 6.5-16 13" fill="none" stroke="#EC4899" strokeWidth="2.5" strokeLinecap="round" opacity=".7" />
+      <path d="M24 3c0 6.5-16 6.5-16 13s16 6.5 16 13" fill="none" stroke="#F9A8D4" strokeWidth="2.5" strokeLinecap="round" opacity=".7" />
+      <circle cx="16" cy="9.5" r="2" fill="#EC4899" />
+      <circle cx="16" cy="16" r="2" fill="#DB2777" />
+      <circle cx="16" cy="22.5" r="2" fill="#EC4899" />
     </svg>
   ),
 }
@@ -479,8 +503,8 @@ export default function LandingPage({ onSignIn }) {
           <div className="lp-marquee-row">
             {[...TRUST_LOGOS, ...TRUST_LOGOS].map((logo, i) => (
               <div key={i} className="lp-marquee-logo">
-                <span className="lp-marquee-mark" style={{ color: logo.color }}>{LOGO_MARKS[logo.id]}</span>
-                <span className="lp-marquee-name">{logo.name}</span>
+                <span className="lp-marquee-mark">{LOGO_MARKS[logo.id]}</span>
+                <span className="lp-marquee-name" style={{ color: logo.color }}>{logo.name}</span>
               </div>
             ))}
           </div>

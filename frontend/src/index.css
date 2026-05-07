@@ -2961,31 +2961,31 @@ img { object-fit: cover; }
 .lp-marquee-section {
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
-  padding: var(--space-10) 0;
+  padding: var(--space-12) 0;
   background: var(--bg-card);
   overflow: hidden;
 }
 .lp-marquee-label {
   text-align: center;
   font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   color: var(--text-dim);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 .lp-marquee-track {
   display: flex;
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 10%, black 90%, transparent 100%);
 }
 .lp-marquee-row {
   display: flex;
-  gap: 56px;
-  animation: lp-marquee 40s linear infinite;
+  gap: 52px;
+  animation: lp-marquee 38s linear infinite;
   flex-shrink: 0;
-  padding-right: 56px;
+  padding-right: 52px;
 }
 .lp-marquee-row:hover {
   animation-play-state: paused;
@@ -2998,23 +2998,26 @@ img { object-fit: cover; }
 .lp-marquee-logo {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   white-space: nowrap;
-  color: var(--text-dim);
-  filter: grayscale(1);
-  opacity: 0.45;
-  transition: opacity 0.35s ease, filter 0.35s ease;
+  opacity: 0.8;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   cursor: default;
 }
 .lp-marquee-logo:hover {
-  filter: grayscale(0);
-  opacity: 0.9;
+  opacity: 1;
+  transform: scale(1.06);
 }
 .lp-marquee-mark {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  padding: 3px;
 }
 .lp-marquee-name {
   font-family: var(--font-display);
@@ -3024,17 +3027,22 @@ img { object-fit: cover; }
 }
 /* Theme-specific trust logos */
 [data-theme="light"] .lp-marquee-logo {
-  color: var(--text-muted);
-  opacity: 0.38;
+  opacity: 0.85;
 }
 [data-theme="light"] .lp-marquee-logo:hover {
-  opacity: 0.8;
+  opacity: 1;
+}
+[data-theme="light"] .lp-marquee-mark {
+  background: rgba(0, 0, 0, 0.04);
 }
 [data-theme="ocean"] .lp-marquee-logo {
-  opacity: 0.4;
+  opacity: 0.78;
 }
 [data-theme="ocean"] .lp-marquee-logo:hover {
-  opacity: 0.85;
+  opacity: 1;
+}
+[data-theme="ocean"] .lp-marquee-mark {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* ── Section ──────────────────────────────────────────────── */
