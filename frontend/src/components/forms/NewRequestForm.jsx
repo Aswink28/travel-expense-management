@@ -42,13 +42,6 @@ export default function NewRequestForm({ onSuccess }) {
           : `Your request will be sent to all ${approverRoles.length} approver${approverRoles.length === 1 ? '' : 's'} simultaneously. Every one of them must approve before the hierarchy lane is complete. Order does not matter.`)
       : `Approvers act in the order shown below. Each step waits for the previous one — only the next-in-line approver sees an action button until they decide.`
 
-  // Multi-passenger eligibility — controlled by the tier's `allow_extra_passenger`
-  // flag. When the flag is not present (legacy data / no tier assigned), fall
-  // back to the original role-based check so existing installs keep working.
-  const canAddPassenger = tierPolicy?.allow_extra_passenger !== undefined
-    ? !!tierPolicy.allow_extra_passenger
-    : (user?.role !== 'Employee' && (user?.designation || '').toLowerCase() !== 'tech lead')
-
   // ----- Form State -----
   // Primary contact is sourced from the requester's profile and is read-only —
   // employees raise requests for themselves, so the contact is always them.
@@ -70,6 +63,13 @@ export default function NewRequestForm({ onSuccess }) {
   // and the *_classes / *_types arrays restrict the class/type dropdowns within each
   // mode. Falls back to "everything allowed" if the policy hasn't loaded.
   const tierPolicy = user?.tier_policy || null
+
+  // Multi-passenger eligibility — controlled by the tier's `allow_extra_passenger`
+  // flag. When the flag is not present (legacy data / no tier assigned), fall
+  // back to the original role-based check so existing installs keep working.
+  const canAddPassenger = tierPolicy?.allow_extra_passenger !== undefined
+    ? !!tierPolicy.allow_extra_passenger
+    : (user?.role !== 'Employee' && (user?.designation || '').toLowerCase() !== 'tech lead')
   const modeAllowed = (mode) => {
     if (!tierPolicy?.allowed_modes) return true
     return !!tierPolicy.allowed_modes[mode]
