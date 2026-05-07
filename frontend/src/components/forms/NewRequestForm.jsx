@@ -64,12 +64,10 @@ export default function NewRequestForm({ onSuccess }) {
   // mode. Falls back to "everything allowed" if the policy hasn't loaded.
   const tierPolicy = user?.tier_policy || null
 
-  // Multi-passenger eligibility — controlled by the tier's `allow_extra_passenger`
-  // flag. When the flag is not present (legacy data / no tier assigned), fall
-  // back to the original role-based check so existing installs keep working.
-  const canAddPassenger = tierPolicy?.allow_extra_passenger !== undefined
-    ? !!tierPolicy.allow_extra_passenger
-    : (user?.role !== 'Employee' && (user?.designation || '').toLowerCase() !== 'tech lead')
+  // Multi-passenger eligibility — strictly controlled by the tier's
+  // `allow_extra_passenger` flag. If no tier is assigned or the flag is absent,
+  // default to false (passengers not allowed) so the feature is opt-in only.
+  const canAddPassenger = !!tierPolicy?.allow_extra_passenger
   const modeAllowed = (mode) => {
     if (!tierPolicy?.allowed_modes) return true
     return !!tierPolicy.allowed_modes[mode]

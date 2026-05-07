@@ -338,10 +338,9 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success:false, message:`${distInfo.dist_type} distance route requires ${distInfo.required_mode}. You selected ${travel_mode}.` })
     }
 
-    // Tier eligibility — gate travel_mode against the user's tier policy. Empty array
-    // for the relevant column means the mode is BLOCKED for this tier.
+    // Tier eligibility — gate travel_mode and extra passengers against the user's tier.
     const { rows: tierRows } = await client.query(
-      `SELECT flight_classes, train_classes, bus_types, hotel_types
+      `SELECT flight_classes, train_classes, bus_types, hotel_types, allow_extra_passenger
          FROM tiers WHERE id = $1`,
       [u.tier_id]
     )
@@ -358,6 +357,23 @@ router.post('/', async (req, res, next) => {
         return res.status(403).json({
           success:false,
           message:`Travel mode "${travel_mode}" is not allowed for your tier. Allowed: ${Object.entries(allowedByMode).filter(([,v])=>v).map(([k])=>k).join(', ') || 'none'}.`,
+        })
+      }
+      // Block extra passengers when the tier doesn't allow them
+      const paxList = Array.isArray(passengers) ? passengers : []
+      if (paxList.length > 0 && !tp.allow_extra_passenger) {
+        return res.status(403).json({
+          success: false,
+          message: 'Extra passengers are not allowed for your tier.',
+        })
+      }
+    } else {
+      // No tier assigned — block extra passengers by default
+      const paxList = Array.isArray(passengers) ? passengers : []
+      if (paxList.length > 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Extra passengers are not allowed (no tier assigned).',
         })
       }
     }
