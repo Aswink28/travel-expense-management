@@ -1,41 +1,48 @@
-import { useState, useEffect, useMemo } from 'react'
-import { AuthProvider, useAuth, hasPermission } from './context/AuthContext'
-import { ThemeProvider } from './context/ThemeContext'
-import LandingPage    from './components/shared/LandingPage'
-import LoginPage      from './components/shared/LoginPage'
-import Sidebar        from './components/shared/Sidebar'
-import { Spinner }    from './components/shared/UI'
-import Dashboard      from './components/dashboard/Dashboard'
-import WalletPage     from './components/dashboard/WalletPage'
-import NewRequestForm from './components/forms/NewRequestForm'
-import RequestsList   from './components/forms/RequestsList'
-import ApprovalsQueue from './components/forms/ApprovalsQueue'
-import BookingPanel from './components/admin/BookingPanel'
-import AdHocBookingPanel from './components/admin/AdHocBookingPanel'
-import AdminBookingsView from './components/admin/AdminBookingsView'
-import SelfBookingPanel from './components/booking/SelfBookingPanel'
-import MyTicketsPage    from './components/booking/MyTicketsPage'
-import TierConfig             from './components/admin/TierConfig'
-import DesignationManagement from './components/admin/DesignationManagement'
-import ApproverAuditLog       from './components/admin/ApproverAuditLog'
-import EmployeeManagement from './components/admin/EmployeeManagement'
-import RoleManagement     from './components/admin/RoleManagement'
-import BulkEmployeeUpload from './components/admin/BulkEmployeeUpload'
-import AdminUsers         from './components/admin/AdminUsers'
-import TransactionsPage   from './components/dashboard/TransactionsPage'
-import { requestsAPI } from './services/api'
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { AuthProvider, useAuth, hasPermission } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import LandingPage from "./components/shared/LandingPage";
+import LoginPage from "./components/shared/LoginPage";
+import Sidebar from "./components/shared/Sidebar";
+import { Spinner } from "./components/shared/UI";
+import Dashboard from "./components/dashboard/Dashboard";
+import WalletPage from "./components/dashboard/WalletPage";
+import NewRequestForm from "./components/forms/NewRequestForm";
+import RequestsList from "./components/forms/RequestsList";
+import ApprovalsQueue from "./components/forms/ApprovalsQueue";
+import BookingPanel from "./components/admin/BookingPanel";
+import AdHocBookingPanel from "./components/admin/AdHocBookingPanel";
+import AdminBookingsView from "./components/admin/AdminBookingsView";
+import SelfBookingPanel from "./components/booking/SelfBookingPanel";
+import MyTicketsPage from "./components/booking/MyTicketsPage";
+import TierConfig from "./components/admin/TierConfig";
+import DesignationManagement from "./components/admin/DesignationManagement";
+import ApproverAuditLog from "./components/admin/ApproverAuditLog";
+import EmployeeManagement from "./components/admin/EmployeeManagement";
+import RoleManagement from "./components/admin/RoleManagement";
+import BulkEmployeeUpload from "./components/admin/BulkEmployeeUpload";
+import AdminUsers from "./components/admin/AdminUsers";
+import AdminCreateRequest from "./components/admin/AdminCreateRequest";
+import TransactionsPage from "./components/dashboard/TransactionsPage";
+import { requestsAPI } from "./services/api";
 
 function WelcomeBanner() {
-  const { user } = useAuth()
-  const hour = new Date().getHours()
-  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const { user } = useAuth();
+  const hour = new Date().getHours();
+  const greet =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const msgs = {
-    'Employee':         'Submit requests, track wallet balance, and download tickets from the dashboard.',
-    'Request Approver': 'Approve travel requests at your tier in the chain. Both hierarchy and Finance lanes must complete before wallet loads.',
-    'Finance':       'You set the final approved amounts. Wallet is credited after your approval.',
-    'Booking Admin': 'Book travel and hotels using employee wallet. Upload tickets to their portal.',
-    'Super Admin':   'Full access. Your approval covers both hierarchy and Finance lanes simultaneously.',
-  }
+    Employee:
+      "Submit requests, track wallet balance, and download tickets from the dashboard.",
+    "Request Approver":
+      "Approve travel requests at your tier in the chain. Both hierarchy and Finance lanes must complete before wallet loads.",
+    Finance:
+      "You set the final approved amounts. Wallet is credited after your approval.",
+    "Booking Admin":
+      "Book travel and hotels using employee wallet. Upload tickets to their portal.",
+    "Super Admin":
+      "Full access. Your approval covers both hierarchy and Finance lanes simultaneously.",
+  };
   return (
     <div
       className="welcome-banner"
@@ -43,18 +50,24 @@ function WelcomeBanner() {
     >
       <div>
         <div className="welcome-greeting">
-          {greet}, <span style={{ color: user.color }}>{user.name.split(' ')[0]}</span> 👋
+          {greet},{" "}
+          <span style={{ color: user.color }}>{user.name.split(" ")[0]}</span>{" "}
+          👋
         </div>
         <div className="welcome-sub">{msgs[user.role]}</div>
       </div>
       <div
         className="welcome-badge"
-        style={{ color: user.color, background: `${user.color}12`, borderColor: `${user.color}25` }}
+        style={{
+          color: user.color,
+          background: `${user.color}12`,
+          borderColor: `${user.color}25`,
+        }}
       >
         {user.empId} · {user.dept}
       </div>
     </div>
-  )
+  );
 }
 
 // ── Permission-gated page rendering ────────────────────────────
@@ -67,123 +80,175 @@ function WelcomeBanner() {
 // my-wallet) bypass the gate so existing employee flows keep working
 // — admin permission checks only apply to admin-side pages.
 const ADMIN_GATED_PAGES = new Set([
-  'employees', 'roles', 'tiers', 'designations',
-  'audit-log', 'admin-users',
-  'booking-panel', 'booking-history',
-  'bulk-employees',
-])
+  "employees",
+  "roles",
+  "tiers",
+  "designations",
+  "audit-log",
+  "admin-users",
+  "booking-panel",
+  "booking-history",
+  "bulk-employees",
+  "admin-create-request",
+]);
 
 function PageGuard({ tab, children }) {
-  const { user } = useAuth()
-  const requiresGate = ADMIN_GATED_PAGES.has(tab)
-  const allowed = !requiresGate || hasPermission(user, tab, 'view')
-  if (allowed) return children
+  const { user } = useAuth();
+  const requiresGate = ADMIN_GATED_PAGES.has(tab);
+  const allowed = !requiresGate || hasPermission(user, tab, "view");
+  if (allowed) return children;
   return (
-    <div style={{ padding: 'var(--space-12) var(--space-6)', textAlign: 'center', maxWidth: 540, margin: '0 auto' }}>
-      <div style={{
-        fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
-        color: 'var(--text-danger)',
-        background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
-        border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
-        padding: '4px 12px', borderRadius: 999, display: 'inline-block', marginBottom: 16,
-      }}>
+    <div
+      style={{
+        padding: "var(--space-12) var(--space-6)",
+        textAlign: "center",
+        maxWidth: 540,
+        margin: "0 auto",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+          color: "var(--text-danger)",
+          background: "color-mix(in srgb, var(--danger) 14%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--danger) 30%, transparent)",
+          padding: "4px 12px",
+          borderRadius: 999,
+          display: "inline-block",
+          marginBottom: 16,
+        }}
+      >
         403 · Permission denied
       </div>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
+      <h2
+        style={{
+          fontSize: 22,
+          fontWeight: 800,
+          color: "var(--text-primary)",
+          marginBottom: 8,
+        }}
+      >
         You don't have access to this page
       </h2>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.55 }}>
-        Your role does not include view permission for <code style={{ background:'var(--bg-card-deep)', padding:'2px 6px', borderRadius:4 }}>{tab}</code>.
-        If you believe this is wrong, ask a Super Admin to review the permission matrix on your account.
+      <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.55 }}>
+        Your role does not include view permission for{" "}
+        <code
+          style={{
+            background: "var(--bg-card-deep)",
+            padding: "2px 6px",
+            borderRadius: 4,
+          }}
+        >
+          {tab}
+        </code>
+        . If you believe this is wrong, ask a Super Admin to review the
+        permission matrix on your account.
       </p>
     </div>
-  )
+  );
 }
 
 function InnerApp() {
-  const { user } = useAuth()
-  const [tab,          setTab]          = useState('dashboard')
-  const [pendingCount, setPendingCount] = useState(0)
+  const { user } = useAuth();
+  const [tab, setTab] = useState("dashboard");
+  const [pendingCount, setPendingCount] = useState(0);
 
   // If the active tab disappears from user.pages after a permission change
   // (rare — usually happens when an admin edits another admin's permissions
   // and that admin reloads), fall back to dashboard so the UI never gets
   // stuck rendering a 403 they can't navigate away from.
   const visibleIds = useMemo(
-    () => new Set((user?.pages || []).filter(p => p.can_view !== false).map(p => p.id)),
-    [user?.pages]
-  )
+    () =>
+      new Set(
+        (user?.pages || [])
+          .filter((p) => p.can_view !== false)
+          .map((p) => p.id),
+      ),
+    [user?.pages],
+  );
   useEffect(() => {
-    if (ADMIN_GATED_PAGES.has(tab) && !visibleIds.has(tab)) setTab('dashboard')
-  }, [tab, visibleIds])
+    if (ADMIN_GATED_PAGES.has(tab) && !visibleIds.has(tab)) setTab("dashboard");
+  }, [tab, visibleIds]);
 
-  useEffect(() => {
-    if (['Request Approver','Finance','Super Admin'].includes(user.role)) {
-      requestsAPI.queue().then(d => setPendingCount(d.count||0)).catch(()=>{})
+  // Refresh sidebar pending-approval badge count
+  const refreshPendingCount = useCallback(() => {
+    if (["Request Approver", "Finance", "Super Admin"].includes(user.role)) {
+      requestsAPI
+        .queue()
+        .then((d) => setPendingCount(d.count || 0))
+        .catch(() => {});
     }
-    const interval = setInterval(() => {
-      if (['Request Approver','Finance','Super Admin'].includes(user.role)) {
-        requestsAPI.queue().then(d => setPendingCount(d.count||0)).catch(()=>{})
-      }
-    }, 30000) // refresh every 30s
-    return () => clearInterval(interval)
-  }, [user.role, tab])
+  }, [user.role]);
 
-  function onNewRequest()  { setTab('new-request') }
-  function afterNewReq()   { setTab('my-requests') }
+  useEffect(() => {
+    refreshPendingCount();
+    const interval = setInterval(refreshPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, [refreshPendingCount, tab]);
+
+  function onNewRequest() {
+    setTab("new-request");
+  }
+  function afterNewReq() {
+    setTab("my-requests");
+  }
 
   const pages = {
-    'dashboard':      <Dashboard setTab={setTab} />,
-    'my-requests':    <RequestsList onNewRequest={onNewRequest} />,
-    'new-request':    <NewRequestForm onSuccess={afterNewReq} />,
-    'approvals':      <ApprovalsQueue />,
-    'my-wallet':      <WalletPage />,
-    'booking-panel':  <BookingPanel showHistory={false} />,
-    'ad-hoc-booking': <AdHocBookingPanel />,
-    'admin-bookings-view': <AdminBookingsView />,
-    'employees':      <EmployeeManagement setTab={setTab} />,
-    'bulk-employees': <BulkEmployeeUpload />,
-    'roles':          <RoleManagement />,
-    'tiers':          <TierConfig />,
-    'designations':   <DesignationManagement />,
-    'audit-log':      <ApproverAuditLog />,
-    'admin-users':    <AdminUsers />,
-    'book':           <SelfBookingPanel />,
-    'my-tickets':     <MyTicketsPage />,
-    'transactions':   <TransactionsPage />,
-  }
+    dashboard: <Dashboard setTab={setTab} />,
+    "my-requests": <RequestsList onNewRequest={onNewRequest} />,
+    "new-request": <NewRequestForm onSuccess={afterNewReq} />,
+    approvals: <ApprovalsQueue onAction={refreshPendingCount} />,
+    "my-wallet": <WalletPage />,
+    "booking-panel": <BookingPanel showHistory={false} />,
+    "ad-hoc-booking": <AdHocBookingPanel />,
+    "admin-bookings-view": <AdminBookingsView />,
+    employees: <EmployeeManagement setTab={setTab} />,
+    "bulk-employees": <BulkEmployeeUpload />,
+    roles: <RoleManagement />,
+    tiers: <TierConfig />,
+    designations: <DesignationManagement />,
+    "audit-log": <ApproverAuditLog />,
+    "admin-users": <AdminUsers />,
+    "admin-create-request": <AdminCreateRequest />,
+    book: <SelfBookingPanel />,
+    "my-tickets": <MyTicketsPage />,
+    transactions: <TransactionsPage />,
+  };
 
   return (
     <div className="app-shell">
       <Sidebar active={tab} setActive={setTab} pendingCount={pendingCount} />
       <main className="app-main">
         <WelcomeBanner />
-        <PageGuard tab={tab}>
-          {pages[tab] || pages['dashboard']}
-        </PageGuard>
+        <PageGuard tab={tab}>{pages[tab] || pages["dashboard"]}</PageGuard>
       </main>
     </div>
-  )
+  );
 }
 
 function AppRoot() {
-  const { user, loading } = useAuth()
+  const { user, loading } = useAuth();
   // Public flow: landing → login → app. `view` only matters when unauthed.
-  const [view, setView] = useState('landing') // 'landing' | 'login'
+  const [view, setView] = useState("landing"); // 'landing' | 'login'
 
-  if (loading) return (
-    <div className="app-loading">
-      <div className="app-loading-inner">
-        <div className="app-loading-brand">
-          Moiter <span className="login-gradient-text">Workz</span>
+  if (loading)
+    return (
+      <div className="app-loading">
+        <div className="app-loading-inner">
+          <div className="app-loading-brand">
+            Moiter <span className="login-gradient-text">Workz</span>
+          </div>
+          <Spinner size={32} />
         </div>
-        <Spinner size={32} />
       </div>
-    </div>
-  )
-  if (user) return <InnerApp />
-  if (view === 'login') return <LoginPage />
-  return <LandingPage onSignIn={() => setView('login')} />
+    );
+  if (user) return <InnerApp />;
+  if (view === "login") return <LoginPage />;
+  return <LandingPage onSignIn={() => setView("login")} />;
 }
 
 export default function App() {
@@ -193,5 +258,5 @@ export default function App() {
         <AppRoot />
       </AuthProvider>
     </ThemeProvider>
-  )
+  );
 }

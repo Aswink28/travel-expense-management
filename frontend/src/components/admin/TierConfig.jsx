@@ -276,7 +276,7 @@ export default function TierConfig() {
           <TierForm data={tierModal.data}
             errors={tierErrors}
             activeRoleNames={activeRoleNames}
-            setData={d => setTierModal(m => ({ ...m, data: d }))} />
+            setData={d => setTierModal(m => ({ ...m, data: typeof d === 'function' ? d(m.data) : d }))} />
           <div style={{ display:'flex', justifyContent:'flex-end', gap: 10, marginTop: 14 }}>
             <Button variant="ghost" onClick={() => setTierModal(null)} disabled={saving}>Cancel</Button>
             <Button onClick={saveTier} disabled={saving}>{saving ? 'Saving…' : (tierModal.mode === 'create' ? 'Create Tier' : 'Save')}</Button>
@@ -320,10 +320,12 @@ function InfoCell({ label, value }) {
 }
 
 function TierForm({ data, setData, errors, activeRoleNames }) {
-  function field(k, v) { setData({ ...data, [k]: v }) }
+  function field(k, v) { setData(prev => ({ ...prev, [k]: v })) }
   function toggleFrom(listKey, value) {
-    const list = Array.isArray(data[listKey]) ? data[listKey] : []
-    field(listKey, list.includes(value) ? list.filter(x => x !== value) : [...list, value])
+    setData(prev => {
+      const list = Array.isArray(prev[listKey]) ? prev[listKey] : []
+      return { ...prev, [listKey]: list.includes(value) ? list.filter(x => x !== value) : [...list, value] }
+    })
   }
 
   return (

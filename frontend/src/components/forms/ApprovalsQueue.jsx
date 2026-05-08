@@ -6,7 +6,7 @@ import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
 
-export default function ApprovalsQueue() {
+export default function ApprovalsQueue({ onAction }) {
   const { user } = useAuth()
   const [queue,   setQueue]   = useState([])
   const [history, setHistory] = useState([])
@@ -17,6 +17,14 @@ export default function ApprovalsQueue() {
   const [acting,  setActing]  = useState(false)
   const [error,   setError]   = useState('')
   const [walletWarning, setWalletWarning] = useState(null)
+  const [toast,   setToast]   = useState(null) // { type:'success'|'error', message }
+
+  // Auto-dismiss toast after 4 seconds
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -39,6 +47,8 @@ export default function ApprovalsQueue() {
 
   async function doAction(action) {
     if (action === 'rejected' && !note.trim()) { setError('Rejection note is required'); return }
+    const requestName = modal.user_name
+    const requestId   = modal.id
     try {
       setActing(true); setError('')
       const result = await requestsAPI.action(modal.id, {
@@ -47,12 +57,30 @@ export default function ApprovalsQueue() {
         approved_hotel_cost:  amounts.hotel  ? Number(amounts.hotel)  : undefined,
         approved_allowance:   amounts.allowance ? Number(amounts.allowance) : undefined,
       })
+      // Optimistically remove the actioned request from the queue immediately
+      setQueue(prev => prev.filter(r => r.id !== requestId))
       setModal(null); setNote('')
+      // Show success toast
+      setToast({
+        type: 'success',
+        message: action === 'approved'
+          ? `Request by ${requestName} has been approved successfully`
+          : `Request by ${requestName} has been rejected`,
+      })
       if (result.walletWarning) {
         setWalletWarning(result.walletWarning)
       }
+      // Notify parent to refresh sidebar badge count immediately
+      onAction?.()
+      // Full reload to sync history table and catch any server-side state changes
       load()
-    } catch(e) { setError(e.message) }
+    } catch(e) {
+      setError(e.message)
+      setToast({
+        type: 'error',
+        message: `Failed to ${action === 'approved' ? 'approve' : 'reject'} request — ${e.message}`,
+      })
+    }
     finally { setActing(false) }
   }
 
@@ -62,7 +90,41 @@ export default function ApprovalsQueue() {
     <div className="fade-up">
       <PageTitle title={user.role === 'Finance' ? 'Finance Approvals' : 'Approval Queue'} sub={`${queue.length} requests need your action`} />
 
-      {error && <Alert type="error">{error}</Alert>}
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 9999, minWidth: 340, maxWidth: 480,
+          padding: '14px 18px', borderRadius: 12,
+          background: toast.type === 'success' ? 'var(--bg-card)' : 'var(--bg-card)',
+          border: `1px solid ${toast.type === 'success' ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'color-mix(in srgb, var(--danger) 30%, transparent)'}`,
+          boxShadow: `0 8px 32px color-mix(in srgb, ${toast.type === 'success' ? 'var(--success)' : 'var(--danger)'} 10%, transparent), 0 2px 8px rgba(0,0,0,.12)`,
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          animation: 'fadeUp .3s ease',
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+            background: toast.type === 'success'
+              ? 'color-mix(in srgb, var(--success) 12%, transparent)'
+              : 'color-mix(in srgb, var(--danger) 12%, transparent)',
+            color: toast.type === 'success' ? 'var(--success)' : 'var(--danger)',
+          }}>
+            {toast.type === 'success' ? '\u2713' : '\u2717'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: toast.type === 'success' ? 'var(--text-success)' : 'var(--text-danger)', marginBottom: 2 }}>
+              {toast.type === 'success' ? 'Action Completed' : 'Action Failed'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45 }}>{toast.message}</div>
+          </div>
+          <button onClick={() => setToast(null)} style={{
+            background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer',
+            fontSize: 16, padding: 0, lineHeight: 1, flexShrink: 0, marginTop: 2,
+          }}>&times;</button>
+        </div>
+      )}
+
+      {error && !modal && <Alert type="error">{error}</Alert>}
 
       {/* Role authority card */}
       <Card style={{ padding:16, marginBottom:22 }}>

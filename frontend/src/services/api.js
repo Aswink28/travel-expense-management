@@ -200,6 +200,7 @@ export const tiersAPI = {
 export const employeesAPI = {
   list:           ()           => api.get('/employees'),
   get:            id           => api.get(`/employees/${id}`),
+  lookup:         empId        => api.get(`/employees/lookup?emp_id=${encodeURIComponent(empId)}`),
   create:         body         => api.post('/employees', body),
   update:         (id, body)   => api.put(`/employees/${id}`, body),
   auditLog:       ()           => api.get('/employees/audit-log'),

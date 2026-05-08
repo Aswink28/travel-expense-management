@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { walletAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Card, PageTitle, Alert, Spinner, Button } from '../shared/UI'
-import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
+import { fmtDate, fmtTime } from '../../utils/formatDate'
+
+const fmtCurrency = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const TYPE_COLORS = { CREDIT: 'var(--success)', DEBIT: 'var(--danger)', LOAD: 'var(--accent)', REVERSAL: 'var(--warning)', REFUND: 'var(--purple)' }
 const PER_PAGE = 15
@@ -177,13 +179,25 @@ export default function TransactionsPage() {
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Total Transactions</div>
           <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: accent }}>{rawData.length}</div>
         </Card>
-        <Card style={{ padding: 18 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Total Credited</div>
-          <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-success)' }}>+{fmtDateTime(totalCredit)}</div>
+        <Card style={{ padding: '18px 18px 16px', borderTop: '3px solid var(--success)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--success) 12%, transparent)', color: 'var(--success)', fontSize: 12 }}>&#8593;</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>Total Credited</span>
+          </div>
+          <div className="syne" style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-success)', letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: 16, fontWeight: 600, marginRight: 2, verticalAlign: 'top', lineHeight: '32px' }}>&#8377;</span>
+            {fmtCurrency(totalCredit)}
+          </div>
         </Card>
-        <Card style={{ padding: 18 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Total Debited</div>
-          <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-danger)' }}>-{fmtDateTime(totalDebit)}</div>
+        <Card style={{ padding: '18px 18px 16px', borderTop: '3px solid var(--danger)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ width: 22, height: 22, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)', fontSize: 12 }}>&#8595;</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>Total Debited</span>
+          </div>
+          <div className="syne" style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-danger)', letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: 16, fontWeight: 600, marginRight: 2, verticalAlign: 'top', lineHeight: '32px' }}>&#8377;</span>
+            {fmtCurrency(totalDebit)}
+          </div>
         </Card>
       </div>
 
@@ -267,11 +281,11 @@ export default function TransactionsPage() {
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color }}>
-                        {t.type === 'DEBIT' ? '-' : '+'}{fmtDateTime(t.amount)}
+                        {t.type === 'DEBIT' ? '-' : '+'}₹{fmtCurrency(t.amount)}
                       </span>
                       {t.fee > 0 && (
                         <div style={{ fontSize: 10, color: 'var(--warning)', marginTop: 2 }}>
-                          fee ₹{fmtDateTime(t.fee)}
+                          fee ₹{fmtCurrency(t.fee)}
                         </div>
                       )}
                     </td>
@@ -331,7 +345,7 @@ export default function TransactionsPage() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 11, color: fee > 0 ? 'var(--warning)' : 'var(--text-dim)' }}>
-                      {fee > 0 ? `₹${fmtDateTime(fee)}` : '-'}
+                      {fee > 0 ? `₹${fmtCurrency(fee)}` : '-'}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'monospace' }}>{t.txn_ref_number || '-'}</div>

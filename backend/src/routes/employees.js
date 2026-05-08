@@ -103,6 +103,85 @@ router.get('/audit-log', async (req, res, next) => {
   } catch (e) { next(e) }
 })
 
+// ── GET /api/employees/lookup?emp_id=EMP001 ──────────────────
+// Admin "Create On Behalf" — search an employee by their human-readable
+// emp_id and return full profile + tier policy + approver chain so the
+// admin form can pre-fill everything.
+router.get('/lookup', requirePermission('admin-create-request', 'view'), async (req, res, next) => {
+  try {
+    const empId = (req.query.emp_id || '').trim()
+    if (!empId) return res.status(400).json({ success: false, message: 'emp_id query parameter is required' })
+
+    const { rows } = await pool.query(`
+      SELECT u.id, u.emp_id, u.name, u.email, u.role, u.department,
+             u.avatar, u.color, u.reporting_to, u.is_active,
+             u.mobile_number, u.designation, u.tier_id,
+             u.approver_roles, u.approval_type, u.approval_flow,
+             t.name AS tier_name, t.rank AS tier_rank,
+             w.balance AS wallet_balance
+      FROM users u
+      LEFT JOIN wallets w ON w.user_id = u.id
+      LEFT JOIN tiers t ON t.id = u.tier_id
+      WHERE LOWER(u.emp_id) = LOWER($1)
+    `, [empId])
+
+    if (!rows.length) return res.status(404).json({ success: false, message: `Employee with ID "${empId}" not found` })
+    const emp = rows[0]
+    if (!emp.is_active) return res.status(400).json({ success: false, message: `Employee ${empId} is inactive` })
+
+    // Fetch tier policy
+    let tier_policy = null
+    if (emp.tier_id) {
+      const { rows: tRows } = await pool.query(
+        `SELECT id, name, rank, flight_classes, train_classes, bus_types, hotel_types,
+                budget_limit, intl_budget_limit, max_hotel_per_night, meal_daily_limit,
+                cab_daily_limit, advance_booking_days, intl_flight_class_upgrade,
+                approval_flow, approval_type, allow_extra_passenger
+           FROM tiers WHERE id = $1`,
+        [emp.tier_id]
+      )
+      if (tRows.length) {
+        const tr = tRows[0]
+        const arr = (a) => Array.isArray(a) ? a : []
+        tier_policy = {
+          tier_id: tr.id, tier_name: tr.name, tier_rank: tr.rank,
+          flight_classes: arr(tr.flight_classes), train_classes: arr(tr.train_classes),
+          bus_types: arr(tr.bus_types), hotel_types: arr(tr.hotel_types),
+          allowed_modes: {
+            Flight: arr(tr.flight_classes).length > 0, Train: arr(tr.train_classes).length > 0,
+            Bus: arr(tr.bus_types).length > 0, Hotel: arr(tr.hotel_types).length > 0,
+          },
+          budget_limit: tr.budget_limit, intl_budget_limit: tr.intl_budget_limit,
+          max_hotel_per_night: tr.max_hotel_per_night, meal_daily_limit: tr.meal_daily_limit,
+          cab_daily_limit: tr.cab_daily_limit, advance_booking_days: tr.advance_booking_days,
+          intl_flight_class_upgrade: tr.intl_flight_class_upgrade,
+          allow_extra_passenger: !!tr.allow_extra_passenger,
+          approval_flow: tr.approval_flow || 'SEQUENTIAL',
+          approval_type: tr.approval_type || 'ALL',
+        }
+      }
+    }
+
+    // Fetch approver chain
+    const approver_chain = await fetchApproverChain(pool, emp.id)
+
+    // Effective approval config
+    const effective_approval_flow = emp.approval_flow || tier_policy?.approval_flow || 'SEQUENTIAL'
+    const effective_approval_type = emp.approval_type || tier_policy?.approval_type || 'ALL'
+
+    res.json({
+      success: true,
+      data: {
+        ...emp,
+        tier_policy,
+        approver_chain,
+        effective_approval_flow,
+        effective_approval_type,
+      },
+    })
+  } catch (e) { next(e) }
+})
+
 // ── GET /api/employees/:id ───────────────────────────────────
 router.get('/:id', async (req, res, next) => {
   try {

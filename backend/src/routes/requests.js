@@ -1,6 +1,6 @@
 const express = require('express')
 const pool    = require('../config/db')
-const { authenticate, authorise } = require('../middleware')
+const { authenticate, authorise, requirePermission } = require('../middleware')
 const { loadPpiWallet } = require('../services/ppiWallet')
 const router  = express.Router()
 
@@ -252,7 +252,7 @@ router.get('/queue', async (req, res, next) => {
       WHERE tr.status IN ('pending','pending_finance')
         AND (
           (tr.status = 'pending' AND tr.hierarchy_approved = FALSE)
-          OR ($2 = TRUE AND tr.finance_approved = FALSE)
+          OR ($2 = TRUE AND tr.status = 'pending_finance' AND tr.finance_approved = FALSE)
         )
         AND tr.user_id != $1
         AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.request_id=tr.id AND a.approver_id=$1)
@@ -266,11 +266,18 @@ router.get('/queue', async (req, res, next) => {
 
       if (userChain) {
         const step = await nextPendingUserStep(pool, tr.id, userChain)
-        if (!step) continue                                  // chain complete (shouldn't happen with status=pending)
+        if (!step) {
+          // Hierarchy chain fully approved. If Finance hasn't acted yet and the
+          // caller IS Finance, this request belongs in their queue (parallel
+          // budget lane or explicit pending_finance status).
+          if (isFinance && !tr.finance_approved) filtered.push(tr)
+          continue
+        }
         if (isFinance && step.step_designation.toLowerCase() !== 'finance' &&
             !userChain.some(s => s.step_designation.toLowerCase() === 'finance')) {
           // Finance not in this employee's chain → parallel budget lane.
-          filtered.push(tr)
+          // Only surface once every hierarchy step is done.
+          if (tr.hierarchy_approved) filtered.push(tr)
           continue
         }
         // The caller user must match the expected user (primary if active, else backup).
@@ -282,7 +289,8 @@ router.get('/queue', async (req, res, next) => {
       const sequence = await approverSequenceForRequest(pool, tr)
       const sequenceLc = sequence.map(s => s.toLowerCase())
       if (isFinance && !sequenceLc.includes('finance')) {
-        filtered.push(tr)
+        // Parallel budget lane — only surface once hierarchy is fully approved.
+        if (tr.hierarchy_approved) filtered.push(tr)
         continue
       }
       if (!callerDesignationLc) continue
@@ -318,11 +326,45 @@ router.post('/', async (req, res, next) => {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    const u = req.user
+    const caller = req.user
     const {
       from_location, to_location, travel_mode, booking_type, start_date, end_date, purpose, notes, estimated_travel_cost, estimated_hotel_cost,
-      trip_name, trip_type, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers
+      trip_name, trip_type, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers,
+      on_behalf_of
     } = req.body
+
+    // ── On-behalf-of: resolve the target employee ───────────
+    let u = caller               // default: self-created
+    let createdBy = null
+    let createdByName = null
+
+    if (on_behalf_of) {
+      // Verify the caller has admin-create-request / create permission
+      const { rows: permRows } = await client.query(
+        `SELECT can_create AS allowed FROM role_pages WHERE role_name = $1 AND page_id = 'admin-create-request' LIMIT 1`,
+        [caller.role]
+      )
+      if (!permRows.length || !permRows[0].allowed) {
+        await client.query('ROLLBACK')
+        return res.status(403).json({ success: false, message: 'You do not have permission to create requests on behalf of employees.' })
+      }
+      // Fetch the target employee
+      const { rows: empRows } = await client.query(
+        `SELECT id, emp_id, name, role, department, tier_id, is_active FROM users WHERE id = $1`,
+        [on_behalf_of]
+      )
+      if (!empRows.length) {
+        await client.query('ROLLBACK')
+        return res.status(404).json({ success: false, message: 'Target employee not found.' })
+      }
+      if (!empRows[0].is_active) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ success: false, message: 'Target employee is inactive.' })
+      }
+      u = empRows[0]
+      createdBy = caller.id
+      createdByName = caller.name
+    }
 
     if (!from_location||!to_location||!travel_mode||!booking_type||!start_date||!end_date||!purpose)
       return res.status(400).json({ success:false, message:'from_location, to_location, travel_mode, booking_type, start_date, end_date, purpose are required' })
@@ -338,7 +380,7 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success:false, message:`${distInfo.dist_type} distance route requires ${distInfo.required_mode}. You selected ${travel_mode}.` })
     }
 
-    // Tier eligibility — gate travel_mode and extra passengers against the user's tier.
+    // Tier eligibility — gate travel_mode and extra passengers against the employee's tier.
     const { rows: tierRows } = await client.query(
       `SELECT flight_classes, train_classes, bus_types, hotel_types, allow_extra_passenger
          FROM tiers WHERE id = $1`,
@@ -356,7 +398,7 @@ router.post('/', async (req, res, next) => {
       if (Object.prototype.hasOwnProperty.call(allowedByMode, travel_mode) && !allowedByMode[travel_mode]) {
         return res.status(403).json({
           success:false,
-          message:`Travel mode "${travel_mode}" is not allowed for your tier. Allowed: ${Object.entries(allowedByMode).filter(([,v])=>v).map(([k])=>k).join(', ') || 'none'}.`,
+          message:`Travel mode "${travel_mode}" is not allowed for ${on_behalf_of ? 'the employee\'s' : 'your'} tier. Allowed: ${Object.entries(allowedByMode).filter(([,v])=>v).map(([k])=>k).join(', ') || 'none'}.`,
         })
       }
       // Block extra passengers when the tier doesn't allow them
@@ -364,7 +406,7 @@ router.post('/', async (req, res, next) => {
       if (paxList.length > 0 && !tp.allow_extra_passenger) {
         return res.status(403).json({
           success: false,
-          message: 'Extra passengers are not allowed for your tier.',
+          message: `Extra passengers are not allowed for ${on_behalf_of ? 'the employee\'s' : 'your'} tier.`,
         })
       }
     } else {
@@ -389,25 +431,27 @@ router.post('/', async (req, res, next) => {
     const total      = travelCost + hotelCost + allowance
 
     const id = 'TR-' + Date.now().toString().slice(-7)
-    
+
     await client.query(`
       INSERT INTO travel_requests (
         id,user_id,user_name,user_role,department,from_location,to_location,distance_type,required_mode,travel_mode,booking_type,start_date,end_date,purpose,notes,
         estimated_travel_cost,estimated_hotel_cost,estimated_total,status,
-        trip_name, trip_type, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers
+        trip_name, trip_type, project_name, contact_name, contact_mobile, contact_email, itinerary, passengers,
+        created_by, created_by_name
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'pending', $19,$20,$21,$22,$23,$24,$25,$26)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'pending', $19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
     `, [
       id,u.id,u.name,u.role,u.department,from_location,to_location,distInfo.dist_type,distInfo.required_mode||null,travel_mode,booking_type,start_date,end_date,purpose,notes||null,
       travelCost,hotelCost,total,
       trip_name||"Default Trip", trip_type||"Domestic", project_name||null, contact_name||u.name, contact_mobile||null, contact_email||null,
       itinerary ? JSON.stringify(itinerary) : '{}',
-      passengers ? JSON.stringify(passengers) : '[]'
+      passengers ? JSON.stringify(passengers) : '[]',
+      createdBy, createdByName
     ])
 
     await client.query('COMMIT')
     const { rows } = await pool.query('SELECT * FROM travel_requests WHERE id=$1',[id])
-    res.status(201).json({ success:true, message:'Request submitted', data:rows[0] })
+    res.status(201).json({ success:true, message: on_behalf_of ? `Request submitted on behalf of ${u.name}` : 'Request submitted', data:rows[0] })
   } catch(e) { await client.query('ROLLBACK'); next(e) } finally { client.release() }
 })
 
@@ -494,6 +538,11 @@ router.post('/:id/action', async (req, res, next) => {
             })
           }
           if (isFinance && !financeInChain) {
+            // Parallel budget lane — Finance may only act after hierarchy is fully done.
+            if (!tr.hierarchy_approved) {
+              await client.query('ROLLBACK')
+              return res.status(403).json({ success: false, message: 'Hierarchy approvals are not yet complete. Finance can act only after all configured approvers have approved.' })
+            }
             inSequence = false                  // pure budget-lane action; engine still records it below
           } else if (step.expected_user_id !== u.id) {
             await client.query('ROLLBACK')
@@ -519,6 +568,11 @@ router.post('/:id/action', async (req, res, next) => {
               ? `Your designation "${u.designation}" is not configured to approve requests from ${tr.user_name}`
               : `Your account has no designation set, so it can't be matched to an approval step. Update your designation in Employee Management.`,
           })
+        }
+        // Finance not in sequence — parallel budget lane. Block until hierarchy is done.
+        if (!inSequence && isFinance && !tr.hierarchy_approved) {
+          await client.query('ROLLBACK')
+          return res.status(403).json({ success: false, message: 'Hierarchy approvals are not yet complete. Finance can act only after all configured approvers have approved.' })
         }
 
         if (inSequence) {

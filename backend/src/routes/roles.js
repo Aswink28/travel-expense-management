@@ -28,6 +28,7 @@ const ALL_PAGES = [
   { id: 'designations',       label: 'Designations',    icon: '◇',  group: 'Administration', admin_only: true  },
   { id: 'audit-log',          label: 'Approver Audit',  icon: '▤',  group: 'Administration', admin_only: true  },
   { id: 'admin-users',        label: 'Admin Users',     icon: '◈',  group: 'Administration', admin_only: true  },
+  { id: 'admin-create-request', label: 'Create On Behalf', icon: '⊕', group: 'Administration', admin_only: true  },
 ]
 
 // ── GET /api/roles/pages — master list of all pages ──────────
@@ -128,6 +129,7 @@ router.post('/', async (req, res, next) => {
 
     // Insert page assignments — Dashboard is always first, regardless of what the
     // admin selected (or didn't select) in the modal.
+    // New roles get full permissions (can_view/create/edit/delete = true) on every assigned page.
     const dashboardInfo = ALL_PAGES.find(ap => ap.id === 'dashboard') || { label: 'Dashboard', icon: '▦' }
     const otherPages = (pages || []).filter(p => p.page_id !== 'dashboard')
     const orderedPages = [{ page_id: 'dashboard', label: dashboardInfo.label, icon: dashboardInfo.icon }, ...otherPages]
@@ -135,7 +137,8 @@ router.post('/', async (req, res, next) => {
       const p = orderedPages[i]
       const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}
       await client.query(
-        'INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES ($1, $2, $3, $4, $5)',
+        `INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order, can_view, can_create, can_edit, can_delete)
+         VALUES ($1, $2, $3, $4, $5, true, true, true, true)`,
         [roleName, p.page_id, p.label || pageInfo.label || p.page_id, p.icon || pageInfo.icon || '◈', i + 1]
       )
     }
@@ -203,7 +206,14 @@ router.put('/:id', async (req, res, next) => {
     }
 
     // Replace page assignments — Dashboard is always pinned to position 1.
+    // Snapshot existing permissions so they survive the delete-and-reinsert cycle.
     if (pages !== undefined) {
+      const { rows: oldPages } = await client.query(
+        'SELECT page_id, can_view, can_create, can_edit, can_delete FROM role_pages WHERE role_name = $1',
+        [role.name]
+      )
+      const permMap = new Map(oldPages.map(op => [op.page_id, op]))
+
       await client.query('DELETE FROM role_pages WHERE role_name = $1', [role.name])
       const dashboardInfo = ALL_PAGES.find(ap => ap.id === 'dashboard') || { label: 'Dashboard', icon: '▦' }
       const otherPages = pages.filter(p => p.page_id !== 'dashboard')
@@ -211,9 +221,17 @@ router.put('/:id', async (req, res, next) => {
       for (let i = 0; i < orderedPages.length; i++) {
         const p = orderedPages[i]
         const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}
+        const prev = permMap.get(p.page_id)
         await client.query(
-          'INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order) VALUES ($1, $2, $3, $4, $5)',
-          [role.name, p.page_id, p.label || pageInfo.label || p.page_id, p.icon || pageInfo.icon || '◈', i + 1]
+          `INSERT INTO role_pages (role_name, page_id, page_label, page_icon, sort_order, can_view, can_create, can_edit, can_delete)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            role.name, p.page_id, p.label || pageInfo.label || p.page_id, p.icon || pageInfo.icon || '◈', i + 1,
+            prev ? prev.can_view   : true,
+            prev ? prev.can_create : true,
+            prev ? prev.can_edit   : true,
+            prev ? prev.can_delete : true,
+          ]
         )
       }
     }

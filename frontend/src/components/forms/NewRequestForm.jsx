@@ -158,15 +158,17 @@ export default function NewRequestForm({ onSuccess }) {
         errs.push('Hotel: Check-Out must be after Check-In')
     }
 
-    // Passengers — first name + last name required for every row
-    // Train reuses Bus passenger shape (name + age, no passport).
-    const paxList = (activeTab === 'Bus' || activeTab === 'Train') ? busPassengers
-                  : activeTab === 'Hotel' ? hotelPassengers
-                  : passengers
-    paxList.forEach((p, i) => {
-      if (!p.firstname?.trim()) errs.push(`Passenger ${i + 1}: First Name is required`)
-      if (!p.lastname?.trim())  errs.push(`Passenger ${i + 1}: Last Name is required`)
-    })
+    // Passengers — only validate when the tier allows extra passengers.
+    // When disabled, the roster is hidden and an empty array is submitted.
+    if (canAddPassenger) {
+      const paxList = (activeTab === 'Bus' || activeTab === 'Train') ? busPassengers
+                    : activeTab === 'Hotel' ? hotelPassengers
+                    : passengers
+      paxList.forEach((p, i) => {
+        if (!p.firstname?.trim()) errs.push(`Passenger ${i + 1}: First Name is required`)
+        if (!p.lastname?.trim())  errs.push(`Passenger ${i + 1}: Last Name is required`)
+      })
+    }
 
     return errs
   }
@@ -195,9 +197,11 @@ export default function NewRequestForm({ onSuccess }) {
       const end = activeItin.check_out || start
       const purpose = form.trip_name || 'Business Travel'
       // Train reuses Bus passenger shape (name + age, no passport).
-    const paxList = (activeTab === 'Bus' || activeTab === 'Train') ? busPassengers
-                  : activeTab === 'Hotel' ? hotelPassengers
-                  : passengers
+      // When extra passengers are disabled by the tier, send an empty array.
+      const paxList = !canAddPassenger ? []
+                    : (activeTab === 'Bus' || activeTab === 'Train') ? busPassengers
+                    : activeTab === 'Hotel' ? hotelPassengers
+                    : passengers
 
       const payload = {
         from_location: from_loc,
@@ -698,22 +702,18 @@ export default function NewRequestForm({ onSuccess }) {
         </div>
       </div>
 
-      {/* PASSENGER DETAILS TABLE — switches by activeTab */}
+      {/* PASSENGER DETAILS TABLE — switches by activeTab.
+           Hidden entirely when the tier disables extra passengers. */}
+      {canAddPassenger ? (
       <div className="form-card" style={{ ...cardStyle, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={sectionTitleStyle}>Passenger Roster</div>
-          {canAddPassenger ? (
-            <button
-              onClick={(e) => { e.preventDefault(); (activeTab === 'Bus' || activeTab === 'Train') ? addBusPax() : activeTab === 'Hotel' ? addHotelPax() : addPassenger() }}
-              style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}55`, borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
-            >
-              + Add Passenger
-            </button>
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--text-muted, #9090A8)', fontStyle: 'italic' }}>
-              Self-travel only · contact your manager for multi-passenger bookings
-            </span>
-          )}
+          <button
+            onClick={(e) => { e.preventDefault(); (activeTab === 'Bus' || activeTab === 'Train') ? addBusPax() : activeTab === 'Hotel' ? addHotelPax() : addPassenger() }}
+            style={{ background: `${accent}22`, color: accent, border: `1px solid ${accent}55`, borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            + Add Passenger
+          </button>
         </div>
 
         {/* ── FLIGHT passengers ── */}
@@ -813,6 +813,19 @@ export default function NewRequestForm({ onSuccess }) {
           </div>
         )}
       </div>
+      ) : (
+      <div className="form-card" style={{ ...cardStyle, marginBottom: 24, opacity: 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 18 }}>&#128274;</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Passenger Roster Disabled</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              Your tier does not allow extra passengers. Contact your administrator to enable multi-passenger bookings.
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
 
       {error && <Alert type="error" style={{ marginBottom: 24 }}>{error}</Alert>}
 
