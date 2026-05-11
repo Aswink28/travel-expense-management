@@ -692,7 +692,7 @@ export default function EmployeeManagement({ setTab }) {
   const errCount = Object.keys(fieldErrors).length;
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-employees">
       {!showModal && (
         <PageTitle
           title="Employee Management"
@@ -2085,9 +2085,7 @@ export default function EmployeeManagement({ setTab }) {
             )}
 
             {/* Action buttons */}
-            <div
-              style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}
-            >
+            <div className="modal-footer">
               <Button
                 variant="ghost"
                 onClick={() => {

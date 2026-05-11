@@ -120,7 +120,7 @@ export default function RoleManagement() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-roles">
       <PageTitle title="Role Manager" sub="Create roles and assign page access" />
 
       {error && <Alert type="error" style={{ marginBottom: 16 }}>{error}</Alert>}
@@ -354,7 +354,7 @@ export default function RoleManagement() {
               })}
             </div>
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+            <div className="modal-footer">
               <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
               <Button type="submit" disabled={saving}>
                 {saving ? 'Saving...' : editRole ? 'Update Role' : 'Create Role'}

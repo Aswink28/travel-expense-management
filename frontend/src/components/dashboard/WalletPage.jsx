@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { walletAPI, requestsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Card, PageTitle, Button, Modal, Alert, Spinner, Select, Input } from '../shared/UI'
+import { Card, Button, Modal, Alert, Spinner, Select, Input } from '../shared/UI'
 import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const CAT_ICONS = { travel:'✈️', hotel:'🏨', allowance:'🎯', credit:'💳', other:'📋' }
@@ -71,8 +71,13 @@ export default function WalletPage() {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
-      <PageTitle title="My Wallet" sub="Prepaid travel account — all transactions tracked" />
+    <div className="fade-up page-wallet">
+      <div className="page-hero">
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">My Wallet</h1>
+          <p className="page-hero-sub">Prepaid travel account — all transactions tracked</p>
+        </div>
+      </div>
 
       {error   && <Alert type="error">{error}</Alert>}
       {success && <Alert type="success">{success}</Alert>}
@@ -98,7 +103,7 @@ export default function WalletPage() {
       )}
 
       {/* Wallet Balance Card */}
-      <Card style={{ padding:22, marginBottom:16, background:'var(--bg-card-deep, var(--bg-app))', borderColor:'var(--border, var(--border))', position:'relative', overflow:'hidden' }}>
+      <Card className="wallet-hero" style={{ padding:22, marginBottom:16, background:'var(--bg-card-deep, var(--bg-app))', borderColor:'var(--border, var(--border))', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', right:-20, top:-20, width:120, height:120, borderRadius:'50%', background:user.color||'var(--accent)', opacity:.06, pointerEvents:'none' }} />
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
           <div>
@@ -255,7 +260,7 @@ export default function WalletPage() {
 
             {error && <Alert type="error">{error}</Alert>}
 
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+            <div className="modal-footer">
               <Button variant="ghost" onClick={() => { setModal(false); setError('') }}>Cancel</Button>
               <Button type="submit" variant="primary" style={{ background:user.color||'var(--accent)' }} disabled={submitting}>
                 {submitting ? 'Processing...' : 'Deduct from Wallet'}

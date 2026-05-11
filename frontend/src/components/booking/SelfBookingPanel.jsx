@@ -137,7 +137,7 @@ export default function SelfBookingPanel() {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:80 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up" style={{ paddingBottom: 60 }}>
+    <div className="fade-up page-booking" style={{ paddingBottom: 60 }}>
       {/* ── Top Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ fontSize: 24, fontWeight: 700, className: 'syne', color: 'var(--text-primary)' }}>

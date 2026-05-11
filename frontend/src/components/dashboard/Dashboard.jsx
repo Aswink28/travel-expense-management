@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { dashboardAPI, walletAPI } from '../../services/api'
+import { dashboardAPI, walletAPI, requestsAPI, bookingsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Card, StatCard, Alert, Spinner, PageTitle, StatusPill, BookingBadge } from '../shared/UI'
+import { Card, StatCard, Alert, Spinner, StatusPill, BookingBadge } from '../shared/UI'
 import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 /* ──────────────────────────────────────────────────────────────
@@ -36,6 +36,7 @@ const I = {
   block:    <SvgIcon><circle cx="12" cy="12" r="9" /><line x1="5.6" y1="5.6" x2="18.4" y2="18.4" /></SvgIcon>,
   paperclip:<SvgIcon><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></SvgIcon>,
   card:     <SvgIcon><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 11h20" /><path d="M6 16h4" /></SvgIcon>,
+  arrowRight: <SvgIcon size={14}><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></SvgIcon>,
 }
 
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
@@ -47,13 +48,36 @@ export default function Dashboard({ setTab }) {
   const [error,   setError]   = useState('')
   const [ppiBal,  setPpiBal]  = useState(user.ppiWallet || null)
 
+  // Stat-card counts are derived from the same API endpoints the list
+  // pages use so dashboard numbers always match what the user sees on click.
+  const [counts, setCounts] = useState({ total: 0, approved: 0, totalApproved: 0, pending: 0 })
+
   useEffect(() => {
+    const isBk = user.role === 'Booking Admin'
     Promise.all([
       dashboardAPI.summary().then(d => {
         setData(d.data)
         if (d.data?.wallet) updateWallet?.(d.data.wallet)
       }),
       walletAPI.ppiBalance().then(d => { if (d?.data) setPpiBal(d.data) }).catch(() => {}),
+      // Fetch from the real list endpoints for stat-card counts
+      requestsAPI.list().then(d => {
+        const list = d.data || []
+        setCounts(prev => ({
+          ...prev,
+          total: list.length,
+          approved: list.filter(r => r.status === 'approved').length,
+          totalApproved: list.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.approved_total || 0), 0),
+        }))
+      }).catch(() => {}),
+      // Pending count: queue for approvers, bookings/pending for Booking Admin
+      isBk
+        ? bookingsAPI.pending().then(d => {
+            setCounts(prev => ({ ...prev, pending: d.count || (d.data || []).length }))
+          }).catch(() => {})
+        : requestsAPI.queue().then(d => {
+            setCounts(prev => ({ ...prev, pending: d.count || (d.data || []).length }))
+          }).catch(() => {}),
     ])
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -69,7 +93,7 @@ export default function Dashboard({ setTab }) {
   if (error) return <Alert type="error">{error}</Alert>
   if (!data) return null
 
-  const { wallet, stats, pendingForMe, recentTxns, recentRequests, tier, breakdown } = data
+  const { wallet, recentTxns, recentRequests, tier, breakdown } = data
   const isBkAdmin = user.role === 'Booking Admin'
 
   const expBreakdown = {
@@ -80,15 +104,33 @@ export default function Dashboard({ setTab }) {
 
   const walletStatus = (ppiBal?.walletStatus || '').toUpperCase()
   const userColor = user.color || 'var(--accent)'
+  const firstName = (user.name || '').split(' ')[0] || 'User'
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="fade-up">
-      <PageTitle
-        title="Dashboard"
-        sub={fmtDate()}
-      />
+    <div className="dash">
+      {/* ── Hero Welcome Section ─────────────────────── */}
+      <div className="dash-hero">
+        <div className="dash-hero-glow" />
+        <div className="dash-hero-content">
+          <div>
+            <div className="dash-hero-greeting">{greeting}, {firstName}</div>
+            <div className="dash-hero-sub">{fmtDate()} — Here's your travel desk overview</div>
+          </div>
+          <div className="dash-hero-actions">
+            {counts.pending > 0 && !isBkAdmin && (
+              <button className="dash-hero-badge dash-hero-badge--alert" onClick={() => setTab('approvals')}>
+                <span className="dash-hero-badge-count">{counts.pending}</span>
+                <span>Pending approval{counts.pending > 1 ? 's' : ''}</span>
+                <span style={{ display: 'inline-flex' }}>{I.arrowRight}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
-      {/* Wallet suspended/closed warnings — semantic alerts with rich content */}
+      {/* Wallet suspended/closed warnings */}
       {walletStatus === 'SUSPENDED' && (
         <Alert type="warning" className="alert-rich">
           <span className="alert-rich-icon" style={{ display: 'inline-flex' }}>{I.pause}</span>
@@ -108,45 +150,49 @@ export default function Dashboard({ setTab }) {
         </Alert>
       )}
 
-      {/* Top stats row */}
+      {/* ── Stats Grid ───────────────────────────────── */}
       <div className={`dashboard-stats-grid${isBkAdmin ? ' dashboard-stats-grid--3' : ''}`}>
         {!isBkAdmin && (
-          <Card className="card-deep wallet-stat-card" onClick={() => setTab('my-wallet')}>
-            <div className="wallet-stat-card-glow" style={{ background: userColor }} />
-            <div className="text-2xs text-faint uppercase tracking-wide">Wallet Balance</div>
-            <div className="wallet-stat-card-amount" style={{ color: userColor }}>
-              ₹{Number(ppiBal?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
+          <div className="wallet-stat-wrap" onClick={() => setTab('my-wallet')}>
+            <div className="wallet-stat-accent" style={{ background: `linear-gradient(135deg, ${userColor}, color-mix(in srgb, ${userColor} 50%, transparent))` }} />
+            <div className="card card-hover card-deep wallet-stat-card">
+              <div className="card-shine" />
+              <div className="wallet-stat-card-glow" style={{ background: userColor }} />
+              <div className="wallet-stat-label">Wallet Balance</div>
+              <div className="wallet-stat-card-amount syne" style={{ color: userColor }}>
+                ₹{Number(ppiBal?.balance ?? wallet?.balance ?? 0).toLocaleString('en-IN')}
+              </div>
+              <div className="wallet-stat-card-meta">
+                {ppiBal ? (() => {
+                  const ws = (ppiBal.walletStatus || '').toUpperCase()
+                  const statusToken = ws === 'ACTIVE' ? 'success'
+                                    : ws === 'SUSPENDED' ? 'warning'
+                                    : ws === 'CLOSED' ? 'danger'
+                                    : 'accent'
+                  return (
+                    <>
+                      <span
+                        className="wallet-stat-card-tag"
+                        style={{
+                          background: `var(--${statusToken}-soft)`,
+                          color: `var(--text-${statusToken}, var(--${statusToken}))`,
+                        }}
+                      >● {ppiBal.walletStatus}</span>
+                      <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)',  color:'var(--accent)'  }}>{ppiBal.walletNumber}</span>
+                    </>
+                  )
+                })() : (
+                  <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)', color: 'var(--accent)' }}>● Amount Loaded</span>
+                )}
+              </div>
             </div>
-            <div className="wallet-stat-card-meta">
-              {ppiBal ? (() => {
-                const ws = (ppiBal.walletStatus || '').toUpperCase()
-                const statusToken = ws === 'ACTIVE' ? 'success'
-                                  : ws === 'SUSPENDED' ? 'warning'
-                                  : ws === 'CLOSED' ? 'danger'
-                                  : 'accent'
-                return (
-                  <>
-                    <span
-                      className="wallet-stat-card-tag"
-                      style={{
-                        background: `var(--${statusToken}-soft)`,
-                        color: `var(--text-${statusToken}, var(--${statusToken}))`,
-                      }}
-                    >● {ppiBal.walletStatus}</span>
-                    <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)',  color:'var(--accent)'  }}>{ppiBal.walletNumber}</span>
-                  </>
-                )
-              })() : (
-                <span className="wallet-stat-card-tag" style={{ background:'var(--accent-soft)', color: 'var(--accent)' }}>● Amount Loaded</span>
-              )}
-            </div>
-          </Card>
+          </div>
         )}
-        <StatCard label="Total Requests" value={Number(stats?.total||0)}    sub="all time"             color='var(--accent)'  icon="◈" onClick={() => setTab('my-requests')} />
-        <StatCard label="Approved"       value={Number(stats?.approved||0)} sub={`₹${Number(stats?.total_approved||0).toLocaleString('en-IN')}`} color='var(--success)' icon="◎" />
+        <StatCard label="Total Requests" value={counts.total}    sub="all time"             color='var(--accent)'  icon="◈" onClick={() => setTab('my-requests')} />
+        <StatCard label="Approved"       value={counts.approved} sub={`₹${Number(counts.totalApproved||0).toLocaleString('en-IN')}`} color='var(--success)' icon="◎" />
         <StatCard
           label={isBkAdmin ? 'Pending Bookings' : 'Pending Actions'}
-          value={isBkAdmin ? Number(stats?.pending_booking||0) : (pendingForMe||0)}
+          value={counts.pending}
           sub={isBkAdmin ? 'company requests' : 'need your review'}
           color='var(--warning)'
           icon="◉"
@@ -154,17 +200,17 @@ export default function Dashboard({ setTab }) {
         />
       </div>
 
-      {/* Recent requests */}
+      {/* ── Recent Requests ──────────────────────────── */}
       {recentRequests?.length > 0 && (
-        <Card className="section-card" style={{ marginBottom: 'var(--space-4)' }}>
-          <div className="section-head">
-            <div className="section-head-title">
-              <span className="section-head-icon">{I.list}</span>
+        <div className="dash-section">
+          <div className="dash-section-header">
+            <div className="dash-section-title">
+              <span className="dash-section-icon">{I.list}</span>
               Recent Requests
             </div>
             <button className="section-link" onClick={() => setTab('my-requests')}>View all →</button>
           </div>
-          <div>
+          <div className="dash-section-body">
             {recentRequests.map(r => (
               <div key={r.id} className="list-row">
                 <span className="list-row-icon">{MODE_ICONS[r.travel_mode]||'🚀'}</span>
@@ -208,10 +254,10 @@ export default function Dashboard({ setTab }) {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Donut chart + Recent activity */}
+      {/* ── Donut chart + Recent activity ─────────────── */}
       <div className="dashboard-pair">
 
         {!isBkAdmin && (() => {
@@ -248,10 +294,10 @@ export default function Dashboard({ setTab }) {
           })
 
           return (
-            <Card className="section-card section-card--tall">
-              <div className="section-head">
-                <div className="section-head-title">
-                  <span className="section-head-icon">{I.pieChart}</span>
+            <div className="dash-section dash-section--tall">
+              <div className="dash-section-header">
+                <div className="dash-section-title">
+                  <span className="dash-section-icon">{I.pieChart}</span>
                   Expense Breakdown
                 </div>
               </div>
@@ -307,15 +353,15 @@ export default function Dashboard({ setTab }) {
                   })}
                 </div>
               </div>
-            </Card>
+            </div>
           )
         })()}
 
         {/* Recent transactions */}
-        <Card className={`section-card section-card--tall${isBkAdmin ? ' section-card--span-2' : ''}`}>
-          <div className="section-head">
-            <div className="section-head-title">
-              <span className="section-head-icon">{I.activity}</span>
+        <div className={`dash-section dash-section--tall${isBkAdmin ? ' section-card--span-2' : ''}`}>
+          <div className="dash-section-header">
+            <div className="dash-section-title">
+              <span className="dash-section-icon">{I.activity}</span>
               Recent Wallet Activity
             </div>
             <button className="section-link" onClick={() => setTab('transactions')}>View all →</button>
@@ -338,15 +384,15 @@ export default function Dashboard({ setTab }) {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Tier info */}
+      {/* ── Tier info ────────────────────────────────── */}
       {tier && !isBkAdmin && (
-        <Card className="section-card">
-          <div className="section-head" style={{ marginBottom: 'var(--space-3)' }}>
-            <div className="section-head-title" style={{ textTransform:'uppercase', letterSpacing:'var(--ls-wide)', fontSize:'var(--fs-2xs)', color:'var(--text-label)' }}>
-              <span className="section-head-icon" style={{ color: 'var(--accent)' }}>{I.layers}</span>
+        <div className="dash-section">
+          <div className="dash-section-header">
+            <div className="dash-section-title">
+              <span className="dash-section-icon" style={{ color: 'var(--accent)' }}>{I.layers}</span>
               Your Tier — {user.role}
             </div>
           </div>
@@ -363,21 +409,6 @@ export default function Dashboard({ setTab }) {
               </div>
             ))}
           </div>
-        </Card>
-      )}
-
-      {/* Pending action prompt */}
-      {pendingForMe > 0 && !isBkAdmin && (
-        <div
-          className="pending-banner"
-          onClick={() => setTab('approvals')}
-          style={{ background:`color-mix(in srgb, ${userColor} 8%, transparent)`, border:`1px solid color-mix(in srgb, ${userColor} 24%, transparent)` }}
-        >
-          <div>
-            <div className="pending-banner-title">{pendingForMe} request{pendingForMe>1?'s':''} waiting for your approval</div>
-            <div className="pending-banner-sub">Click to review →</div>
-          </div>
-          <div className="pending-banner-count" style={{ color: userColor }}>{pendingForMe}</div>
         </div>
       )}
     </div>

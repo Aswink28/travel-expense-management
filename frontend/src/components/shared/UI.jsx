@@ -6,6 +6,7 @@ import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 export function Card({ children, style = {}, className = '', onClick }) {
   return (
     <div className={`card card-hover ${className}`} onClick={onClick} style={style}>
+      <div className="card-shine" />
       {children}
     </div>
   )
@@ -14,14 +15,24 @@ export function Card({ children, style = {}, className = '', onClick }) {
 // ── StatCard ──────────────────────────────────────────────────
 export function StatCard({ label, value, sub, color, icon, onClick }) {
   return (
-    <Card style={{ padding: 'var(--space-5)', cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}>
-      <div className="stat-card-head">
-        <span className="text-xs text-faint uppercase tracking-wide">{label}</span>
-        <span className="stat-card-icon" style={{ color, filter: `drop-shadow(0 0 6px ${color}66)` }}>{icon}</span>
+    <div className="stat-card-wrap" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+      {/* Gradient accent top bar */}
+      <div className="stat-card-accent" style={{ background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 40%, transparent))` }} />
+      <div className="card card-hover stat-card-inner">
+        <div className="card-shine" />
+        <div className="stat-card-head">
+          <div className="stat-card-icon-wrap" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 18%, transparent), color-mix(in srgb, ${color} 6%, transparent))`, borderColor: `color-mix(in srgb, ${color} 18%, transparent)` }}>
+            <span className="stat-card-icon" style={{ color }}>{icon}</span>
+          </div>
+          <span className="stat-card-label">{label}</span>
+        </div>
+        <div className="stat-card-body">
+          <div className="syne stat-card-value" style={{ color, textShadow: `0 0 24px ${color}33` }}>{value}</div>
+          {sub && <div className="stat-card-sub">{sub}</div>}
+        </div>
+        <div className="stat-card-glow" style={{ background: color }} />
       </div>
-      <div className="syne stat-card-value" style={{ color, textShadow: `0 0 18px ${color}33` }}>{value}</div>
-      {sub && <div className="text-xs text-dim stat-card-sub">{sub}</div>}
-    </Card>
+    </div>
   )
 }
 
@@ -61,7 +72,7 @@ export function Button({ children, onClick, variant = 'primary', size = 'md', di
       className={`btn btn-${variant} btn-${size} ${className}`}
       style={style}
     >
-      {children}
+      <span className="btn-content">{children}</span>
     </button>
   )
 }
@@ -71,11 +82,13 @@ export function Input({ label, error, className = '', wrapStyle = {}, style = {}
   return (
     <div className="field" style={wrapStyle}>
       {label && <label className="field-label">{label}</label>}
-      <input
-        {...props}
-        className={`input ${error ? 'input-error' : ''} ${className}`}
-        style={style}
-      />
+      <div className="input-wrap">
+        <input
+          {...props}
+          className={`input ${error ? 'input-error' : ''} ${className}`}
+          style={style}
+        />
+      </div>
       {error && <div className="error-text">{error}</div>}
     </div>
   )
@@ -129,6 +142,7 @@ export function Modal({ children, onClose, title, width = 520 }) {
   return createPortal(
     <div className="modal-backdrop fade-in" onClick={onClose}>
       <div className="modal-content fade-up" onClick={e => e.stopPropagation()} style={{ width }}>
+        <div className="modal-accent-bar" />
         {title && (
           <div className="modal-header">
             <div className="modal-title">{title}</div>
@@ -160,11 +174,13 @@ export function StatusPill({ status }) {
   const m = STATUS_MAP[status] || { label: status, token: '--text-faint' }
   const c = `var(${m.token})`
   return (
-    <span className="pill" style={{
+    <span className="status-pill" style={{
+      '--pill-color': c,
       background: `color-mix(in srgb, ${c} 14%, transparent)`,
       borderColor: `color-mix(in srgb, ${c} 35%, transparent)`,
       color: c,
     }}>
+      <span className="status-dot" style={{ background: c }} />
       {m.label}
     </span>
   )
@@ -202,7 +218,7 @@ export function ProgressBar({ pct, color = 'var(--accent)', height = 6 }) {
         className="progress-bar-fill"
         style={{
           width: `${Math.min(Math.max(pct, 0), 100)}%`,
-          background: color,
+          background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 70%, transparent))`,
           color,
         }}
       />

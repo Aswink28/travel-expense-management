@@ -26,50 +26,6 @@ import AdminCreateRequest from "./components/admin/AdminCreateRequest";
 import TransactionsPage from "./components/dashboard/TransactionsPage";
 import { requestsAPI } from "./services/api";
 
-function WelcomeBanner() {
-  const { user } = useAuth();
-  const hour = new Date().getHours();
-  const greet =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const msgs = {
-    Employee:
-      "Submit requests, track wallet balance, and download tickets from the dashboard.",
-    "Request Approver":
-      "Approve travel requests at your tier in the chain. Both hierarchy and Finance lanes must complete before wallet loads.",
-    Finance:
-      "You set the final approved amounts. Wallet is credited after your approval.",
-    "Booking Admin":
-      "Book travel and hotels using employee wallet. Upload tickets to their portal.",
-    "Super Admin":
-      "Full access. Your approval covers both hierarchy and Finance lanes simultaneously.",
-  };
-  return (
-    <div
-      className="welcome-banner"
-      style={{ background: `${user.color}0C`, borderColor: `${user.color}20` }}
-    >
-      <div>
-        <div className="welcome-greeting">
-          {greet},{" "}
-          <span style={{ color: user.color }}>{user.name.split(" ")[0]}</span>{" "}
-          👋
-        </div>
-        <div className="welcome-sub">{msgs[user.role]}</div>
-      </div>
-      <div
-        className="welcome-badge"
-        style={{
-          color: user.color,
-          background: `${user.color}12`,
-          borderColor: `${user.color}25`,
-        }}
-      >
-        {user.empId} · {user.dept}
-      </div>
-    </div>
-  );
-}
-
 // ── Permission-gated page rendering ────────────────────────────
 // Renders a 403 banner instead of the page when the active tab is
 // not in user.pages with can_view = true. Catches direct-state
@@ -223,7 +179,6 @@ function InnerApp() {
     <div className="app-shell">
       <Sidebar active={tab} setActive={setTab} pendingCount={pendingCount} />
       <main className="app-main">
-        <WelcomeBanner />
         <PageGuard tab={tab}>{pages[tab] || pages["dashboard"]}</PageGuard>
       </main>
     </div>

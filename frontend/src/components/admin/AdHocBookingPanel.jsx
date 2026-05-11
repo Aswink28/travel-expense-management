@@ -109,8 +109,13 @@ export default function AdHocBookingPanel() {
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>
 
   return (
-    <div>
-      <h2 style={{ fontSize: 22, color: 'var(--text-primary)', marginBottom: 20 }}>Request-Based Auto Booking</h2>
+    <div className="fade-up page-admin page-adhoc-booking">
+      <div className="page-hero">
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">Request-Based Auto Booking</h1>
+          <p className="page-hero-sub">Select an approved request and process the booking</p>
+        </div>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 2fr)', gap: 20 }}>
         
         {/* Left Column: Request Selection */}

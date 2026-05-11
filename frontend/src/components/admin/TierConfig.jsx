@@ -166,7 +166,7 @@ export default function TierConfig() {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-tiers">
       <PageTitle title="Tier Configuration" sub="Travel classes, budgets, caps, and approval sequence per tier. Designations live on the Designations page." />
       {error && <Alert type="error" style={{ marginBottom: 12 }}>{error}</Alert>}
 
@@ -277,7 +277,7 @@ export default function TierConfig() {
             errors={tierErrors}
             activeRoleNames={activeRoleNames}
             setData={d => setTierModal(m => ({ ...m, data: typeof d === 'function' ? d(m.data) : d }))} />
-          <div style={{ display:'flex', justifyContent:'flex-end', gap: 10, marginTop: 14 }}>
+          <div className="modal-footer">
             <Button variant="ghost" onClick={() => setTierModal(null)} disabled={saving}>Cancel</Button>
             <Button onClick={saveTier} disabled={saving}>{saving ? 'Saving…' : (tierModal.mode === 'create' ? 'Create Tier' : 'Save')}</Button>
           </div>

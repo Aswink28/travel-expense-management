@@ -353,7 +353,7 @@ export default function NewRequestForm({ onSuccess }) {
   )
 
   return (
-    <div className="fade-up" style={{ maxWidth: 1200, margin: '0 auto', color: 'var(--text-body, var(--text-body))' }}>
+    <div className="fade-up page-new-request" style={{ maxWidth: 1200, margin: '0 auto', color: 'var(--text-body, var(--text-body))' }}>
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>

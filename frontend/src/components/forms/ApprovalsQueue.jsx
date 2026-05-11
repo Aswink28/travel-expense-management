@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { requestsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Card, PageTitle, StatusPill, BookingBadge, Button, Modal, Alert, Spinner } from '../shared/UI'
+import { Card, StatusPill, BookingBadge, Button, Modal, Alert, Spinner } from '../shared/UI'
 import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
@@ -87,8 +87,13 @@ export default function ApprovalsQueue({ onAction }) {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
-      <PageTitle title={user.role === 'Finance' ? 'Finance Approvals' : 'Approval Queue'} sub={`${queue.length} requests need your action`} />
+    <div className="fade-up page-approvals">
+      <div className="page-hero">
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">{user.role === 'Finance' ? 'Finance Approvals' : 'Approval Queue'}</h1>
+          <p className="page-hero-sub">{queue.length} request{queue.length !== 1 ? 's' : ''} need your action</p>
+        </div>
+      </div>
 
       {/* Toast notification */}
       {toast && (
@@ -127,7 +132,7 @@ export default function ApprovalsQueue({ onAction }) {
       {error && !modal && <Alert type="error">{error}</Alert>}
 
       {/* Role authority card */}
-      <Card style={{ padding:16, marginBottom:22 }}>
+      <Card style={{ padding:16, marginBottom:22 }} className="authority-card">
         <div style={{ fontSize:11, color:'var(--border-strong)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>Your approval authority as {user.role}</div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
           {user.role === 'Request Approver' && <span style={{ fontSize:12, background:'color-mix(in srgb, var(--purple) 9%, transparent)', color:'var(--purple)', padding:'4px 12px', borderRadius:6 }}>Approves at your tier — your designation drives the order in the sequential chain</span>}
@@ -142,14 +147,15 @@ export default function ApprovalsQueue({ onAction }) {
       </Card>
 
       {queue.length === 0 ? (
-        <div style={{ textAlign:'center', padding:60, color:'var(--text-faint)' }}>
-          <div style={{ fontSize:36, marginBottom:12 }}>◎</div>
-          <div style={{ fontSize:14 }}>All caught up!</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">◎</div>
+          <div className="empty-state-text">All caught up!</div>
+          <div className="empty-state-sub">No pending approval requests in your queue</div>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:28 }}>
           {queue.map(r => (
-            <Card key={r.id} style={{ padding:22, borderLeft:`3px solid ${user.color||'var(--accent)'}` }}>
+            <Card key={r.id} className="approval-card" style={{ padding:22, borderLeft:`3px solid ${user.color||'var(--accent)'}` }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:5 }}>
@@ -187,7 +193,7 @@ export default function ApprovalsQueue({ onAction }) {
       {/* History */}
       {history.length > 0 && (
         <>
-          <div style={{ fontSize:11, color:'var(--border-strong)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:12 }}>Approval History</div>
+          <div className="section-label">Approval History</div>
           <Card style={{ overflow:'hidden' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead><tr style={{ borderBottom:'1px solid var(--border)' }}>
@@ -269,7 +275,7 @@ export default function ApprovalsQueue({ onAction }) {
           <Alert type="info">◈ Parallel approval — your action is independent. Wallet loads when both lanes complete.</Alert>
           {error && <Alert type="error">{error}</Alert>}
 
-          <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+          <div className="modal-footer">
             <Button variant="ghost"   onClick={() => { setModal(null); setNote(''); setError('') }} disabled={acting}>Cancel</Button>
             <Button variant="danger"  onClick={() => doAction('rejected')} disabled={acting}>{acting?'Saving...':'Reject'}</Button>
             <Button variant="success" onClick={() => doAction('approved')} disabled={acting}>{acting?'Saving...':'Approve ✓'}</Button>

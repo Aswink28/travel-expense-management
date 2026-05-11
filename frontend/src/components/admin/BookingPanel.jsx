@@ -3653,6 +3653,7 @@ export default function BookingPanel() {
   /* ──── SEARCH FORM VIEW ──── */
   return (
     <div
+      className="page-admin page-booking-panel"
       style={{
         fontFamily: "'Inter',sans-serif",
         paddingBottom: 60,

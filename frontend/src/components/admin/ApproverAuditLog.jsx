@@ -23,7 +23,7 @@ export default function ApproverAuditLog() {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-audit">
       <PageTitle title="Approver Audit Log" sub="Tracks reassignments when approvers are deactivated or chains are edited" />
       {error && <Alert type="error" style={{ marginBottom: 12 }}>{error}</Alert>}
 

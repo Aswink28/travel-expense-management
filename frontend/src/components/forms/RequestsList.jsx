@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { requestsAPI, docsAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Card, PageTitle, StatusPill, BookingBadge, Button, Alert, Spinner, Modal } from '../shared/UI'
+import { Card, StatusPill, BookingBadge, Button, Alert, Spinner, Modal } from '../shared/UI'
 import { fmtDate, fmtTime, fmtDateTime } from '../../utils/formatDate'
 
 const MODE_ICONS = { Train:'🚂', Bus:'🚌', Flight:'✈️', Metro:'🚇', Cab:'🚕', Rapido:'🏍', Auto:'🛺' }
@@ -89,10 +89,13 @@ export default function RequestsList({ onNewRequest }) {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:24 }}>
-        <PageTitle title="My Requests" sub={`${filtered.length} total`} />
-        <div style={{ display:'flex', gap:10 }}>
+    <div className="fade-up page-requests">
+      <div className="page-hero">
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">My Requests</h1>
+          <p className="page-hero-sub">{filtered.length} request{filtered.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="page-hero-actions">
           {/* Status filter is only useful when there's something to filter — hide
              the dropdown entirely on a fresh / empty list so the toolbar isn't
              cluttered with a control that has nothing to act on. The check uses
@@ -117,9 +120,10 @@ export default function RequestsList({ onNewRequest }) {
       {error && <Alert type="error">{error}</Alert>}
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:60, color:'var(--text-faint)' }}>
-          <div style={{ fontSize:36, marginBottom:12 }}>◈</div>
-          <div style={{ fontSize:14 }}>No requests found</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">◈</div>
+          <div className="empty-state-text">No requests found</div>
+          <div className="empty-state-sub">Submit a new travel request to get started</div>
         </div>
       ) : (
         <Card style={{ overflow:'hidden' }}>
@@ -182,7 +186,7 @@ export default function RequestsList({ onNewRequest }) {
 
       {/* Detail panel */}
       {selected && (
-        <Card style={{ padding:24, marginTop:14 }} className="fade-up">
+        <Card style={{ padding:24, marginTop:14 }} className="fade-up detail-panel">
           {detailLoading ? (
             <div style={{ display:'flex', justifyContent:'center', padding:30 }}><Spinner /></div>
           ) : detail ? (

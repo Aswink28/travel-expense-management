@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { walletAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import { Card, PageTitle, Alert, Spinner, Button } from '../shared/UI'
+import { Card, Alert, Spinner, Button } from '../shared/UI'
 import { fmtDate, fmtTime } from '../../utils/formatDate'
 
 const fmtCurrency = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -140,13 +140,15 @@ export default function TransactionsPage() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
-      <PageTitle
-        title="Transactions"
-        sub={useCombinedWallet
-          ? 'PPI wallet activity — system credits, allowances, and PPI events in one view'
-          : 'Complete transaction history from PPI wallet and internal system'}
-      />
+    <div className="fade-up page-transactions">
+      <div className="page-hero">
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">Transactions</h1>
+          <p className="page-hero-sub">{useCombinedWallet
+            ? 'PPI wallet activity — system credits, allowances, and PPI events in one view'
+            : 'Complete transaction history from PPI wallet and internal system'}</p>
+        </div>
+      </div>
 
       {error && <Alert type="error">{error}</Alert>}
 
@@ -174,7 +176,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20 }}>
+      <div className="stat-summary-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 20 }}>
         <Card style={{ padding: 18 }}>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Total Transactions</div>
           <div className="syne" style={{ fontSize: 28, fontWeight: 800, color: accent }}>{rawData.length}</div>
@@ -202,7 +204,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filters + Search */}
-      <Card style={{ padding: 16, marginBottom: 16 }}>
+      <Card className="filter-toolbar" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           {/* Type filter pills */}
           <div style={{ display: 'flex', gap: 6 }}>

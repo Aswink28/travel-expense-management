@@ -244,10 +244,12 @@ export default function AdminCreateRequest() {
   //  PHASE 1 — Employee Lookup
   // ════════════════════════════════════════════════════════════
   if (!employee) return (
-    <div className="fade-up" style={{ maxWidth: 600, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>Create Request On Behalf</h2>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Look up an employee to create a travel request on their behalf</div>
+    <div className="fade-up page-admin page-admin-create" style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div className="page-hero" style={{ marginBottom: 24 }}>
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">Create Request On Behalf</h1>
+          <p className="page-hero-sub">Look up an employee to create a travel request on their behalf</p>
+        </div>
       </div>
 
       <div className="form-card" style={cardStyle}>
@@ -292,7 +294,7 @@ export default function AdminCreateRequest() {
   }
 
   return (
-    <div className="fade-up" style={{ maxWidth: 1200, margin: '0 auto', color: 'var(--text-body)' }}>
+    <div className="fade-up page-admin page-admin-create" style={{ maxWidth: 1200, margin: '0 auto', color: 'var(--text-body)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>

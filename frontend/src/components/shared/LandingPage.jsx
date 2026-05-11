@@ -1,25 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import ThemeSwitcher from './ThemeSwitcher'
+import BgSlider from './BgSlider'
 import { Button } from './UI'
 import moiterLogo from '../../assets/moiter_workz-logo.png'
-import heroPlane from '../../assets/hero-airplane.jpg'
 import imgFlight from '../../assets/modes/flight.jpg'
+import imgTrain  from '../../assets/modes/train.jpg'
 import imgHotel  from '../../assets/modes/hotel.jpg'
 import imgCab    from '../../assets/modes/cab.jpg'
-import imgTrain  from '../../assets/modes/train.jpg'
+
+const HERO_IMAGES = [imgFlight, imgTrain, imgHotel, imgCab]
 
 /* ═══════════════════════════════════════════════════════════════
    DATA
    ═══════════════════════════════════════════════════════════════ */
 
 const FEATURES = [
-  { id: 'travel',    tag: 'Core Platform', title: 'Every leg, one workspace',           desc: 'Submit a request, get approval, book flights, hotels, and cabs — then reconcile everything against the trip wallet. No tab-switching, no spreadsheet side-quests.', color: '#0284C7' },
-  { id: 'wallet',    tag: 'Finance',       title: 'Budgets that move themselves',       desc: 'The moment a trip is approved, the allocated amount loads into the employee\'s PPI wallet. They spend directly — no reimbursement claims, no out-of-pocket anxiety.', color: '#059669' },
-  { id: 'approvals', tag: 'Workflow',      title: 'Approvals on autopilot',             desc: 'Map designations to tiers, define the approval chain once, and forget about it. Every request routes to the right manager and finance lead automatically.', color: '#7C3AED' },
-  { id: 'onboard',   tag: 'Admin',         title: 'One upload, entire team onboarded',  desc: 'Drop an Excel of new hires. The system creates their accounts, assigns tiers, provisions wallets, and wires up approval chains — all in a single pass.', color: '#D97706' },
-  { id: 'reports',   tag: 'Analytics',     title: 'Finance-grade visibility',            desc: 'See real-time spend by tier, department, and travel mode. Drill into any number, export the view, and hand auditors exactly what they need.', color: '#DB2777' },
-  { id: 'comply',    tag: 'Security',      title: 'Compliant from day one',              desc: 'KYC verification at signup, role-scoped data access, and a tamper-proof audit log that captures every approval, reassignment, and financial action.', color: '#4F46E5' },
+  { id: 'travel',    tag: 'Core Platform', title: 'Every leg, one workspace',           desc: 'Submit a request, get approval, book flights, hotels, and cabs — then reconcile everything against the trip wallet. No tab-switching, no spreadsheet side-quests.', color: '#0284C7', colorEnd: '#38BDF8', highlights: ['Flights, hotels, trains & cabs in one request', 'Live booking status with real-time updates', 'Full itinerary view across all legs'] },
+  { id: 'wallet',    tag: 'Finance',       title: 'Budgets that move themselves',       desc: 'The moment a trip is approved, the allocated amount loads into the employee\'s PPI wallet. They spend directly — no reimbursement claims, no out-of-pocket anxiety.', color: '#059669', colorEnd: '#34D399', highlights: ['Auto-credit on approval — zero wait time', 'Real-time balance & spend tracking', 'Per-trip allocation with overspend guards'] },
+  { id: 'approvals', tag: 'Workflow',      title: 'Approvals on autopilot',             desc: 'Map designations to tiers, define the approval chain once, and forget about it. Every request routes to the right manager and finance lead automatically.', color: '#7C3AED', colorEnd: '#A78BFA', highlights: ['Sequential & parallel approval chains', 'Tier-based routing with auto-escalation', 'Finance as final gatekeeper — always'] },
+  { id: 'onboard',   tag: 'Admin',         title: 'One upload, entire team onboarded',  desc: 'Drop an Excel of new hires. The system creates their accounts, assigns tiers, provisions wallets, and wires up approval chains — all in a single pass.', color: '#D97706', colorEnd: '#FBBF24', highlights: ['Bulk CSV/Excel import for 100+ employees', 'Auto-assign tiers, wallets & approvers', 'Instant account provisioning — no manual setup'] },
+  { id: 'reports',   tag: 'Analytics',     title: 'Finance-grade visibility',            desc: 'See real-time spend by tier, department, and travel mode. Drill into any number, export the view, and hand auditors exactly what they need.', color: '#DB2777', colorEnd: '#F472B6', highlights: ['Spend breakdowns by tier & department', 'Exportable audit-ready reports', 'Real-time dashboards for leadership'] },
+  { id: 'comply',    tag: 'Security',      title: 'Compliant from day one',              desc: 'KYC verification at signup, role-scoped data access, and a tamper-proof audit log that captures every approval, reassignment, and financial action.', color: '#4F46E5', colorEnd: '#818CF8', highlights: ['KYC verification baked into onboarding', 'Role-scoped access — see only what you should', 'Immutable audit trail for every action'] },
 ]
 
 const STATS = [
@@ -201,101 +203,242 @@ const ICON_MAP = {
 
 const FEATURE_VISUALS = {
   travel: (
-    <div className="fv fv-travel">
-      <div className="fv-travel-card">
-        <div className="fv-travel-header">
-          <span className="fv-travel-route">BLR <span className="fv-arrow">→</span> DEL</span>
-          <span className="fv-pill fv-pill--green">Confirmed</span>
-        </div>
-        <div className="fv-travel-details">
-          <div className="fv-travel-detail"><span className="fv-label">Flight</span><span className="fv-value">AI-502</span></div>
-          <div className="fv-travel-detail"><span className="fv-label">Date</span><span className="fv-value">14 May</span></div>
-          <div className="fv-travel-detail"><span className="fv-label">Departs</span><span className="fv-value">06:30</span></div>
-        </div>
+    <div className="fv2">
+      <div className="fv2-chrome">
+        <span className="fv2-dot" /><span className="fv2-dot" /><span className="fv2-dot" />
+        <span className="fv2-url">moiter-workz.app/requests/TR-2071</span>
       </div>
-      <div className="fv-travel-extras">
-        <div className="fv-travel-mini"><span>Taj Palace</span><span className="fv-pill fv-pill--blue">2N</span></div>
-        <div className="fv-travel-mini"><span>Airport cab</span><span className="fv-pill fv-pill--amber">Pending</span></div>
+      <div className="fv2-body">
+        <div className="fv2-row fv2-row--between">
+          <div className="fv2-h">Travel Request <span className="fv2-id">#TR-2071</span></div>
+          <span className="fv2-badge fv2-badge--green">Approved</span>
+        </div>
+        <div className="fv2-itinerary">
+          <div className="fv2-leg">
+            <div className="fv2-leg-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1L11 12l-2 3H6l-1 1 3 2 2 3 1-1v-3l3-2 4.3 7.3c.2.4.7.5 1.1.3l.5-.3c.4-.2.5-.6.4-1.1z"/></svg>
+            </div>
+            <div className="fv2-leg-body">
+              <div className="fv2-leg-route">BLR <span className="fv2-arrow">&#8594;</span> DEL</div>
+              <div className="fv2-leg-meta">AI-502 &middot; 14 May &middot; 06:30</div>
+            </div>
+            <span className="fv2-badge fv2-badge--green fv2-badge--sm">Confirmed</span>
+          </div>
+          <div className="fv2-leg">
+            <div className="fv2-leg-icon fv2-leg-icon--hotel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 7v14M21 7v14M6 11h4v4H6zM14 11h4v4h-4zM6 7h12V4a1 1 0 00-1-1H7a1 1 0 00-1 1v3z"/></svg>
+            </div>
+            <div className="fv2-leg-body">
+              <div className="fv2-leg-route">Taj Palace, Delhi</div>
+              <div className="fv2-leg-meta">2 nights &middot; 14–16 May</div>
+            </div>
+            <span className="fv2-badge fv2-badge--blue fv2-badge--sm">Booked</span>
+          </div>
+          <div className="fv2-leg">
+            <div className="fv2-leg-icon fv2-leg-icon--cab">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14M5 17a2 2 0 01-2-2V9a4 4 0 014-4h10a4 4 0 014 4v6a2 2 0 01-2 2M5 17l-1 3h2M19 17l1 3h-2M8 13h.01M16 13h.01"/></svg>
+            </div>
+            <div className="fv2-leg-body">
+              <div className="fv2-leg-route">Airport cab pickup</div>
+              <div className="fv2-leg-meta">14 May &middot; IGI Terminal 3</div>
+            </div>
+            <span className="fv2-badge fv2-badge--amber fv2-badge--sm">Pending</span>
+          </div>
+        </div>
+        <div className="fv2-summary">
+          <div className="fv2-summary-item"><span className="fv2-summary-label">Total budget</span><span className="fv2-summary-value">&#x20B9;34,900</span></div>
+          <div className="fv2-summary-item"><span className="fv2-summary-label">Spent</span><span className="fv2-summary-value">&#x20B9;21,450</span></div>
+          <div className="fv2-summary-item"><span className="fv2-summary-label">Remaining</span><span className="fv2-summary-value fv2-summary-value--accent">&#x20B9;13,450</span></div>
+        </div>
       </div>
     </div>
   ),
 
   wallet: (
-    <div className="fv fv-wallet">
-      <div className="fv-wallet-balance">
-        <span className="fv-wallet-currency">&#x20B9;</span>
-        <span className="fv-wallet-amount">45,200</span>
+    <div className="fv2">
+      <div className="fv2-chrome">
+        <span className="fv2-dot" /><span className="fv2-dot" /><span className="fv2-dot" />
+        <span className="fv2-url">moiter-workz.app/wallet</span>
       </div>
-      <div className="fv-wallet-bar-track"><div className="fv-wallet-bar-fill" /></div>
-      <div className="fv-wallet-meta">
-        <span>&#x20B9;28,024 spent</span>
-        <span className="fv-wallet-remaining">&#x20B9;17,176 left</span>
+      <div className="fv2-body">
+        <div className="fv2-wallet-hero">
+          <div className="fv2-wallet-label">Available Balance</div>
+          <div className="fv2-wallet-amt"><span className="fv2-wallet-curr">&#x20B9;</span>45,200</div>
+          <div className="fv2-wallet-bar"><div className="fv2-wallet-fill" style={{ width: '62%' }} /><div className="fv2-wallet-marker" style={{ left: '62%' }} /></div>
+          <div className="fv2-row fv2-row--between fv2-row--sm">
+            <span>&#x20B9;28,024 spent</span>
+            <span className="fv2-wallet-left">&#x20B9;17,176 remaining</span>
+          </div>
+        </div>
+        <div className="fv2-divider" />
+        <div className="fv2-wallet-txns">
+          <div className="fv2-wallet-txn"><span className="fv2-wallet-txn-icon fv2-wallet-txn-icon--credit">&#8593;</span><div className="fv2-wallet-txn-body"><div className="fv2-wallet-txn-title">Trip approved — auto-credit</div><div className="fv2-wallet-txn-time">Today, 10:32 AM</div></div><span className="fv2-wallet-txn-amt fv2-wallet-txn-amt--green">+&#x20B9;45,200</span></div>
+          <div className="fv2-wallet-txn"><span className="fv2-wallet-txn-icon fv2-wallet-txn-icon--debit">&#8595;</span><div className="fv2-wallet-txn-body"><div className="fv2-wallet-txn-title">AI-502 BLR&#8594;DEL</div><div className="fv2-wallet-txn-time">Today, 11:15 AM</div></div><span className="fv2-wallet-txn-amt">-&#x20B9;18,400</span></div>
+          <div className="fv2-wallet-txn"><span className="fv2-wallet-txn-icon fv2-wallet-txn-icon--debit">&#8595;</span><div className="fv2-wallet-txn-body"><div className="fv2-wallet-txn-title">Taj Palace — 2 nights</div><div className="fv2-wallet-txn-time">Today, 11:18 AM</div></div><span className="fv2-wallet-txn-amt">-&#x20B9;9,624</span></div>
+        </div>
       </div>
     </div>
   ),
 
   approvals: (
-    <div className="fv fv-approvals">
-      {[
-        { step: 'Submitted', status: 'done' },
-        { step: 'Manager', status: 'done' },
-        { step: 'Finance', status: 'active' },
-        { step: 'Approved', status: 'pending' },
-      ].map((s, i) => (
-        <div key={s.step} className="fv-approvals-step">
-          {i > 0 && <div className={`fv-approvals-connector fv-approvals-connector--${i <= 2 ? 'done' : 'pending'}`} />}
-          <div className={`fv-approvals-dot fv-approvals-dot--${s.status}`} />
-          <span>{s.step}</span>
+    <div className="fv2">
+      <div className="fv2-chrome">
+        <span className="fv2-dot" /><span className="fv2-dot" /><span className="fv2-dot" />
+        <span className="fv2-url">moiter-workz.app/approvals</span>
+      </div>
+      <div className="fv2-body">
+        <div className="fv2-h">Approval Pipeline</div>
+        <div className="fv2-pipeline">
+          {[
+            { step: 'Submitted',  status: 'done',   by: 'Rohan K.' },
+            { step: 'Tech Lead',  status: 'done',   by: 'Priya M.' },
+            { step: 'Manager',    status: 'done',   by: 'Vikram S.' },
+            { step: 'Finance',    status: 'active', by: 'Awaiting...' },
+          ].map((s, i) => (
+            <div key={s.step} className={`fv2-pipe-step fv2-pipe-step--${s.status}`}>
+              <div className="fv2-pipe-node">
+                {s.status === 'done' ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : s.status === 'active' ? (
+                  <div className="fv2-pipe-pulse" />
+                ) : (
+                  <div className="fv2-pipe-empty" />
+                )}
+              </div>
+              {i < 3 && <div className={`fv2-pipe-line fv2-pipe-line--${s.status === 'done' && i < 3 ? 'done' : 'pending'}`} />}
+              <div className="fv2-pipe-info">
+                <span className="fv2-pipe-label">{s.step}</span>
+                <span className="fv2-pipe-by">{s.by}</span>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+        <div className="fv2-divider" />
+        <div className="fv2-approval-card">
+          <div className="fv2-row fv2-row--between">
+            <span className="fv2-approval-req">TR-3899 &middot; Mumbai trip</span>
+            <span className="fv2-badge fv2-badge--purple fv2-badge--sm">Pending Finance</span>
+          </div>
+          <div className="fv2-row fv2-row--gap fv2-row--sm">
+            <span>&#x20B9;42,500</span>
+            <span className="fv2-text-muted">&middot;</span>
+            <span className="fv2-text-muted">Tier 2</span>
+            <span className="fv2-text-muted">&middot;</span>
+            <span className="fv2-text-muted">3 legs</span>
+          </div>
+        </div>
+      </div>
     </div>
   ),
 
   onboard: (
-    <div className="fv fv-onboard">
-      {[
-        { name: 'Priya Mehta', dept: 'Engineering', tier: 'T2' },
-        { name: 'Arjun Das',   dept: 'Design',      tier: 'T1' },
-        { name: 'Meena Iyer',  dept: 'Finance',      tier: 'T3' },
-      ].map(r => (
-        <div key={r.name} className="fv-onboard-row">
-          <div className="fv-onboard-avatar">{r.name[0]}</div>
-          <span className="fv-onboard-name">{r.name}</span>
-          <span className="fv-onboard-dept">{r.dept}</span>
-          <span className="fv-onboard-tier">{r.tier}</span>
-          <svg className="fv-onboard-check" width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" stroke="#10B981"/></svg>
+    <div className="fv2">
+      <div className="fv2-chrome">
+        <span className="fv2-dot" /><span className="fv2-dot" /><span className="fv2-dot" />
+        <span className="fv2-url">moiter-workz.app/admin/onboard</span>
+      </div>
+      <div className="fv2-body">
+        <div className="fv2-row fv2-row--between">
+          <div className="fv2-h">Bulk Onboarding</div>
+          <span className="fv2-badge fv2-badge--green">4 imported</span>
         </div>
-      ))}
+        <div className="fv2-onboard-file">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span className="fv2-onboard-filename">new_hires_may2025.xlsx</span>
+          <span className="fv2-text-muted fv2-text-xs">24 KB</span>
+        </div>
+        <div className="fv2-onboard-list">
+          {[
+            { name: 'Priya Mehta',  dept: 'Engineering', tier: 'T2', status: 'done' },
+            { name: 'Arjun Das',    dept: 'Design',      tier: 'T1', status: 'done' },
+            { name: 'Meena Iyer',   dept: 'Finance',     tier: 'T3', status: 'done' },
+            { name: 'Ravi Shankar', dept: 'Sales',       tier: 'T2', status: 'active' },
+          ].map(r => (
+            <div key={r.name} className={`fv2-onboard-row fv2-onboard-row--${r.status}`}>
+              <div className="fv2-avatar">{r.name[0]}</div>
+              <div className="fv2-onboard-info">
+                <span className="fv2-onboard-name">{r.name}</span>
+                <span className="fv2-onboard-dept">{r.dept}</span>
+              </div>
+              <span className="fv2-onboard-tier">{r.tier}</span>
+              {r.status === 'done' ? (
+                <svg className="fv2-onboard-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              ) : (
+                <div className="fv2-onboard-spinner" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   ),
 
   reports: (
-    <div className="fv fv-reports">
-      {[
-        { dept: 'Engineering', pct: 78, amount: '₹12.4L' },
-        { dept: 'Sales',       pct: 52, amount: '₹8.1L' },
-        { dept: 'Operations',  pct: 65, amount: '₹10.2L' },
-        { dept: 'HR',          pct: 31, amount: '₹4.9L' },
-      ].map(r => (
-        <div key={r.dept} className="fv-reports-row">
-          <span className="fv-reports-dept">{r.dept}</span>
-          <div className="fv-reports-bar-track"><div className="fv-reports-bar-fill" style={{ width: `${r.pct}%` }} /></div>
-          <span className="fv-reports-amt">{r.amount}</span>
+    <div className="fv2">
+      <div className="fv2-chrome">
+        <span className="fv2-dot" /><span className="fv2-dot" /><span className="fv2-dot" />
+        <span className="fv2-url">moiter-workz.app/reports</span>
+      </div>
+      <div className="fv2-body">
+        <div className="fv2-row fv2-row--between">
+          <div className="fv2-h">Spend Analytics</div>
+          <span className="fv2-text-muted fv2-text-xs">May 2025</span>
         </div>
-      ))}
+        <div className="fv2-report-stats">
+          <div className="fv2-report-stat"><span className="fv2-report-stat-value">&#x20B9;35.6L</span><span className="fv2-report-stat-label">Total spend</span></div>
+          <div className="fv2-report-stat"><span className="fv2-report-stat-value">142</span><span className="fv2-report-stat-label">Trips</span></div>
+          <div className="fv2-report-stat"><span className="fv2-report-stat-value">98%</span><span className="fv2-report-stat-label">Compliance</span></div>
+        </div>
+        <div className="fv2-report-bars">
+          {[
+            { dept: 'Engineering', pct: 78, amount: '₹12.4L', color: '#3B82F6' },
+            { dept: 'Sales',       pct: 52, amount: '₹8.1L',  color: '#F59E0B' },
+            { dept: 'Operations',  pct: 65, amount: '₹10.2L', color: '#10B981' },
+            { dept: 'HR',          pct: 31, amount: '₹4.9L',  color: '#EC4899' },
+          ].map(r => (
+            <div key={r.dept} className="fv2-report-bar-row">
+              <span className="fv2-report-dept">{r.dept}</span>
+              <div className="fv2-report-bar-track"><div className="fv2-report-bar-fill" style={{ width: `${r.pct}%`, background: r.color }} /></div>
+              <span className="fv2-report-amt">{r.amount}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   ),
 
   comply: (
-    <div className="fv fv-comply">
-      {['KYC verified at signup', 'Role-scoped data access', 'Full audit trail logged'].map((item, i) => (
-        <div key={item} className="fv-comply-item">
-          <div className="fv-comply-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <span>{item}</span>
+    <div className="fv2">
+      <div className="fv2-chrome">
+        <span className="fv2-dot" /><span className="fv2-dot" /><span className="fv2-dot" />
+        <span className="fv2-url">moiter-workz.app/audit-log</span>
+      </div>
+      <div className="fv2-body">
+        <div className="fv2-h">Security &amp; Compliance</div>
+        <div className="fv2-comply-checks">
+          {[
+            { label: 'KYC verification', status: 'Verified',  icon: 'shield' },
+            { label: 'Data access scope', status: 'Role-based', icon: 'lock' },
+            { label: 'Audit trail',       status: 'Active',    icon: 'log' },
+          ].map(c => (
+            <div key={c.label} className="fv2-comply-row">
+              <div className="fv2-comply-icon">
+                {c.icon === 'shield' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
+                {c.icon === 'lock' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
+                {c.icon === 'log' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>}
+              </div>
+              <span className="fv2-comply-label">{c.label}</span>
+              <span className="fv2-badge fv2-badge--green fv2-badge--sm">{c.status}</span>
+            </div>
+          ))}
         </div>
-      ))}
+        <div className="fv2-divider" />
+        <div className="fv2-comply-log">
+          <div className="fv2-comply-entry"><span className="fv2-comply-time">10:32</span><span>Finance approved TR-3899</span><span className="fv2-badge fv2-badge--blue fv2-badge--sm">approve</span></div>
+          <div className="fv2-comply-entry"><span className="fv2-comply-time">10:28</span><span>Manager approved TR-3899</span><span className="fv2-badge fv2-badge--blue fv2-badge--sm">approve</span></div>
+          <div className="fv2-comply-entry"><span className="fv2-comply-time">09:45</span><span>Rohan K. submitted TR-3899</span><span className="fv2-badge fv2-badge--amber fv2-badge--sm">create</span></div>
+        </div>
+      </div>
     </div>
   ),
 }
@@ -325,6 +468,51 @@ function SectionHeader({ eyebrow, title, subtitle }) {
       <motion.span className="lp-eyebrow" variants={fadeUp} custom={0}>{eyebrow}</motion.span>
       <motion.h2 className="lp-section-title" variants={fadeUp} custom={1}>{title}</motion.h2>
       {subtitle && <motion.p className="lp-section-sub" variants={fadeUp} custom={2}>{subtitle}</motion.p>}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FEATURE ROW — individual scroll-triggered storytelling row
+   ═══════════════════════════════════════════════════════════════ */
+
+function FeatureRow({ feature, index, reversed }) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: '-100px' })
+
+  const textVariant = {
+    hidden: { opacity: 0, x: reversed ? 60 : -60 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
+  }
+  const visualVariant = {
+    hidden: { opacity: 0, x: reversed ? -60 : 60, scale: 0.95 },
+    visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] } },
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={`feat-story ${reversed ? 'feat-story--rev' : ''}`}
+      style={{ '--f-accent': feature.color, '--f-accent-end': feature.colorEnd }}
+    >
+      <div className="feat-story-glow" />
+      <motion.div className="feat-story-text" initial="hidden" animate={inView ? 'visible' : 'hidden'} variants={textVariant}>
+        <div className="feat-story-num">{String(index + 1).padStart(2, '0')}</div>
+        <span className="feat-story-tag">{feature.tag}</span>
+        <h3 className="feat-story-title">{feature.title}</h3>
+        <p className="feat-story-desc">{feature.desc}</p>
+        <ul className="feat-story-highlights">
+          {feature.highlights.map(h => (
+            <li key={h}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--f-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>{h}</span>
+            </li>
+          ))}
+        </ul>
+      </motion.div>
+      <motion.div className="feat-story-visual" initial="hidden" animate={inView ? 'visible' : 'hidden'} variants={visualVariant}>
+        {FEATURE_VISUALS[feature.id]}
+      </motion.div>
     </div>
   )
 }
@@ -495,13 +683,10 @@ export default function LandingPage({ onSignIn }) {
         </AnimatePresence>
       </nav>
 
-      {/* ── HERO — real airplane image + clean content ─────── */}
+      {/* ── HERO — sliding travel carousel + clean content ──── */}
       <section className="lp-hero">
-        {/* Real airplane background image */}
-        <div className="lp-hero-bg" aria-hidden="true">
-          <img src={heroPlane} alt="" className="lp-hero-bg-img" />
-          <div className="lp-hero-bg-overlay" />
-        </div>
+        {/* Sliding background carousel */}
+        <BgSlider images={HERO_IMAGES} interval={7000} className="bgslider--hero" />
 
         <div className="lp-hero-inner">
           <div className="lp-hero-content">
@@ -616,30 +801,17 @@ export default function LandingPage({ onSignIn }) {
         </div>
       </section>
 
-      {/* ── FEATURES — STORYTELLING ROWS ───────────────────── */}
-      <Section id="features">
-        <SectionHeader eyebrow="What you get" title="Everything your travel & expense workflow needs" subtitle="From the first request to the final ledger entry — Moiter Workz is the single source of truth for every rupee your company spends on travel." />
-        <div className="lp-features">
-          {FEATURES.map((f, i) => (
-            <motion.div
-              key={f.id}
-              className={`lp-feat-row ${i % 2 !== 0 ? 'lp-feat-row--reverse' : ''}`}
-              variants={fadeUp}
-              custom={0}
-              style={{ '--feat-accent': f.color }}
-            >
-              <div className="lp-feat-text">
-                <span className="lp-feat-tag" style={{ color: f.color }}>{f.tag}</span>
-                <h3 className="lp-feat-title">{f.title}</h3>
-                <p className="lp-feat-desc">{f.desc}</p>
-              </div>
-              <div className="lp-feat-visual">
-                {FEATURE_VISUALS[f.id]}
-              </div>
-            </motion.div>
-          ))}
+      {/* ── FEATURES — PREMIUM STORYTELLING ─────────────────── */}
+      <section id="features" className="feat-section">
+        <div className="feat-section-header">
+          <span className="feat-section-eyebrow">What you get</span>
+          <h2 className="feat-section-title">Everything your travel &amp; expense workflow needs</h2>
+          <p className="feat-section-sub">From the first request to the final ledger entry — Moiter Workz is the single source of truth for every rupee your company spends on travel.</p>
         </div>
-      </Section>
+        {FEATURES.map((f, i) => (
+          <FeatureRow key={f.id} feature={f} index={i} reversed={i % 2 !== 0} />
+        ))}
+      </section>
 
       {/* ── SHOWCASE ─────────────────────────────────────────── */}
       <Section id="showcase" className="lp-showcase-section">

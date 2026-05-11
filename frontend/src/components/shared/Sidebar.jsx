@@ -1,6 +1,6 @@
-import { useAuth } from '../../context/AuthContext'
-import ThemeSwitcher from './ThemeSwitcher'
-import moiterLogo from '../../assets/moiter_workz-logo.png'
+import { useAuth } from "../../context/AuthContext";
+import ThemeSwitcher from "./ThemeSwitcher";
+import moiterLogo from "../../assets/moiter_workz-logo.png";
 
 /* ──────────────────────────────────────────────────────────────
    Sidebar icons — uniform SVG set keyed by page id.
@@ -22,10 +22,10 @@ const SvgIcon = ({ children }) => (
   >
     {children}
   </svg>
-)
+);
 
 const NAV_ICONS = {
-  'dashboard': (
+  dashboard: (
     <SvgIcon>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
@@ -33,7 +33,7 @@ const NAV_ICONS = {
       <rect x="14" y="14" width="7" height="7" rx="1.5" />
     </SvgIcon>
   ),
-  'my-requests': (
+  "my-requests": (
     <SvgIcon>
       <path d="M9 3h6a2 2 0 0 1 2 2v0H7v0a2 2 0 0 1 2-2z" />
       <path d="M7 5H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
@@ -41,51 +41,51 @@ const NAV_ICONS = {
       <path d="M8 16h5" />
     </SvgIcon>
   ),
-  'new-request': (
+  "new-request": (
     <SvgIcon>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8v8" />
       <path d="M8 12h8" />
     </SvgIcon>
   ),
-  'approvals': (
+  approvals: (
     <SvgIcon>
       <circle cx="12" cy="12" r="9" />
       <path d="M8 12.5l3 3 5-6" />
     </SvgIcon>
   ),
-  'my-wallet': (
+  "my-wallet": (
     <SvgIcon>
       <path d="M21 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
       <path d="M16 13a2 2 0 0 0 0 4h5v-4z" />
       <path d="M3 8V6a2 2 0 0 1 2-2h12" />
     </SvgIcon>
   ),
-  'book': (
+  book: (
     <SvgIcon>
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.71 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.58 2.81.71A2 2 0 0 1 22 16.92z" />
     </SvgIcon>
   ),
-  'my-tickets': (
+  "my-tickets": (
     <SvgIcon>
       <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z" />
       <path d="M13 7v10" strokeDasharray="2 2" />
     </SvgIcon>
   ),
-  'booking-panel': (
+  "booking-panel": (
     <SvgIcon>
       <circle cx="12" cy="12" r="9" />
       <polygon points="16,8 13,13 8,16 11,11" />
     </SvgIcon>
   ),
-  'booking-history': (
+  "booking-history": (
     <SvgIcon>
       <path d="M3 12a9 9 0 1 0 3-6.7" />
       <path d="M3 4v5h5" />
       <path d="M12 8v4l3 2" />
     </SvgIcon>
   ),
-  'employees': (
+  employees: (
     <SvgIcon>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
@@ -93,26 +93,26 @@ const NAV_ICONS = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </SvgIcon>
   ),
-  'roles': (
+  roles: (
     <SvgIcon>
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="M9 12l2 2 4-4" />
     </SvgIcon>
   ),
-  'tiers': (
+  tiers: (
     <SvgIcon>
       <polygon points="12,2 22,8 12,14 2,8" />
       <polyline points="2,12 12,18 22,12" />
       <polyline points="2,16 12,22 22,16" />
     </SvgIcon>
   ),
-  'designations': (
+  designations: (
     <SvgIcon>
       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
       <circle cx="7" cy="7" r="1.4" />
     </SvgIcon>
   ),
-  'audit-log': (
+  "audit-log": (
     <SvgIcon>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14,2 14,8 20,8" />
@@ -121,13 +121,13 @@ const NAV_ICONS = {
       <path d="M8 9h2" />
     </SvgIcon>
   ),
-  'transactions': (
+  transactions: (
     <SvgIcon>
       <path d="M3 7h13l-3-3" />
       <path d="M21 17H8l3 3" />
     </SvgIcon>
   ),
-  'admin-create-request': (
+  "admin-create-request": (
     <SvgIcon>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
@@ -135,16 +135,16 @@ const NAV_ICONS = {
       <line x1="22" y1="11" x2="16" y2="11" />
     </SvgIcon>
   ),
-}
+};
 
 const DEFAULT_ICON = (
   <SvgIcon>
     <circle cx="12" cy="12" r="3" />
     <circle cx="12" cy="12" r="9" />
   </SvgIcon>
-)
+);
 
-const FALLBACK_NAV = [{ id: 'dashboard', label: 'Dashboard' }]
+const FALLBACK_NAV = [{ id: "dashboard", label: "Dashboard" }];
 
 /* Defensive title-casing — guarantees every sidebar label renders with a
    capitalised first letter for each word, even if the DB has historical
@@ -152,20 +152,23 @@ const FALLBACK_NAV = [{ id: 'dashboard', label: 'Dashboard' }]
    words and acronyms by only lower-casing letters that aren't already
    first-of-word. */
 const toTitleCase = (s) =>
-  String(s ?? '')
-    .replace(/[_-]+/g, ' ')
+  String(s ?? "")
+    .replace(/[_-]+/g, " ")
     .toLowerCase()
-    .replace(/(^|\s|\/)([a-z])/g, (_, p, c) => p + c.toUpperCase())
+    .replace(/(^|\s|\/)([a-z])/g, (_, p, c) => p + c.toUpperCase());
 
 export default function Sidebar({ active, setActive, pendingCount }) {
-  const { user, logout } = useAuth()
-  if (!user) return null
-  const items  = user.pages?.length ? user.pages : FALLBACK_NAV
-  const accent = user.color || 'var(--accent)'
+  const { user, logout } = useAuth();
+  if (!user) return null;
+  const items = user.pages?.length ? user.pages : FALLBACK_NAV;
+  const accent = user.color || "var(--accent)";
 
   return (
     <aside className="sidebar">
-      {/* Logo block — brand on top row, role pill on second row */}
+      {/* Decorative gradient overlay */}
+      {/* <div className="sidebar-glow" /> */}
+
+      {/* Logo block */}
       <div className="sidebar-logo">
         <div className="brand-mark">
           <img src={moiterLogo} alt="Moiter Workz" />
@@ -178,37 +181,50 @@ export default function Sidebar({ active, setActive, pendingCount }) {
         </div>
         <span
           className="sidebar-role-pill"
-          style={{ color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)` }}
+          style={{
+            color: accent,
+            background: `color-mix(in srgb, ${accent} 12%, transparent)`,
+          }}
         >
           {user.role}
         </span>
       </div>
 
+      {/* Nav section label */}
+      <div className="sidebar-section-label">Navigation</div>
+
       {/* Nav */}
       <nav className="sidebar-nav">
-        {items.map(item => {
-          const isActive = active === item.id
-          const hasBadge = item.id === 'approvals' && pendingCount > 0
-          const icon = NAV_ICONS[item.id] || DEFAULT_ICON
+        {items.map((item) => {
+          const isActive = active === item.id;
+          const hasBadge = item.id === "approvals" && pendingCount > 0;
+          const icon = NAV_ICONS[item.id] || DEFAULT_ICON;
           return (
             <button
               key={item.id}
               onClick={() => setActive(item.id)}
-              className={isActive ? 'active' : ''}
-              style={isActive ? {
-                background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-                color: accent,
-              } : undefined}
+              className={isActive ? "active" : ""}
+              style={
+                isActive
+                  ? {
+                      "--nav-accent": accent,
+                    }
+                  : undefined
+              }
             >
-              <span className="sidebar-item-icon" aria-hidden="true">{icon}</span>
-              <span className="sidebar-item-label">{toTitleCase(item.label)}</span>
+              <span className="sidebar-item-icon" aria-hidden="true">
+                {icon}
+              </span>
+              <span className="sidebar-item-label">
+                {toTitleCase(item.label)}
+              </span>
               {hasBadge && (
                 <span className="sidebar-badge" style={{ background: accent }}>
                   {pendingCount}
                 </span>
               )}
             </button>
-          )
+          );
         })}
       </nav>
 
@@ -232,15 +248,19 @@ export default function Sidebar({ active, setActive, pendingCount }) {
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="sidebar-user-name">{user.name}</div>
-            <div className="sidebar-user-id" style={{ color: accent }}>{user.empId}</div>
+            <div className="sidebar-user-id" style={{ color: accent }}>
+              {user.empId}
+            </div>
           </div>
         </div>
         <div className="sidebar-status-row">
           <span className="online" />
           <span>Online</span>
         </div>
-        <button className="sidebar-signout" onClick={logout}>Sign out</button>
+        <button className="sidebar-signout" onClick={logout}>
+          Sign out
+        </button>
       </div>
     </aside>
-  )
+  );
 }

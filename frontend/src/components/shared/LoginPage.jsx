@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import ThemeSwitcher from './ThemeSwitcher'
+import BgSlider from './BgSlider'
+import imgFlight from '../../assets/modes/flight.jpg'
+import imgTrain  from '../../assets/modes/train.jpg'
+import imgHotel  from '../../assets/modes/hotel.jpg'
+import imgCab    from '../../assets/modes/cab.jpg'
+
+const BG_IMAGES = [imgFlight, imgTrain, imgHotel, imgCab]
 
 const DEMO = [
   { name: 'Rohan Kapoor',   email: 'rohan.kapoor@company.in', role: 'Employee',         designation: 'SE',      color: '#5BAEFF', avatar: 'RK', password: 'pass123' },
@@ -43,36 +50,6 @@ const EyeOffIcon = () => (
 )
 
 
-// ── Animated wave background ─────────────────────────────────
-const Waves = () => (
-  <div className="login-waves">
-    {[1, 2, 3, 4].map(i => (
-      <div className="login-wave-line" key={i}>
-        <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id={`waveg${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%"   style={{ stopColor: 'var(--accent)' }}   stopOpacity="0" />
-              <stop offset="50%"  style={{ stopColor: 'var(--accent-2)' }} stopOpacity="0.7" />
-              <stop offset="100%" style={{ stopColor: 'var(--accent)' }}   stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path
-            d={
-              i === 1 ? 'M 0 100 Q 300 20  600 100 T 1200 100' :
-              i === 2 ? 'M 0 80  Q 400 160 800 80  T 1600 80'  :
-              i === 3 ? 'M 0 120 Q 350 60  700 120 T 1400 120' :
-                        'M 0 90  Q 450 170 900 90  T 1800 90'
-            }
-            fill="none"
-            stroke={`url(#waveg${i})`}
-            strokeWidth="1.5"
-          />
-        </svg>
-      </div>
-    ))}
-  </div>
-)
-
 export default function LoginPage() {
   const { login, error, setError } = useAuth()
   const [email,    setEmail]    = useState('')
@@ -92,11 +69,9 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      {/* Cosmic background layers */}
-      <div className="login-cosmic" />
-      <div className="login-stars" />
-      <Waves />
+    <div className="login-page">
+      {/* Sliding travel image carousel */}
+      <BgSlider images={BG_IMAGES} interval={7000} className="bgslider--login" />
 
       {/* Theme switcher */}
       <div className="login-cosmic-theme-switch">
@@ -106,11 +81,11 @@ export default function LoginPage() {
       <div className="login-cosmic-page">
         <div className="login-cosmic-shell">
 
-          {/* LEFT — Simple Hero */}
+          {/* LEFT — Hero side */}
           <div className="login-hero">
             <span className="login-hero-badge">
               <span className="login-hero-badge-dot" />
-              Corporate Portal
+              Corporate Travel Portal
             </span>
 
             <h1 className="login-hero-title">
@@ -119,23 +94,43 @@ export default function LoginPage() {
             </h1>
 
             <p className="login-hero-subtitle">
-              The all-in-one corporate travel & expense platform.
-              Book flights, trains, hotels and buses — all in one secure portal.
+              The all-in-one corporate travel &amp; expense platform.
+              Book flights, trains, hotels and cabs — all in one secure portal.
             </p>
 
-            {/* 4 travel icons in one row */}
+            {/* Travel mode icons */}
             <div className="login-icon-row">
-              <div className="login-icon-pill">✈</div>
-              <div className="login-icon-pill">🚆</div>
-              <div className="login-icon-pill">🏨</div>
-              <div className="login-icon-pill">🚌</div>
+              {[
+                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1L11 12l-2 3H6l-1 1 3 2 2 3 1-1v-3l3-2 4.3 7.3c.2.4.7.5 1.1.3l.5-.3c.4-.2.5-.6.4-1.1z"/></svg>, label: 'Flights' },
+                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>, label: 'Trains' },
+                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 7v14M21 7v14M6 11h4v4H6zM14 11h4v4h-4zM6 7h12V4a1 1 0 00-1-1H7a1 1 0 00-1 1v3z"/></svg>, label: 'Hotels' },
+                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14M5 17a2 2 0 01-2-2V9a4 4 0 014-4h10a4 4 0 014 4v6a2 2 0 01-2 2M5 17l-1 3h2M19 17l1 3h-2M8 13h.01M16 13h.01"/></svg>, label: 'Cabs' },
+              ].map(m => (
+                <div key={m.label} className="login-icon-pill" title={m.label}>
+                  {m.icon}
+                </div>
+              ))}
+            </div>
+
+            {/* Trust bar */}
+            <div className="login-trust-bar">
+              <div className="login-trust-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Enterprise-grade security</span>
+              </div>
+              <div className="login-trust-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>SOC 2 compliant</span>
+              </div>
             </div>
           </div>
 
           {/* RIGHT — Login Card */}
           <div className="login-glass-card">
-            <h1 className="login-card-title">Corporate Expense<br />Management</h1>
-            <p className="login-card-subtitle">Please sign in to access the admin portal.</p>
+            <div className="login-card-header">
+              <h1 className="login-card-title">Welcome back</h1>
+              <p className="login-card-subtitle">Sign in to your corporate travel portal</p>
+            </div>
 
             <form onSubmit={handleSubmit}>
               {/* Email */}
@@ -190,7 +185,7 @@ export default function LoginPage() {
               {/* Error */}
               {error && (
                 <div className="fade-up login-cosmic-error">
-                  ✕ {error}
+                  &#x2715; {error}
                 </div>
               )}
 
@@ -202,7 +197,10 @@ export default function LoginPage() {
                     <span>Signing in...</span>
                   </>
                 ) : (
-                  <span>Sign In</span>
+                  <>
+                    <span>Sign In</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </>
                 )}
               </button>
             </form>
@@ -214,7 +212,7 @@ export default function LoginPage() {
 
             {/* Demo accounts */}
             <div className="login-demo-row">
-              <div className="login-demo-label">Demo accounts</div>
+              <div className="login-demo-label">Quick access &mdash; Demo accounts</div>
               {DEMO.map(u => (
                 <button
                   key={u.email}
@@ -235,6 +233,6 @@ export default function LoginPage() {
 
         </div>
       </div>
-    </>
+    </div>
   )
 }

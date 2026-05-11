@@ -18,13 +18,21 @@ export default function AdminBookingsView() {
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>
 
   return (
-    <div>
-      <h2 style={{ fontSize: 22, color: 'var(--text-primary, var(--text-primary))', marginBottom: 20 }}>Ad-Hoc Admin Bookings</h2>
+    <div className="fade-up page-admin page-bookings-view">
+      <div className="page-hero">
+        <div className="page-hero-content">
+          <h1 className="page-hero-title">Ad-Hoc Admin Bookings</h1>
+          <p className="page-hero-sub">All admin-initiated bookings in one view</p>
+        </div>
+      </div>
 
       {error && <div style={{ color: 'var(--danger, var(--danger))', marginBottom: 20 }}>{error}</div>}
 
       {bookings.length === 0 ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted, var(--text-faint))' }}>No ad-hoc bookings found.</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">◈</div>
+          <div className="empty-state-text">No ad-hoc bookings found</div>
+        </div>
       ) : (
         <div style={{ background: 'var(--bg-card, var(--bg-card))', borderRadius: 12, border: '1px solid var(--border, var(--border))', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

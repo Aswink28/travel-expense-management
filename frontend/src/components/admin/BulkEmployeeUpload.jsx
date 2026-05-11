@@ -159,7 +159,7 @@ export default function BulkEmployeeUpload() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-bulk-upload">
       <PageTitle title="Bulk Employee Onboarding" sub="Upload Excel/CSV to create multiple employees with PPI wallets" />
 
       {/* Upload panel */}

@@ -381,7 +381,7 @@ export default function AdminUsers() {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:80 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-admin-users">
       <PageTitle
         title="Admin Users"
         sub="Internal users who manage employees, roles, tiers, bookings — separate from raise-request employees."
@@ -661,7 +661,7 @@ export default function AdminUsers() {
             )}
           </div>
 
-          <div style={{ display:'flex', justifyContent:'flex-end', gap: 10, marginTop: 18 }}>
+          <div className="modal-footer">
             <Button variant="ghost" onClick={() => setModal(null)} disabled={saving}>Cancel</Button>
             <Button onClick={save} disabled={saving}>
               {saving ? 'Saving…' : modal.mode === 'create' ? 'Create Admin User' : 'Save Changes'}
@@ -676,7 +676,7 @@ export default function AdminUsers() {
           <div style={{ fontSize: 13, color:'var(--text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
             {confirmRow.message}
           </div>
-          <div style={{ display:'flex', justifyContent:'flex-end', gap: 8 }}>
+          <div className="modal-footer">
             <Button variant="ghost" onClick={() => setConfirmRow(null)} disabled={saving}>Cancel</Button>
             <Button
               style={{ background:'var(--danger)', color:'#fff', border:'none' }}

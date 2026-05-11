@@ -160,7 +160,7 @@ export default function DesignationManagement() {
   if (loading) return <div style={{ display:'flex', justifyContent:'center', padding:80 }}><Spinner size={36} /></div>
 
   return (
-    <div className="fade-up">
+    <div className="fade-up page-admin page-designations">
       <PageTitle title="Designation Management" sub="Connects employees, roles, tiers, and approval flow" />
       {error   && <Alert type="error"   style={{ marginBottom: 12 }}>{error}</Alert>}
       {success && <Alert type="success" style={{ marginBottom: 12 }}>{success}</Alert>}
@@ -396,7 +396,7 @@ export default function DesignationManagement() {
             )
           })()}
 
-          <div style={{ display:'flex', justifyContent:'flex-end', gap: 10, marginTop: 8 }}>
+          <div className="modal-footer">
             <Button variant="ghost" onClick={closeModal} disabled={saving}>Cancel</Button>
             <Button onClick={save} disabled={saving}>
               {saving ? 'Saving…' : modal.mode === 'create' ? 'Create Designation' : 'Save Changes'}

@@ -30,7 +30,7 @@ export default function MyTicketsPage() {
   )
 
   return (
-    <div className="fade-up" style={{ paddingBottom:60 }}>
+    <div className="fade-up page-tickets" style={{ paddingBottom:60 }}>
       {/* Header */}
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:22, fontWeight:700, color:'var(--text-primary)' }}>My Tickets</div>
