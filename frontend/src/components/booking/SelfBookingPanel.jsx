@@ -23,8 +23,20 @@ export default function SelfBookingPanel() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // ── Tier-based tab filtering ──
+  // Only show travel modes allowed by the user's tier policy.
+  // Visa and Cab are not tier-restricted (no array in tiers table).
+  const allowedModes = user?.tier_policy?.allowed_modes || {}
+  const visibleTabs = TABS.filter(t => {
+    if (['Flight', 'Train', 'Bus', 'Hotel'].includes(t.id)) {
+      return allowedModes[t.id] !== false
+    }
+    return true
+  })
+  const firstAllowed = visibleTabs[0]?.id || 'Train'
+
   // Layout states
-  const [activeTab, setActiveTab] = useState('Flight')
+  const [activeTab, setActiveTab] = useState(firstAllowed)
   const [tripType, setTripType] = useState('OneWay')
   
   // Search form state
@@ -161,7 +173,7 @@ export default function SelfBookingPanel() {
         
         {/* Horizontal Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--text-body)', padding: '0 20px' }}>
-          {TABS.map(t => (
+          {visibleTabs.map(t => (
             <div 
               key={t.id} 
               onClick={() => { setActiveTab(t.id); setSearchResults(null); }}
@@ -505,7 +517,7 @@ export default function SelfBookingPanel() {
                       </div>
                       
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 24 }}>
-                        <div style={{ fontSize: 18, fontWeight: 700 }}>INR {fmtDateTime(flight.price)}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>INR {Number(flight.price).toLocaleString('en-IN')}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                           <button 
                             onClick={() => setExpandedFlight(expandedFlight === flight.flightId ? null : flight.flightId)}
@@ -556,7 +568,7 @@ export default function SelfBookingPanel() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                               <div>
                                  <div style={{ fontSize: 11, color: 'var(--text-danger)', marginBottom: 4 }}>👎 Out Policy</div>
-                                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--border-strong)' }}>INR {fmtDateTime(fare.price)}</div>
+                                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--border-strong)' }}>INR {Number(fare.price).toLocaleString('en-IN')}</div>
                               </div>
                               <button 
                                  onClick={() => handleBook(flight, fare)}

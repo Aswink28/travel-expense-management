@@ -1,6 +1,6 @@
 import { useAuth } from "../../context/AuthContext";
 import ThemeSwitcher from "./ThemeSwitcher";
-import moiterLogo from "../../assets/moiter_workz-logo.png";
+import moiCorpLogo from "../../assets/moiter_workz-logo.png";
 
 /* ──────────────────────────────────────────────────────────────
    Sidebar icons — uniform SVG set keyed by page id.
@@ -160,7 +160,11 @@ const toTitleCase = (s) =>
 export default function Sidebar({ active, setActive, pendingCount }) {
   const { user, logout } = useAuth();
   if (!user) return null;
-  const items = user.pages?.length ? user.pages : FALLBACK_NAV;
+  const rawItems = user.pages?.length ? user.pages : FALLBACK_NAV;
+  // Pin dashboard to the top of the sidebar when present
+  const items = [...rawItems].sort((a, b) =>
+    a.id === "dashboard" ? -1 : b.id === "dashboard" ? 1 : 0
+  );
   const accent = user.color || "var(--accent)";
 
   return (
@@ -171,10 +175,10 @@ export default function Sidebar({ active, setActive, pendingCount }) {
       {/* Logo block */}
       <div className="sidebar-logo">
         <div className="brand-mark">
-          <img src={moiterLogo} alt="Moiter Workz" />
+          <img src={moiCorpLogo} alt="MoiCorp" className="brand-logo-img" />
           <div className="brand-text">
             <span className="brand-highlight">
-              Moiter <span className="brand-accent">Workz</span>
+              MOI<span className="brand-accent">CORP</span>
             </span>
             <span className="brand-sub">Travel Desk</span>
           </div>

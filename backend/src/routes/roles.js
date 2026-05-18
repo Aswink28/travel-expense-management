@@ -127,12 +127,9 @@ router.post('/', async (req, res, next) => {
       [roleName, description || null, color || '#888']
     )
 
-    // Insert page assignments — Dashboard is always first, regardless of what the
-    // admin selected (or didn't select) in the modal.
+    // Insert page assignments — use the pages the admin actually selected.
     // New roles get full permissions (can_view/create/edit/delete = true) on every assigned page.
-    const dashboardInfo = ALL_PAGES.find(ap => ap.id === 'dashboard') || { label: 'Dashboard', icon: '▦' }
-    const otherPages = (pages || []).filter(p => p.page_id !== 'dashboard')
-    const orderedPages = [{ page_id: 'dashboard', label: dashboardInfo.label, icon: dashboardInfo.icon }, ...otherPages]
+    const orderedPages = (pages || [])
     for (let i = 0; i < orderedPages.length; i++) {
       const p = orderedPages[i]
       const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}
@@ -205,7 +202,7 @@ router.put('/:id', async (req, res, next) => {
       await client.query(`UPDATE roles SET ${sets.join(', ')} WHERE id = $${idx}`, vals)
     }
 
-    // Replace page assignments — Dashboard is always pinned to position 1.
+    // Replace page assignments — use exactly the pages the admin selected.
     // Snapshot existing permissions so they survive the delete-and-reinsert cycle.
     if (pages !== undefined) {
       const { rows: oldPages } = await client.query(
@@ -215,9 +212,7 @@ router.put('/:id', async (req, res, next) => {
       const permMap = new Map(oldPages.map(op => [op.page_id, op]))
 
       await client.query('DELETE FROM role_pages WHERE role_name = $1', [role.name])
-      const dashboardInfo = ALL_PAGES.find(ap => ap.id === 'dashboard') || { label: 'Dashboard', icon: '▦' }
-      const otherPages = pages.filter(p => p.page_id !== 'dashboard')
-      const orderedPages = [{ page_id: 'dashboard', label: dashboardInfo.label, icon: dashboardInfo.icon }, ...otherPages]
+      const orderedPages = pages
       for (let i = 0; i < orderedPages.length; i++) {
         const p = orderedPages[i]
         const pageInfo = ALL_PAGES.find(ap => ap.id === p.page_id) || {}

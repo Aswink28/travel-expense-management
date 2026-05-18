@@ -386,7 +386,21 @@ INSERT INTO users (emp_id, name, email, password_hash, role, department, avatar,
 ('EMP-004', 'Ravi Kumar',     'ravi@company.in',   'PLACEHOLDER', 'Manager',       'Operations',  'RK', '#FF9F0A', 'CFO'),
 ('EMP-005', 'Anil Menon',     'anil@company.in',   'PLACEHOLDER', 'Finance',       'Finance',     'AM', '#40C8E0', 'CFO'),
 ('EMP-006', 'Meena Iyer',     'meena@company.in',  'PLACEHOLDER', 'Booking Admin', 'Admin',       'MI', '#FF6B6B', 'Manager'),
-('EMP-007', 'Super Admin',    'admin@company.in',  'PLACEHOLDER', 'Super Admin',   'IT',          'SA', '#30D158', 'CEO');
+('EMP-007', 'Super Admin',    'admin@company.in',  'PLACEHOLDER', 'Super Admin',   'IT',          'SA', '#30D158', 'CEO'),
+-- Additional demo employees
+('EMP-008', 'Sanjay Gupta',   'sanjay@company.in', 'PLACEHOLDER', 'Software Engineer', 'Engineering', 'SG', '#0A84FF', 'Deepa (TL)'),
+('EMP-009', 'Kavitha Rajan',  'kavitha@company.in','PLACEHOLDER', 'Software Engineer', 'QA',          'KR', '#0A84FF', 'Deepa (TL)'),
+('EMP-010', 'Vikram Singh',   'vikram@company.in', 'PLACEHOLDER', 'Software Engineer', 'Engineering', 'VS', '#0A84FF', 'Deepa (TL)'),
+('EMP-011', 'Anjali Desai',   'anjali@company.in', 'PLACEHOLDER', 'Software Engineer', 'Design',      'AD', '#0A84FF', 'Ravi (Mgr)'),
+('EMP-012', 'Rahul Verma',    'rahul@company.in',  'PLACEHOLDER', 'Software Engineer', 'Engineering', 'RV', '#0A84FF', 'Deepa (TL)'),
+('EMP-013', 'Nisha Patel',    'nisha@company.in',  'PLACEHOLDER', 'Software Engineer', 'QA',          'NP', '#0A84FF', 'Deepa (TL)'),
+('EMP-014', 'Suresh Babu',    'suresh@company.in', 'PLACEHOLDER', 'Tech Lead',     'DevOps',      'SB', '#BF5AF2', 'Ravi (Mgr)'),
+('EMP-015', 'Lakshmi Rao',    'lakshmi@company.in','PLACEHOLDER', 'Software Engineer', 'HR',          'LR', '#0A84FF', 'Ravi (Mgr)'),
+('EMP-016', 'Amit Joshi',     'amit@company.in',   'PLACEHOLDER', 'Software Engineer', 'Marketing',   'AJ', '#0A84FF', 'Ravi (Mgr)'),
+('EMP-017', 'Divya Nambiar',  'divya@company.in',  'PLACEHOLDER', 'Software Engineer', 'Engineering', 'DN', '#0A84FF', 'Deepa (TL)'),
+('EMP-018', 'Karthik Subramanian','karthik@company.in','PLACEHOLDER','Software Engineer','Engineering','KS', '#0A84FF', 'Deepa (TL)'),
+('EMP-019', 'Pooja Sharma',   'pooja@company.in',  'PLACEHOLDER', 'Software Engineer', 'Finance',     'PS', '#0A84FF', 'Anil (Fin)'),
+('EMP-020', 'Mohan Das',      'mohan@company.in',  'PLACEHOLDER', 'Software Engineer', 'Operations',  'MD', '#0A84FF', 'Ravi (Mgr)');
 
 -- ================================================================
 --  DISTANCE RULES VIEW — determines required travel mode

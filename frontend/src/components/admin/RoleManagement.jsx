@@ -4,7 +4,7 @@ import { useAuth, usePermission } from '../../context/AuthContext'
 import { Card, Button, Input, Alert, Spinner, Modal, PageTitle } from '../shared/UI'
 
 export default function RoleManagement() {
-  const { user } = useAuth()
+  const { user, refreshWallet } = useAuth()
   const canCreate = usePermission('roles', 'create')
   const canEdit   = usePermission('roles', 'edit')
   const canDelete = usePermission('roles', 'delete')
@@ -96,6 +96,7 @@ export default function RoleManagement() {
       }
       setShowModal(false)
       load()
+      refreshWallet()   // re-fetch user data so sidebar pages update immediately
     } catch (err) {
       setFormError(err.message)
     } finally { setSaving(false) }
@@ -107,6 +108,7 @@ export default function RoleManagement() {
       await rolesAPI.remove(role.id)
       setSuccess(`Role "${role.name}" deleted`)
       load()
+      refreshWallet()   // re-fetch user data so sidebar pages update immediately
     } catch (err) { setError(err.message) }
   }
 

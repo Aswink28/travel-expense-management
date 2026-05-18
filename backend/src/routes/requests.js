@@ -283,14 +283,11 @@ router.post('/', async (req, res, next) => {
         })
       }
     } else {
-      // No tier assigned — block extra passengers by default
-      const paxList = Array.isArray(passengers) ? passengers : []
-      if (paxList.length > 0) {
-        return res.status(403).json({
-          success: false,
-          message: 'Extra passengers are not allowed (no tier assigned).',
-        })
-      }
+      // No tier assigned — reject entirely until admin assigns a tier.
+      return res.status(403).json({
+        success: false,
+        message: 'No tier assigned to your account. Contact your administrator to set your designation and tier before creating travel requests.',
+      })
     }
     // Legacy daily-allowance lookup retained for the calculation below.
     const { rows: tier } = await client.query('SELECT * FROM tier_config WHERE role=$1', [u.role])

@@ -5,7 +5,7 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Moiter Workz — Travel Expense Management API',
+      title: 'MoiCorp — Travel Expense Management API',
       version: '3.0.0',
       description: 'Complete API documentation for the Travel Expense Management system with role-based access control, wallet management, booking workflows, and employee management.',
     },
@@ -1502,7 +1502,7 @@ function setupSwagger(app) {
       .swagger-ui .topbar { display: none }
       .swagger-ui { max-width: 1200px; margin: 0 auto; }
     `,
-    customSiteTitle: 'Moiter Workz API Docs',
+    customSiteTitle: 'MoiCorp API Docs',
     swaggerOptions: {
       persistAuthorization: true,
       docExpansion: 'list',

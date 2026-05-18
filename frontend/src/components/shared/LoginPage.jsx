@@ -10,12 +10,12 @@ import imgCab    from '../../assets/modes/cab.jpg'
 const BG_IMAGES = [imgFlight, imgTrain, imgHotel, imgCab]
 
 const DEMO = [
-  { name: 'Rohan Kapoor',   email: 'rohan.kapoor@company.in', role: 'Employee',         designation: 'SE',      color: '#5BAEFF', avatar: 'RK', password: 'pass123' },
-  { name: 'John Murphy',    email: 'john.murphy@company.in',  role: 'Request Approver', designation: 'TL',      color: '#B868FF', avatar: 'JM', password: 'pass123' },
-  { name: 'Priya Mehta',    email: 'priya.mehta@company.in',  role: 'Request Approver', designation: 'Manager', color: 'var(--text-warning)', avatar: 'PM', password: 'pass123' },
-  { name: 'Anjali Rao',     email: 'anjali.rao@company.in',   role: 'Finance',          designation: 'Finance', color: 'var(--accent)', avatar: 'AR', password: 'pass123' },
-  { name: 'Meena Iyer',     email: 'meena.iyer@company.in',   role: 'Booking Admin',    designation: 'Booking', color: 'var(--purple)', avatar: 'MI', password: 'pass123' },
-  { name: 'System Admin',   email: 'admin@company.in',        role: 'Super Admin',      designation: 'Admin',   color: 'var(--accent)', avatar: 'SA', password: 'admin123' },
+  { name: 'Arjun Kumar',    email: 'arjun@company.in',  role: 'Employee',         designation: 'SE',      color: '#5BAEFF', avatar: 'AK', password: 'pass123' },
+  { name: 'Deepa Nair',     email: 'deepa@company.in',  role: 'Request Approver', designation: 'TL',      color: '#B868FF', avatar: 'DN', password: 'pass123' },
+  { name: 'Ravi Shankar',   email: 'ravi@company.in',   role: 'Request Approver', designation: 'Manager', color: 'var(--text-warning)', avatar: 'RS', password: 'pass123' },
+  { name: 'Anil Mehta',     email: 'anil@company.in',   role: 'Finance',          designation: 'Finance', color: 'var(--accent)', avatar: 'AM', password: 'pass123' },
+  { name: 'Meena Iyer',     email: 'meena@company.in',  role: 'Booking Admin',    designation: 'Booking', color: 'var(--purple)', avatar: 'MI', password: 'pass123' },
+  { name: 'System Admin',   email: 'admin@company.in',  role: 'Super Admin',      designation: 'Admin',   color: 'var(--accent)', avatar: 'SA', password: 'admin123' },
 ]
 
 // ── Inline icons (Lucide-style) ──────────────────────────────

@@ -69,7 +69,7 @@ export default function TicketCard({ ticket, onClose }) {
             </div>
           </div>
           <div class="footer">
-            Issued by Moiter Workz &nbsp;·&nbsp; ${fmtDateTime(ticket.created_at)}
+            Issued by MoiCorp &nbsp;·&nbsp; ${fmtDateTime(ticket.created_at)}
             &nbsp;·&nbsp; ${ticket.status?.toUpperCase()}
           </div>
         </div>

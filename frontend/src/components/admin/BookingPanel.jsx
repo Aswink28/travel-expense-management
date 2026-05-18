@@ -1214,7 +1214,7 @@ export default function BookingPanel() {
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 10 }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: s.price > 0 ? C.green : C.muted }}>
-                              {s.price > 0 ? `₹${fmtDateTime(s.price)}` : 'Free'}
+                              {s.price > 0 ? `₹${Number(s.price).toLocaleString('en-IN')}` : 'Free'}
                             </span>
                             <span style={{ fontSize: 16, color: isSelected ? (typeColors[typeName] || C.accent) : C.muted }}>
                               {isSelected ? '☑' : '☐'}
@@ -1584,7 +1584,7 @@ export default function BookingPanel() {
                 Flight Fare ({fare.type})
               </span>
               <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
-                — ₹{fmtDateTime(fare.price)}
+                — ₹{Number(fare.price).toLocaleString('en-IN')}
               </span>
             </div>
             <div
@@ -2597,7 +2597,7 @@ export default function BookingPanel() {
                               color: C.text,
                             }}
                           >
-                            ₹{fmtDateTime(hotel.pricePerNight)}
+                            ₹{Number(hotel.pricePerNight).toLocaleString('en-IN')}
                           </div>
                           <div style={{ fontSize: 10, color: C.sub }}>
                             {hotelForm.rooms} Room / {hotel.nights} Night
@@ -3303,7 +3303,7 @@ export default function BookingPanel() {
                               letterSpacing: "-0.5px",
                             }}
                           >
-                            ₹{fmtDateTime(fl.price)}
+                            ₹{Number(fl.price).toLocaleString('en-IN')}
                           </div>
                           <div style={{ fontSize: 10, color: C.sub }}>
                             per person
@@ -3436,7 +3436,7 @@ export default function BookingPanel() {
                                   color: fi === 0 ? C.accent : C.text,
                                 }}
                               >
-                                ₹{fmtDateTime(fare.price)}
+                                ₹{Number(fare.price).toLocaleString('en-IN')}
                               </div>
                             </div>
                             <div
@@ -3548,7 +3548,7 @@ export default function BookingPanel() {
                                   {confirmedSSRs.map(s => (
                                     <div key={s.ssrKey} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.sub, marginBottom: 2 }}>
                                       <span>{s.typeDesc || s.code}</span>
-                                      <span style={{ color: s.price > 0 ? C.green : C.muted }}>{s.price > 0 ? `₹${fmtDateTime(s.price)}` : 'Free'}</span>
+                                      <span style={{ color: s.price > 0 ? C.green : C.muted }}>{s.price > 0 ? `₹${Number(s.price).toLocaleString('en-IN')}` : 'Free'}</span>
                                     </div>
                                   ))}
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: C.green, marginTop: 4, paddingTop: 4, borderTop: `1px solid ${C.green}20` }}>

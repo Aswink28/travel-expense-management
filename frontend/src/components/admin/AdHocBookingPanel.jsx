@@ -193,7 +193,7 @@ export default function AdHocBookingPanel() {
                         <div>
                           <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{opt.provider}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Departs: {opt.departure} • {opt.duration}</div>
-                          <div style={{ fontSize: 14, color: 'var(--text-success)', fontWeight: 600, marginTop: 4 }}>₹{fmtDateTime(opt.price)}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text-success)', fontWeight: 600, marginTop: 4 }}>₹{Number(opt.price).toLocaleString('en-IN')}</div>
                         </div>
                         <Button onClick={() => handleBook(opt)} disabled={bookingLoading} style={{ background: 'var(--accent)', color: '#fff', padding: '8px 16px', fontSize: 12 }}>
                           {bookingLoading ? 'Booking...' : 'Book Ticket'}

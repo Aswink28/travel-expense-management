@@ -9,7 +9,7 @@ const httpLogger = require('./middleware/httpLogger')
 const { setupSwagger } = require('./swagger')
 
 const app  = express()
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 5015
 
 // ── CORS ──────────────────────────────────────────────────────
 // Allow:
@@ -22,6 +22,8 @@ const normaliseOrigin = (s) => (s || '').trim().toLowerCase().replace(/\/+$/, ''
 const allowedOrigins = new Set(
   (process.env.FRONTEND_URL || '').split(',').map(normaliseOrigin).filter(Boolean)
 )
+// Always allow the demo domain regardless of env config
+;['http://demo.moiterworkz.com','https://demo.moiterworkz.com'].forEach(u => allowedOrigins.add(u))
 
 const lanOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/
 

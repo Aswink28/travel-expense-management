@@ -18,24 +18,18 @@ const NODE_ENV = process.env.NODE_ENV || 'development'
 // Anchor on process.cwd() so this works whether run from src/ or the bundled dist/.
 const root = process.cwd()
 
-// In production, ONLY read .env.production. Falling through to a stray .env file
-// (left over from local dev) silently overrode values like DB_USER on the demo box.
-const files = NODE_ENV === 'production'
-  ? [`.env.production.local`, `.env.production`]
-  : [
-      `.env.${NODE_ENV}.local`,
-      `.env.${NODE_ENV}`,
-      '.env.local',
-      '.env',
-    ]
+// Try all env files so it works regardless of naming (.env or .env.production).
+// dotenv won't overwrite already-set vars, so earlier files take priority.
+const files = [
+  `.env.${NODE_ENV}.local`,
+  `.env.${NODE_ENV}`,
+  '.env.local',
+  '.env',
+  '.env.production',
+]
 
 for (const f of files) {
   dotenv.config({ path: path.join(root, f) })
-}
-
-if (NODE_ENV === 'production' && !fs.existsSync(path.join(root, '.env.production'))) {
-  console.error(`[env] FATAL: .env.production not found in ${root}. Place it next to the running entrypoint.`)
-  process.exit(1)
 }
 
 process.env.NODE_ENV = NODE_ENV

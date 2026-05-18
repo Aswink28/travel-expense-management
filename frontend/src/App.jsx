@@ -108,15 +108,68 @@ function PageGuard({ tab, children }) {
   );
 }
 
+// All valid page IDs — used to validate URL path on mount and back/forward nav.
+const VALID_PAGES = new Set([
+  "dashboard", "my-requests", "new-request", "approvals", "my-wallet",
+  "booking-panel", "ad-hoc-booking", "admin-bookings-view", "employees",
+  "bulk-employees", "roles", "tiers", "designations", "audit-log",
+  "admin-users", "admin-create-request", "book", "my-tickets", "transactions",
+]);
+
+// Extract page id from the current pathname, stripping the Vite base path.
+// e.g. "/moi-corp/designations" → "designations", "/moi-corp/" → ""
+const BASE = import.meta.env.BASE_URL.replace(/\/+$/, "");
+function pageFromPath() {
+  return window.location.pathname.replace(BASE, "").replace(/^\/+/, "");
+}
+
 function InnerApp() {
   const { user } = useAuth();
-  const [tab, setTab] = useState("dashboard");
+  // Default to the first page the user actually has access to.
+  const firstPage = (user?.pages || []).find((p) => p.can_view !== false)?.id || "dashboard";
+
+  // ── Path-based routing (History API) ────────────────────────
+  // Read the URL pathname on mount to restore the active tab after
+  // a page refresh. Falls back to firstPage if path is absent or invalid.
+  const [tab, setTabState] = useState(() => {
+    const page = pageFromPath();
+    return page && VALID_PAGES.has(page) ? page : firstPage;
+  });
+
+  // Wrap the raw setter so every navigation — sidebar clicks,
+  // dashboard shortcuts, programmatic setTab() calls — also
+  // updates the URL path. Child components receive this wrapper
+  // transparently (same setTab prop name, same call signature).
+  const setTab = useCallback((id) => {
+    setTabState(id);
+    window.history.pushState(null, "", `${BASE}/${id}`);
+  }, []);
+
+  // Set initial path in the URL bar when loading at the bare base
+  // path, using replaceState to avoid polluting the history stack.
+  useEffect(() => {
+    const page = pageFromPath();
+    if (!page || !VALID_PAGES.has(page)) {
+      window.history.replaceState(null, "", `${BASE}/${tab}`);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync state when the user presses the browser Back / Forward
+  // buttons. Uses setTabState (not setTab) to avoid pushing a
+  // duplicate history entry for a path that has already changed.
+  useEffect(() => {
+    function onPopState() {
+      const page = pageFromPath();
+      if (page && VALID_PAGES.has(page)) setTabState(page);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   const [pendingCount, setPendingCount] = useState(0);
 
   // If the active tab disappears from user.pages after a permission change
-  // (rare — usually happens when an admin edits another admin's permissions
-  // and that admin reloads), fall back to dashboard so the UI never gets
-  // stuck rendering a 403 they can't navigate away from.
+  // fall back to the first visible page.
   const visibleIds = useMemo(
     () =>
       new Set(
@@ -127,8 +180,8 @@ function InnerApp() {
     [user?.pages],
   );
   useEffect(() => {
-    if (ADMIN_GATED_PAGES.has(tab) && !visibleIds.has(tab)) setTab("dashboard");
-  }, [tab, visibleIds]);
+    if (ADMIN_GATED_PAGES.has(tab) && !visibleIds.has(tab)) setTab(firstPage);
+  }, [tab, visibleIds, firstPage, setTab]);
 
   // Refresh sidebar pending-approval badge count
   const refreshPendingCount = useCallback(() => {
@@ -195,7 +248,7 @@ function AppRoot() {
       <div className="app-loading">
         <div className="app-loading-inner">
           <div className="app-loading-brand">
-            Moiter <span className="login-gradient-text">Workz</span>
+            Moi<span className="login-gradient-text">Corp</span>
           </div>
           <Spinner size={32} />
         </div>

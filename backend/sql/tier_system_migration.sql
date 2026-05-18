@@ -63,7 +63,7 @@ VALUES
   ('Tier 2', 2, 'Booking Admin',              ARRAY['Business','Premium Economy'], ARRAY['1AC','2AC'],             ARRAY['Volvo','Sleeper','AC Seater'], ARRAY['4-Star','5-Star'],  60000, 'trip', ARRAY['Manager','Finance']::TEXT[],       'ALL'),
   ('Tier 3', 3, 'Manager',                    ARRAY['Business','Premium Economy'], ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['4-Star'],           40000, 'trip', ARRAY['Finance']::TEXT[],                 'ALL'),
   ('Tier 4', 4, 'Tech Lead',                  ARRAY['Premium Economy','Economy'],  ARRAY['2AC','3AC'],             ARRAY['AC Sleeper','AC Seater'],      ARRAY['3-Star'],           25000, 'trip', ARRAY['Manager']::TEXT[],                 'ALL'),
-  ('Tier 5', 5, 'Software Engineer',          ARRAY['Economy'],                    ARRAY['3AC','Sleeper'],         ARRAY['AC Seater','Non-AC Seater'],   ARRAY['Budget','3-Star'],  15000, 'trip', ARRAY['Tech Lead','Manager']::TEXT[],     'ALL')
+  ('Tier 5', 5, 'Software Engineer',          ARRAY[]::TEXT[],                     ARRAY['3AC','Sleeper'],         ARRAY['AC Seater','Non-AC Seater'],   ARRAY['Budget','3-Star'],  15000, 'trip', ARRAY['Tech Lead','Manager']::TEXT[],     'ALL')
 ON CONFLICT (name) DO NOTHING;
 
 -- Default designation → tier mapping (only inserts if not already present).
@@ -111,6 +111,9 @@ UPDATE users SET designation = 'Software Engineer' WHERE designation = 'Employee
 -- Refresh the built-in Tier 5 description if it still reads 'Employee'.
 UPDATE tiers SET description = 'Software Engineer'
 WHERE name = 'Tier 5' AND description = 'Employee';
+
+-- Tier 5 (Software Engineer / Entry Level) must NOT have flight access.
+UPDATE tiers SET flight_classes = ARRAY[]::TEXT[] WHERE name = 'Tier 5';
 
 -- ── Designation → Role mapping ─────────────────────────────────
 -- Each designation declares the role it belongs to. When an employee picks a
